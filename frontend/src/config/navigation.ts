@@ -1,10 +1,10 @@
 import {
   LayoutDashboard,
-  BarChart3,
-  Users,
+  GitBranch,
+  GitCommit,
+  Trello,
   FileText,
   Settings,
-  HelpCircle,
   type LucideIcon
 } from 'lucide-react'
 
@@ -25,21 +25,26 @@ export const dashboardNavigation: NavGroup[] = [
   {
     items: [
       { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { title: 'Analytics', href: '/analytics', icon: BarChart3 }
+      { title: 'Repositories', href: '/dashboard/repos', icon: GitBranch },
+      { title: 'Commits', href: '/dashboard/commits', icon: GitCommit }
     ]
   },
   {
-    title: 'Management',
+    title: 'Integrations',
     items: [
-      { title: 'Users', href: '/users', icon: Users },
-      { title: 'Reports', href: '/reports', icon: FileText }
+      { title: 'Jira', href: '/dashboard/jira', icon: Trello }
     ]
   },
   {
-    title: 'Settings',
+    title: 'Reports',
     items: [
-      { title: 'Settings', href: '/settings', icon: Settings },
-      { title: 'Help', href: '/help', icon: HelpCircle }
+      { title: 'Reports', href: '/dashboard/reports', icon: FileText }
+    ]
+  },
+  {
+    title: 'System',
+    items: [
+      { title: 'Settings', href: '/dashboard/settings', icon: Settings }
     ]
   }
 ]

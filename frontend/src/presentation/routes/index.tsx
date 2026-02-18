@@ -6,6 +6,14 @@ import { DashboardPage } from '../pages/dashboard/DashboardPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { LandingPage } from '../pages/LandingPage'
 
+// New dashboard pages
+import { DashboardHomePage } from '../pages/DashboardHomePage'
+import { ReposPage } from '../pages/ReposPage'
+import { CommitsPage } from '../pages/CommitsPage'
+import { JiraPage } from '../pages/JiraPage'
+import { ReportsPage } from '../pages/ReportsPage'
+import { SettingsPage } from '../pages/SettingsPage'
+
 export const router = createBrowserRouter([
   // Public routes (landing, login, register)
   {
@@ -37,28 +45,28 @@ export const router = createBrowserRouter([
         element: <DashboardPage />
       },
       {
-        path: 'analytics',
-        element: <div className="p-6">Analytics Page Coming Soon</div>
+        path: 'dashboard/home',
+        element: <DashboardHomePage />
       },
       {
-        path: 'users',
-        element: <div className="p-6">Users Management Coming Soon</div>
+        path: 'dashboard/repos',
+        element: <ReposPage />
       },
       {
-        path: 'reports',
-        element: <div className="p-6">Reports Page Coming Soon</div>
+        path: 'dashboard/commits',
+        element: <CommitsPage />
       },
       {
-        path: 'profile',
-        element: <div className="p-6">Profile Page Coming Soon</div>
+        path: 'dashboard/jira',
+        element: <JiraPage />
       },
       {
-        path: 'settings',
-        element: <div className="p-6">Settings Page Coming Soon</div>
+        path: 'dashboard/reports',
+        element: <ReportsPage />
       },
       {
-        path: 'help',
-        element: <div className="p-6">Help & Support Coming Soon</div>
+        path: 'dashboard/settings',
+        element: <SettingsPage />
       }
     ]
   },
