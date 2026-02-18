@@ -2,8 +2,8 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { isAuthenticated } from '@/utils/auth'
 
 /**
- * Public layout for non-authenticated pages
- * Redirects to dashboard if user is already authenticated
+ * Public layout for landing page and auth pages
+ * Full-width structure for landing page
  */
 const PublicLayout = () => {
   // If user is authenticated, redirect to dashboard
@@ -12,12 +12,7 @@ const PublicLayout = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-slate-50 py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">
-          <img className="mx-auto h-12 w-auto" src="/logo.svg" alt="App logo" />
-        </h2>
-      </div>
+    <div className="min-h-screen bg-[#F8C630]">
       <Outlet />
     </div>
   )

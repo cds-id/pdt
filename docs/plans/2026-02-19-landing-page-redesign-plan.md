@@ -1,3 +1,62 @@
+# PDT Landing Page Redesign Implementation Plan
+
+> **For Claude:** Implement directly (not using subagent-driven since this is straightforward frontend work)
+
+**Goal:** Create clean, responsive landing page with full-width layout using shadcn components
+
+**Architecture:** New PublicLayout component with full-width structure, updated LandingPage using shadcn Card/Button components
+
+**Tech Stack:** React, Tailwind CSS, shadcn/ui components
+
+---
+
+## Task 1: Create PublicLayout for Landing Page
+
+**Files:**
+- Modify: `frontend/src/presentation/layouts/PublicLayout.tsx`
+
+**Step 1: Rewrite PublicLayout with full-width structure**
+
+```tsx
+import { Navigate, Outlet } from 'react-router-dom'
+import { isAuthenticated } from '@/utils/auth'
+
+/**
+ * Public layout for landing page and auth pages
+ * Full-width structure for landing page
+ */
+const PublicLayout = () => {
+  // If user is authenticated, redirect to dashboard
+  if (isAuthenticated()) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F8C630]">
+      <Outlet />
+    </div>
+  )
+}
+
+export default PublicLayout
+```
+
+**Step 2: Commit**
+
+```bash
+cd frontend && git add src/presentation/layouts/PublicLayout.tsx && git commit -m "feat: update PublicLayout for full-width landing"
+```
+
+---
+
+## Task 2: Create Clean Landing Page with shadcn Components
+
+**Files:**
+- Modify: `frontend/src/presentation/pages/LandingPage.tsx`
+
+**Step 1: Rewrite LandingPage with shadcn components**
+
+```tsx
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -159,3 +218,40 @@ export function LandingPage() {
     </div>
   )
 }
+```
+
+**Step 2: Commit**
+
+```bash
+cd frontend && git add src/presentation/pages/LandingPage.tsx && git commit -m "feat: redesign landing page with shadcn components"
+```
+
+---
+
+## Task 3: Verify Build
+
+**Step 1: Run build**
+
+```bash
+cd frontend && npm run build
+```
+
+**Step 2: Verify no errors**
+
+Expected: Build succeeds
+
+**Step 3: Commit if any changes**
+
+```bash
+git add -A && git commit -m "fix: verify landing page build"
+```
+
+---
+
+## Summary
+
+| Task | Description |
+|------|-------------|
+| 1 | Create PublicLayout with full-width structure |
+| 2 | Rewrite LandingPage with shadcn Button/Card |
+| 3 | Verify build |
