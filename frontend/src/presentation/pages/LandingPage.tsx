@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 
 export function LandingPage() {
   const features = [
@@ -119,11 +119,13 @@ export function LandingPage() {
                 key={index}
                 className="border-2 border-[#1B1B1E] bg-transparent hover:border-[#96031A] transition-colors"
               >
-                <CardContent className="pt-6 text-center">
+                <CardHeader className="text-center pb-2">
                   <div className="w-14 h-14 bg-[#FBFFFE] border-2 border-[#1B1B1E] rounded-xl flex items-center justify-center mx-auto mb-4 text-[#1B1B1E]">
                     {feature.icon}
                   </div>
-                  <h3 className="text-lg font-bold text-[#1B1B1E] mb-2">{feature.title}</h3>
+                  <h3 className="text-lg font-bold text-[#1B1B1E]">{feature.title}</h3>
+                </CardHeader>
+                <CardContent className="text-center pt-0">
                   <p className="text-[#1B1B1E]/70 text-sm">{feature.description}</p>
                 </CardContent>
               </Card>
