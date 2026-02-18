@@ -42,6 +42,7 @@ export const authApi = api.injectEndpoints({
               name: data.user.name
             })
           )
+          localStorage.setItem('auth_token', data.token)
         } catch (error) {
           dispatch(
             setError(error instanceof Error ? error.message : 'Registration failed')
@@ -72,6 +73,7 @@ export const authApi = api.injectEndpoints({
               name: data.user.name
             })
           )
+          localStorage.setItem('auth_token', data.token)
         } catch (error) {
           // Handle error and update auth state
           dispatch(
@@ -96,11 +98,13 @@ export const authApi = api.injectEndpoints({
           dispatch(logoutAction())
           // Clear user state on logout
           dispatch(clearUser())
+          localStorage.removeItem('auth_token')
         } catch (error) {
           // Handle error if logout API call fails
           dispatch(
             setError(error instanceof Error ? error.message : 'Logout failed')
           )
+          localStorage.removeItem('auth_token')
         }
       },
       invalidatesTags: () => [
