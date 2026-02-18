@@ -65,15 +65,17 @@ export default {
   			},
 			pdt: {
 				primary: {
-					DEFAULT: '#1e1b4b',
-					light: '#312e81',
-					dark: '#0f0d24',
+					DEFAULT: '#1B1B1E',
+					light: '#2d2d32',
+					dark: '#000000',
 				},
 				accent: {
-					DEFAULT: '#14b8a6',
-					hover: '#2dd4bf',
-					dark: '#0f766e',
+					DEFAULT: '#96031A',
+					hover: '#b30422',
+					dark: '#6a0011',
 				},
+				background: '#F8C630',
+				neutral: '#FBFFFE',
 			},
 		},
   		borderRadius: {
