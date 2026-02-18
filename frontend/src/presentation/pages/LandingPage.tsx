@@ -9,7 +9,7 @@ export function LandingPage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <span className="text-xl font-bold text-pdt-primary">PDT</span>
-              <span className="ml-2 text-sm text-slate-600">Personal Daily Tracker</span>
+              <span className="ml-2 text-sm text-slate-600">Personal Development Tracker</span>
             </div>
             <div className="flex items-center space-x-4">
               <Link
@@ -33,7 +33,7 @@ export function LandingPage() {
       <section className="pt-32 pb-20 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6">
-            Your Personal Daily
+            Your Personal
             <span className="text-pdt-accent"> Development Tracker</span>
           </h1>
           <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
@@ -205,7 +205,7 @@ export function LandingPage() {
       {/* Footer */}
       <footer className="py-8 bg-slate-900 text-slate-400">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <p>&copy; 2026 PDT - Personal Daily Tracker. All rights reserved.</p>
+          <p>&copy; 2026 PDT - Personal Development Tracker. All rights reserved.</p>
         </div>
       </footer>
     </div>

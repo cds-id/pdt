@@ -41,7 +41,7 @@ export const LoginPage = () => {
         <Link to="/" className="inline-flex items-center gap-2">
           <span className="text-3xl font-bold text-pdt-primary">PDT</span>
         </Link>
-        <p className="text-sm text-slate-500 mt-1">Personal Daily Tracker</p>
+        <p className="text-sm text-slate-500 mt-1">Personal Development Tracker</p>
       </div>
 
       <Card className="border-slate-200 shadow-lg">
