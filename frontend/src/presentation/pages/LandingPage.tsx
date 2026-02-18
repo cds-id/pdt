@@ -75,12 +75,10 @@ export function LandingPage() {
         </div>
       </header>
 
-      {/* Hero Section - Yellow with diagonal skew */}
-      <section className="relative pt-32 pb-24 px-4 bg-[#F8C630]">
-        {/* Diagonal skew at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-[#F8C630]" style={{ transform: 'skewY(-3deg) translateY(50%)' }} />
+      {/* Hero Section - Yellow with diagonal cut */}
+      <section className="relative pt-32 pb-32 px-4 bg-[#F8C630]" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 85%, 0% 100%)' }}>
 
-        <div className="w-full max-w-6xl mx-auto text-center relative z-10">
+        <div className="w-full max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-7xl font-bold text-[#1B1B1E] mb-6">
             Your Personal
             <br />
