@@ -93,4 +93,8 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  .clip-path-diagonal {
+    clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 0% 100%);
+  }
 }
