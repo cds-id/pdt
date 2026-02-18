@@ -2,7 +2,7 @@
  * API service constants - All backend endpoints
  */
 export const API_CONSTANTS = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
   API_PREFIX: '/api',
 
   // Auth Endpoints
