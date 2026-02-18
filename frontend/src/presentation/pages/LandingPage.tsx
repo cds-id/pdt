@@ -96,39 +96,41 @@ export function LandingPage() {
         </div>
       </header>
 
-      {/* Hero Section - Yellow with diagonal cut */}
-      <div className="relative bg-[#F8C630] clip-path-diagonal">
-        <section className="pt-32 pb-32 px-4">
-          <div className="w-full max-w-6xl mx-auto text-center">
-            <h1 className="text-5xl md:text-7xl font-bold text-[#1B1B1E] mb-6">
-              Your Personal
-              <br />
-              <span className="text-[#1B1B1E]">Development Tracker</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-[#1B1B1E] mb-10 max-w-2xl mx-auto">
-              Automatically track commits across GitHub & GitLab, link Jira cards,
-              and generate daily reports.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                asChild
-                size="lg"
-                className="bg-[#1B1B1E] hover:bg-[#F8C630] hover:text-[#1B1B1E] text-[#F8C630] text-lg px-8"
-              >
-                <Link to="/register">Get Started Free</Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="border-2 border-[#1B1B1E] text-[#1B1B1E] hover:bg-[#1B1B1E] hover:text-[#F8C630] text-lg px-8"
-              >
-                <Link to="/login">View Demo</Link>
-              </Button>
-            </div>
+      {/* Hero Section - Yellow with diagonal separator */}
+      <section className="relative pt-32 pb-24 px-4 bg-[#F8C630]">
+        <div className="w-full max-w-6xl mx-auto text-center">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-[#1B1B1E] mb-4 sm:mb-6">
+            Your Personal
+            <br />
+            <span className="text-[#1B1B1E]">Development Tracker</span>
+          </h1>
+          <p className="text-lg sm:text-xl md:text-2xl text-[#1B1B1E] mb-8 sm:mb-10 max-w-2xl mx-auto">
+            Automatically track commits across GitHub & GitLab, link Jira cards,
+            and generate daily reports.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+            <Button
+              asChild
+              size="lg"
+              className="bg-[#1B1B1E] hover:bg-[#F8C630] hover:text-[#1B1B1E] text-[#F8C630] text-base sm:text-lg px-6 sm:px-8"
+            >
+              <Link to="/register">Get Started Free</Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="border-2 border-[#1B1B1E] text-[#1B1B1E] hover:bg-[#1B1B1E] hover:text-[#F8C630] text-base sm:text-lg px-6 sm:px-8"
+            >
+              <Link to="/login">View Demo</Link>
+            </Button>
           </div>
-        </section>
-      </div>
+        </div>
+        {/* Diagonal separator */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-20 md:h-24 overflow-hidden">
+          <div className="absolute bottom-0 left-[-50%] right-[-50%] h-full bg-[#F8C630] transform -rotate-2 scale-150"></div>
+        </div>
+      </section>
 
       {/* Features Section - Dark background */}
       <section className="py-20 px-4 bg-[#1B1B1E]">
