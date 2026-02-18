@@ -85,13 +85,13 @@ export function LandingPage() {
             <nav className="flex items-center gap-6">
               <Link
                 to="/login"
-                className="text-white hover:text-[#96031A] font-medium transition-colors"
+                className="text-[#1B1B1E] hover:text-[#96031A] font-medium transition-colors"
               >
                 Login
               </Link>
               <Button
                 asChild
-                className="bg-white text-[#1B1B1E] hover:bg-[#96031A] hover:text-white"
+                className="bg-[#1B1B1E] hover:bg-[#F8C630] hover:text-[#1B1B1E] text-[#F8C630]"
               >
                 <Link to="/register">Get Started</Link>
               </Button>
