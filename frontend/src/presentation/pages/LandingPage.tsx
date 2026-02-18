@@ -75,19 +75,23 @@ export function LandingPage() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#F8C630]/95 backdrop-blur-sm">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <span className="text-2xl font-bold text-[#1B1B1E]">PDT</span>
-            </div>
+            <Link to="/" className="flex items-center">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2"/>
+                <path d="M7 14L10 11L13 13L17 8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="17" cy="8" r="1.5" fill="white"/>
+              </svg>
+            </Link>
             <nav className="flex items-center gap-6">
               <Link
                 to="/login"
-                className="text-[#1B1B1E] hover:text-[#96031A] font-medium transition-colors"
+                className="text-white hover:text-[#96031A] font-medium transition-colors"
               >
                 Login
               </Link>
               <Button
                 asChild
-                className="bg-[#1B1B1E] hover:bg-[#F8C630] hover:text-[#1B1B1E] text-[#F8C630]"
+                className="bg-white text-[#1B1B1E] hover:bg-[#96031A] hover:text-white"
               >
                 <Link to="/register">Get Started</Link>
               </Button>
