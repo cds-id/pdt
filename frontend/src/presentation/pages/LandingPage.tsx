@@ -153,7 +153,7 @@ export function LandingPage() {
               >
                 Login
               </Link>
-              <Button asChild variant="pdt">
+              <Button asChild variant="pdtDark">
                 <Link to="/register">Get Started</Link>
               </Button>
             </nav>
@@ -177,7 +177,7 @@ export function LandingPage() {
             <Button
               asChild
               size="lg"
-              variant="pdt"
+              variant="pdtDark"
               className="px-6 text-base sm:px-8 sm:text-lg"
             >
               <Link to="/register">Get Started Free</Link>
@@ -185,7 +185,7 @@ export function LandingPage() {
             <Button
               asChild
               size="lg"
-              variant="pdtOutline"
+              variant="pdtDarkOutline"
               className="px-6 text-base sm:px-8 sm:text-lg"
             >
               <Link to="/login">View Demo</Link>
@@ -306,7 +306,7 @@ export function LandingPage() {
           <p className="mb-8 text-xl text-[#1B1B1E]">
             Join developers who use PDT to stay organized.
           </p>
-          <Button asChild size="lg" variant="pdt" className="px-8 text-lg">
+          <Button asChild size="lg" variant="pdtDark" className="px-8 text-lg">
             <Link to="/register">Sign Up Free</Link>
           </Button>
         </div>

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Menu, Bell } from 'lucide-react'
 import { useDispatch } from 'react-redux'
 
@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAppSelector } from '@/application/hooks/useAppSelector'
 import { logout } from '@/infrastructure/slices/auth/auth.slice'
-import { useLogoutMutation } from '@/infrastructure/services/auth.service'
 
 interface HeaderProps {
   className?: string
@@ -30,7 +29,7 @@ export function Header({
   showMenuButton
 }: HeaderProps) {
   const dispatch = useDispatch()
-  const [logoutApi] = useLogoutMutation()
+  const navigate = useNavigate()
   const user = useAppSelector((state) => state.user)
 
   const userInitials = user?.name
@@ -41,16 +40,10 @@ export function Header({
         .toUpperCase()
     : 'U'
 
-  const handleLogout = async () => {
-    try {
-      await logoutApi().unwrap()
-      dispatch(logout())
-      localStorage.removeItem('auth_token')
-    } catch (error) {
-      console.error('Error during logout:', error)
-      dispatch(logout())
-      localStorage.removeItem('auth_token')
-    }
+  const handleLogout = () => {
+    dispatch(logout())
+    localStorage.removeItem('auth_token')
+    navigate('/login', { replace: true })
   }
 
   return (

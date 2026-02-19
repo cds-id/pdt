@@ -20,7 +20,11 @@ const buttonVariants = cva(
         link: 'text-primary underline-offset-4 hover:underline',
         pdt: 'border-2 border-pdt-accent bg-pdt-accent font-semibold text-pdt-primary hover:border-pdt-accent-hover hover:bg-pdt-accent-hover',
         pdtOutline:
-          'border-2 border-pdt-accent bg-transparent font-semibold text-pdt-accent hover:bg-pdt-accent hover:text-pdt-primary'
+          'border-2 border-pdt-accent bg-transparent font-semibold text-pdt-accent hover:bg-pdt-accent hover:text-pdt-primary',
+        pdtDark:
+          'border-2 border-pdt-primary bg-pdt-primary font-semibold text-pdt-accent hover:border-pdt-primary-light hover:bg-pdt-primary-light',
+        pdtDarkOutline:
+          'border-2 border-pdt-primary bg-transparent font-semibold text-pdt-primary hover:bg-pdt-primary hover:text-pdt-accent'
       },
       size: {
         default: 'h-10 px-4 py-2',

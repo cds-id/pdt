@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { isAuthenticated } from '@/utils/auth'
 import {
   DropdownMenu,
@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useDispatch } from 'react-redux'
 import { logout } from '@/infrastructure/slices/auth/auth.slice'
-import { useLogoutMutation } from '@/infrastructure/services/auth.service'
 import { useAppSelector } from '@/application/hooks/useAppSelector'
 
 /**
@@ -24,7 +23,7 @@ import { useAppSelector } from '@/application/hooks/useAppSelector'
  */
 const ProtectedLayout = () => {
   const dispatch = useDispatch()
-  const [logoutApi] = useLogoutMutation()
+  const navigate = useNavigate()
   const user = useAppSelector((state) => state.user)
 
   // If user is not authenticated, redirect to login
@@ -40,17 +39,10 @@ const ProtectedLayout = () => {
         .toUpperCase()
     : 'U'
 
-  const handleLogout = async () => {
-    try {
-      await logoutApi().unwrap()
-      dispatch(logout())
-      localStorage.removeItem('auth_token')
-    } catch (error) {
-      console.error('Error during logout:', error)
-      // Fallback: still log out on client side if API call fails
-      dispatch(logout())
-      localStorage.removeItem('auth_token')
-    }
+  const handleLogout = () => {
+    dispatch(logout())
+    localStorage.removeItem('auth_token')
+    navigate('/login', { replace: true })
   }
 
   return (
