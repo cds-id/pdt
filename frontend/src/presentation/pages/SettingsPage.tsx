@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Save, CheckCircle, XCircle } from 'lucide-react'
+import { Save } from 'lucide-react'
 
 import { useGetProfileQuery, useUpdateProfileMutation, useValidateIntegrationsMutation } from '@/infrastructure/services/user.service'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PageHeader, DataCard, StatusBadge } from '@/presentation/components/common'
 
 export function SettingsPage() {
   const { data: profile, isLoading } = useGetProfileQuery()
@@ -44,147 +45,128 @@ export function SettingsPage() {
   }
 
   if (isLoading) {
-    return <p className="text-[#FBFFFE]/60">Loading...</p>
+    return <p className="text-pdt-neutral/60">Loading...</p>
   }
 
   return (
     <div className="min-w-0 space-y-4 md:space-y-6">
-      <h1 className="text-2xl font-bold text-[#FBFFFE] md:text-3xl">Settings</h1>
+      <PageHeader title="Settings" />
 
       {/* Profile */}
-      <div className="rounded-lg border border-[#F8C630]/20 bg-[#1B1B1E] p-4">
-        <h2 className="mb-4 text-lg font-semibold text-[#FBFFFE]">Profile</h2>
-        <p className="text-[#FBFFFE]/60">{profile?.email}</p>
-      </div>
+      <DataCard title="Profile">
+        <p className="text-pdt-neutral/60">{profile?.email}</p>
+      </DataCard>
 
       {/* Integrations */}
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-[#F8C630]/20 bg-[#1B1B1E] p-4">
-        <h2 className="text-lg font-semibold text-[#FBFFFE]">Integrations</h2>
+      <DataCard title="Integrations">
+        <form onSubmit={handleSubmit} className="space-y-4">
 
-        {/* GitHub */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#FBFFFE]">GitHub</label>
-          <Input
-            type="password"
-            placeholder="ghp_xxxxxxxxxxxx"
-            value={formData.github_token}
-            onChange={(e) => setFormData({ ...formData, github_token: e.target.value })}
-            className="mb-2 bg-[#1B1B1E] border-[#F8C630]/20 text-[#FBFFFE] placeholder:text-[#FBFFFE]/40"
-          />
-          <p className="flex items-center gap-1 text-xs text-[#FBFFFE]/40">
-            {(profile as any)?.hasGithubToken ? (
-              <>
-                <CheckCircle className="h-3 w-3 text-green-400" />
-                <span>Configured</span>
-              </>
-            ) : (
-              <>
-                <XCircle className="h-3 w-3 text-red-400" />
-                <span>Not configured</span>
-              </>
-            )}
-          </p>
-        </div>
+          {/* GitHub */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-pdt-neutral">GitHub</label>
+            <Input
+              type="password"
+              placeholder="ghp_xxxxxxxxxxxx"
+              value={formData.github_token}
+              onChange={(e) => setFormData({ ...formData, github_token: e.target.value })}
+              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+            />
+            <div className="flex items-center gap-1 text-xs">
+              {(profile as any)?.hasGithubToken ? (
+                <StatusBadge variant="success">Configured</StatusBadge>
+              ) : (
+                <StatusBadge variant="danger">Not configured</StatusBadge>
+              )}
+            </div>
+          </div>
 
-        {/* GitLab */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#FBFFFE]">GitLab</label>
-          <Input
-            type="password"
-            placeholder="Personal Access Token"
-            value={formData.gitlab_token}
-            onChange={(e) => setFormData({ ...formData, gitlab_token: e.target.value })}
-            className="mb-2 bg-[#1B1B1E] border-[#F8C630]/20 text-[#FBFFFE] placeholder:text-[#FBFFFE]/40"
-          />
-          <Input
-            type="url"
-            placeholder="https://gitlab.com"
-            value={formData.gitlab_url}
-            onChange={(e) => setFormData({ ...formData, gitlab_url: e.target.value })}
-            className="mb-2 bg-[#1B1B1E] border-[#F8C630]/20 text-[#FBFFFE] placeholder:text-[#FBFFFE]/40"
-          />
-          <p className="flex items-center gap-1 text-xs text-[#FBFFFE]/40">
-            {(profile as any)?.hasGitlabToken ? (
-              <>
-                <CheckCircle className="h-3 w-3 text-green-400" />
-                <span>Configured</span>
-              </>
-            ) : (
-              <>
-                <XCircle className="h-3 w-3 text-red-400" />
-                <span>Not configured</span>
-              </>
-            )}
-          </p>
-        </div>
+          {/* GitLab */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-pdt-neutral">GitLab</label>
+            <Input
+              type="password"
+              placeholder="Personal Access Token"
+              value={formData.gitlab_token}
+              onChange={(e) => setFormData({ ...formData, gitlab_token: e.target.value })}
+              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+            />
+            <Input
+              type="url"
+              placeholder="https://gitlab.com"
+              value={formData.gitlab_url}
+              onChange={(e) => setFormData({ ...formData, gitlab_url: e.target.value })}
+              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+            />
+            <div className="flex items-center gap-1 text-xs">
+              {(profile as any)?.hasGitlabToken ? (
+                <StatusBadge variant="success">Configured</StatusBadge>
+              ) : (
+                <StatusBadge variant="danger">Not configured</StatusBadge>
+              )}
+            </div>
+          </div>
 
-        {/* Jira */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#FBFFFE]">Jira</label>
-          <Input
-            type="email"
-            placeholder="Email"
-            value={formData.jira_email}
-            onChange={(e) => setFormData({ ...formData, jira_email: e.target.value })}
-            className="mb-2 bg-[#1B1B1E] border-[#F8C630]/20 text-[#FBFFFE] placeholder:text-[#FBFFFE]/40"
-          />
-          <Input
-            type="password"
-            placeholder="API Token"
-            value={formData.jira_token}
-            onChange={(e) => setFormData({ ...formData, jira_token: e.target.value })}
-            className="mb-2 bg-[#1B1B1E] border-[#F8C630]/20 text-[#FBFFFE] placeholder:text-[#FBFFFE]/40"
-          />
-          <Input
-            type="text"
-            placeholder="Workspace (e.g., myteam.atlassian.net)"
-            value={formData.jira_workspace}
-            onChange={(e) => setFormData({ ...formData, jira_workspace: e.target.value })}
-            className="mb-2 bg-[#1B1B1E] border-[#F8C630]/20 text-[#FBFFFE] placeholder:text-[#FBFFFE]/40"
-          />
-          <Input
-            type="text"
-            placeholder="Username"
-            value={formData.jira_username}
-            onChange={(e) => setFormData({ ...formData, jira_username: e.target.value })}
-            className="mb-2 bg-[#1B1B1E] border-[#F8C630]/20 text-[#FBFFFE] placeholder:text-[#FBFFFE]/40"
-          />
-          <p className="flex items-center gap-1 text-xs text-[#FBFFFE]/40">
-            {(profile as any)?.hasJiraToken ? (
-              <>
-                <CheckCircle className="h-3 w-3 text-green-400" />
-                <span>Configured</span>
-              </>
-            ) : (
-              <>
-                <XCircle className="h-3 w-3 text-red-400" />
-                <span>Not configured</span>
-              </>
-            )}
-          </p>
-        </div>
+          {/* Jira */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-pdt-neutral">Jira</label>
+            <Input
+              type="email"
+              placeholder="Email"
+              value={formData.jira_email}
+              onChange={(e) => setFormData({ ...formData, jira_email: e.target.value })}
+              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+            />
+            <Input
+              type="password"
+              placeholder="API Token"
+              value={formData.jira_token}
+              onChange={(e) => setFormData({ ...formData, jira_token: e.target.value })}
+              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+            />
+            <Input
+              type="text"
+              placeholder="Workspace (e.g., myteam.atlassian.net)"
+              value={formData.jira_workspace}
+              onChange={(e) => setFormData({ ...formData, jira_workspace: e.target.value })}
+              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+            />
+            <Input
+              type="text"
+              placeholder="Username"
+              value={formData.jira_username}
+              onChange={(e) => setFormData({ ...formData, jira_username: e.target.value })}
+              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+            />
+            <div className="flex items-center gap-1 text-xs">
+              {(profile as any)?.hasJiraToken ? (
+                <StatusBadge variant="success">Configured</StatusBadge>
+              ) : (
+                <StatusBadge variant="danger">Not configured</StatusBadge>
+              )}
+            </div>
+          </div>
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-4">
-          <Button
-            type="submit"
-            disabled={isUpdating}
-            className="bg-[#F8C630] text-[#1B1B1E] hover:bg-[#F8C630]/90"
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {isUpdating ? 'Saving...' : 'Save Changes'}
-          </Button>
-          <Button
-            type="button"
-            onClick={handleValidate}
-            disabled={isValidating}
-            variant="outline"
-            className="border-[#F8C630] text-[#F8C630] hover:bg-[#F8C630] hover:text-[#1B1B1E]"
-          >
-            {isValidating ? 'Validating...' : 'Validate'}
-          </Button>
-        </div>
-      </form>
+          {/* Actions */}
+          <div className="flex gap-2 pt-4">
+            <Button
+              type="submit"
+              disabled={isUpdating}
+              variant="pdt"
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {isUpdating ? 'Saving...' : 'Save Changes'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleValidate}
+              disabled={isValidating}
+              variant="pdtOutline"
+            >
+              {isValidating ? 'Validating...' : 'Validate'}
+            </Button>
+          </div>
+        </form>
+      </DataCard>
     </div>
   )
 }
