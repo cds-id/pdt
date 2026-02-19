@@ -15,14 +15,14 @@ export function StatsCard({
   className
 }: StatsCardProps) {
   return (
-    <Card className={cn('border-pdt-background/20 bg-pdt-primary-light', className)}>
+    <Card className={cn('border-pdt-accent/20 bg-pdt-primary-light', className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
         <CardTitle className="text-xs font-medium text-pdt-neutral/70 sm:text-sm">
           {title}
         </CardTitle>
         {Icon && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-pdt-background/30">
-            <Icon className="size-4 text-pdt-background" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pdt-accent/20">
+            <Icon className="size-4 text-pdt-accent" />
           </div>
         )}
       </CardHeader>

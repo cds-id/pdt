@@ -35,7 +35,7 @@ export function SidebarNavItem({
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
         'text-pdt-neutral/70 hover:bg-pdt-primary-light hover:text-pdt-neutral active:bg-pdt-primary-light/80',
-        isActive && 'border-l-2 border-pdt-background bg-pdt-primary-light text-pdt-background',
+        isActive && 'border-l-2 border-pdt-accent bg-pdt-primary-light text-pdt-accent',
         disabled && 'pointer-events-none opacity-50',
         isCollapsed && !isMobile && 'justify-center px-2'
       )}

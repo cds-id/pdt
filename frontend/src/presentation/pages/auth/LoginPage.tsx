@@ -26,7 +26,7 @@ export const LoginPage = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-pdt-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-pdt-accent px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link to="/" className="inline-flex items-center gap-2">
@@ -64,7 +64,7 @@ export const LoginPage = () => {
                 type="email"
                 placeholder="you@example.com"
                 autoComplete="email"
-                className="border-pdt-neutral/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/30 focus:border-pdt-background focus:ring-pdt-background"
+                className="border-pdt-neutral/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/30 focus:border-pdt-accent focus:ring-pdt-accent"
               />
               {errors.email && <p className="text-sm text-red-400">{errors.email.message}</p>}
             </div>
@@ -76,7 +76,7 @@ export const LoginPage = () => {
                 id="password"
                 type="password"
                 autoComplete="current-password"
-                className="border-pdt-neutral/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/30 focus:border-pdt-background focus:ring-pdt-background"
+                className="border-pdt-neutral/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/30 focus:border-pdt-accent focus:ring-pdt-accent"
               />
               {errors.password && <p className="text-sm text-red-400">{errors.password.message}</p>}
             </div>
@@ -84,7 +84,7 @@ export const LoginPage = () => {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-pdt-background text-pdt-primary font-semibold hover:bg-pdt-background/90"
+              className="w-full bg-pdt-accent text-pdt-primary font-semibold hover:bg-pdt-accent/90"
             >
               {isLoading ? (
                 <>
@@ -102,7 +102,7 @@ export const LoginPage = () => {
 
           <p className="mt-6 text-center text-sm text-pdt-neutral/60">
             Don&apos;t have an account?{' '}
-            <Link to="/register" className="font-medium text-pdt-background underline-offset-4 hover:underline">
+            <Link to="/register" className="font-medium text-pdt-accent underline-offset-4 hover:underline">
               Sign up
             </Link>
           </p>

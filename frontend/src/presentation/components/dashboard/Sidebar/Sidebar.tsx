@@ -18,14 +18,14 @@ export function Sidebar({ className }: SidebarProps) {
   return (
       <aside
         className={cn(
-          'flex flex-col border-r border-pdt-background/20 bg-pdt-primary transition-all duration-300',
+          'flex flex-col border-r border-pdt-accent/20 bg-pdt-primary transition-all duration-300',
           isCollapsed ? 'w-16' : 'w-64',
           className
         )}
       >
         <div
           className={cn(
-            'flex h-16 items-center border-b border-pdt-background/20 px-3',
+            'flex h-16 items-center border-b border-pdt-accent/20 px-3',
             isCollapsed && 'justify-center px-2'
           )}
         >
@@ -43,7 +43,7 @@ export function Sidebar({ className }: SidebarProps) {
             variant="ghost"
             size="icon"
             onClick={toggle}
-            className={cn('ml-auto size-8 text-pdt-background hover:bg-pdt-primary-light hover:text-pdt-background', isCollapsed && 'ml-0 hidden')}
+            className={cn('ml-auto size-8 text-pdt-accent hover:bg-pdt-primary-light hover:text-pdt-accent', isCollapsed && 'ml-0 hidden')}
           >
             {isCollapsed ? (
               <PanelLeft className="size-4" />

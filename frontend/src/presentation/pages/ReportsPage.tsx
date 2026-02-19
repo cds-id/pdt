@@ -45,7 +45,7 @@ export function ReportsPage() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral"
+              className="bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral"
             />
           </div>
           <Button
@@ -89,7 +89,7 @@ export function ReportsPage() {
                       href={report.file_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-pdt-background hover:text-pdt-background/80"
+                      className="text-pdt-accent hover:text-pdt-accent/80"
                     >
                       <Download className="h-5 w-5" />
                     </a>

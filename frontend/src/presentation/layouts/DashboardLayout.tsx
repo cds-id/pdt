@@ -49,7 +49,7 @@ function DashboardLayoutContent() {
                       {index === breadcrumbs.length - 1 ? (
                         <BreadcrumbPage className="text-pdt-neutral">{crumb.title}</BreadcrumbPage>
                       ) : (
-                        <BreadcrumbLink href={crumb.href} className="text-pdt-neutral/60 hover:text-pdt-background">
+                        <BreadcrumbLink href={crumb.href} className="text-pdt-neutral/60 hover:text-pdt-accent">
                           {crumb.title}
                         </BreadcrumbLink>
                       )}

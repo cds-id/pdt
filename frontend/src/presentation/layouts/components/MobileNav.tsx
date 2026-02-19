@@ -37,11 +37,11 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
       {/* Drawer */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] flex-col border-r border-pdt-background/20 bg-pdt-primary transition-transform duration-300 md:hidden',
+          'fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] flex-col border-r border-pdt-accent/20 bg-pdt-primary transition-transform duration-300 md:hidden',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-pdt-background/20 px-3">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-pdt-accent/20 px-3">
           <div className="flex items-center gap-2">
             <img src="/logo.svg" alt="Logo" className="size-7" />
             <span className="text-base font-semibold text-pdt-neutral">Menu</span>

@@ -70,7 +70,7 @@ export function SettingsPage() {
               placeholder="ghp_xxxxxxxxxxxx"
               value={formData.github_token}
               onChange={(e) => setFormData({ ...formData, github_token: e.target.value })}
-              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+              className="mb-2 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
             <div className="flex items-center gap-1 text-xs">
               {profile?.has_github_token ? (
@@ -89,14 +89,14 @@ export function SettingsPage() {
               placeholder="Personal Access Token"
               value={formData.gitlab_token}
               onChange={(e) => setFormData({ ...formData, gitlab_token: e.target.value })}
-              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+              className="mb-2 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
             <Input
               type="url"
               placeholder="https://gitlab.com"
               value={formData.gitlab_url}
               onChange={(e) => setFormData({ ...formData, gitlab_url: e.target.value })}
-              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+              className="mb-2 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
             <div className="flex items-center gap-1 text-xs">
               {profile?.has_gitlab_token ? (
@@ -115,35 +115,35 @@ export function SettingsPage() {
               placeholder="Email"
               value={formData.jira_email}
               onChange={(e) => setFormData({ ...formData, jira_email: e.target.value })}
-              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+              className="mb-2 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
             <Input
               type="password"
               placeholder="API Token"
               value={formData.jira_token}
               onChange={(e) => setFormData({ ...formData, jira_token: e.target.value })}
-              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+              className="mb-2 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
             <Input
               type="text"
               placeholder="Workspace (e.g., myteam.atlassian.net)"
               value={formData.jira_workspace}
               onChange={(e) => setFormData({ ...formData, jira_workspace: e.target.value })}
-              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+              className="mb-2 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
             <Input
               type="text"
               placeholder="Username"
               value={formData.jira_username}
               onChange={(e) => setFormData({ ...formData, jira_username: e.target.value })}
-              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+              className="mb-2 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
             <Input
               type="text"
               placeholder="Project keys (e.g., PDT, CORE)"
               value={formData.jira_project_keys}
               onChange={(e) => setFormData({ ...formData, jira_project_keys: e.target.value })}
-              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+              className="mb-2 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
             <p className="text-xs text-pdt-neutral/40 mb-2">
               Comma-separated project key prefixes. Leave empty to show all.

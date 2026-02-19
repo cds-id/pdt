@@ -56,7 +56,7 @@ export function Header({
   return (
     <header
       className={cn(
-        'flex h-16 items-center justify-between border-b border-pdt-background/20 bg-pdt-primary-light px-4 lg:px-6',
+        'flex h-16 items-center justify-between border-b border-pdt-accent/20 bg-pdt-primary-light px-4 lg:px-6',
         className
       )}
     >
@@ -84,7 +84,7 @@ export function Header({
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="relative text-pdt-neutral hover:bg-pdt-primary hover:text-pdt-neutral">
           <Bell className="size-5" />
-          <span className="absolute right-1 top-1 size-2 rounded-full bg-pdt-background" />
+          <span className="absolute right-1 top-1 size-2 rounded-full bg-pdt-accent" />
           <span className="sr-only">Notifications</span>
         </Button>
 
@@ -93,11 +93,11 @@ export function Header({
             <Button variant="ghost" className="relative size-8 rounded-full hover:bg-pdt-primary">
               <Avatar className="size-8">
                 <AvatarImage src="" alt={user?.name || 'User'} />
-                <AvatarFallback className="bg-pdt-background text-pdt-primary">{userInitials}</AvatarFallback>
+                <AvatarFallback className="bg-pdt-accent text-pdt-primary">{userInitials}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 border-pdt-background/20 bg-pdt-primary-light">
+          <DropdownMenuContent align="end" className="w-56 border-pdt-accent/20 bg-pdt-primary-light">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none text-pdt-neutral">

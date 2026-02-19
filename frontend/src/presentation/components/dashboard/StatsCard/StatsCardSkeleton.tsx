@@ -8,7 +8,7 @@ import type { StatsCardSkeletonProps } from './stats-card.types'
 
 export function StatsCardSkeleton({ className }: StatsCardSkeletonProps) {
   return (
-    <Card className={cn('border-pdt-background/20 bg-pdt-primary-light', className)}>
+    <Card className={cn('border-pdt-accent/20 bg-pdt-primary-light', className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
         <Skeleton className="h-3 w-16 bg-pdt-neutral/10 sm:h-4 sm:w-24" />
         <Skeleton className="size-8 rounded-lg bg-pdt-neutral/10" />

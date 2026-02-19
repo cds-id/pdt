@@ -32,9 +32,9 @@ export function JiraPage() {
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {cards.map((card) => (
-                <div key={card.key} className="rounded-lg border border-pdt-background/20 bg-pdt-background/5 p-4">
+                <div key={card.key} className="rounded-lg border border-pdt-accent/20 bg-pdt-accent/5 p-4">
                   <div className="mb-2 flex items-start justify-between">
-                    <span className="font-semibold text-pdt-background">{card.key}</span>
+                    <span className="font-semibold text-pdt-accent">{card.key}</span>
                     <StatusBadge
                       variant={
                         card.status === 'Done'

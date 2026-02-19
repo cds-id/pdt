@@ -49,7 +49,7 @@ export function ReposPage() {
             placeholder="https://github.com/owner/repo"
             value={newRepoUrl}
             onChange={(e) => setNewRepoUrl(e.target.value)}
-            className="bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+            className="bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
           />
           <Button
             type="submit"

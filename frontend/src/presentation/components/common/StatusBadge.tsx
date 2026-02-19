@@ -10,7 +10,7 @@ interface StatusBadgeProps {
 
 const variantStyles: Record<BadgeVariant, string> = {
   success: 'bg-green-500/20 text-green-400',
-  warning: 'bg-pdt-background/20 text-pdt-background',
+  warning: 'bg-pdt-accent/20 text-pdt-accent',
   info: 'bg-blue-500/20 text-blue-400',
   neutral: 'bg-gray-500/20 text-gray-400',
   danger: 'bg-red-500/20 text-red-400'

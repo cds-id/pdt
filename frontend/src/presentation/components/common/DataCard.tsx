@@ -12,7 +12,7 @@ export function DataCard({ title, action, children, className }: DataCardProps) 
   return (
     <div
       className={cn(
-        'rounded-lg border border-pdt-background/20 bg-pdt-primary-light p-4',
+        'rounded-lg border border-pdt-accent/20 bg-pdt-primary-light p-4',
         className
       )}
     >

@@ -46,7 +46,7 @@ export function CommitsPage() {
         <select
           value={repoId}
           onChange={(e) => setRepoId(e.target.value)}
-          className="rounded-lg border bg-pdt-primary-light border-pdt-background/20 px-4 py-2 text-pdt-neutral"
+          className="rounded-lg border bg-pdt-primary-light border-pdt-accent/20 px-4 py-2 text-pdt-neutral"
         >
           <option value="">All Repositories</option>
           {repos?.map((repo) => (
@@ -60,7 +60,7 @@ export function CommitsPage() {
           placeholder="Filter by Jira key..."
           value={jiraKey}
           onChange={(e) => setJiraKey(e.target.value)}
-          className="w-40 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+          className="w-40 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
         />
 
         <Button
@@ -76,7 +76,7 @@ export function CommitsPage() {
       <DataCard className="overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-pdt-background/10">
+            <thead className="bg-pdt-accent/10">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">SHA</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">Message</th>
@@ -103,7 +103,7 @@ export function CommitsPage() {
                 displayCommits?.map((commit) => (
                   <tr key={commit.id} className="border-t border-pdt-neutral/10">
                     <td className="px-4 py-3">
-                      <code className="text-sm text-pdt-background">{commit.sha.slice(0, 7)}</code>
+                      <code className="text-sm text-pdt-accent">{commit.sha.slice(0, 7)}</code>
                     </td>
                     <td className="max-w-xs truncate px-4 py-3 text-pdt-neutral">
                       {commit.message}
@@ -133,7 +133,7 @@ export function CommitsPage() {
                                 [commit.sha]: e.target.value
                               }))
                             }
-                            className="h-8 w-28 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+                            className="h-8 w-28 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
                           />
                           <Button
                             size="sm"

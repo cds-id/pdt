@@ -35,7 +35,7 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-pdt-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-pdt-accent px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link to="/" className="inline-flex items-center gap-2">
@@ -72,7 +72,7 @@ export function RegisterPage() {
                 type="text"
                 placeholder="John Doe"
                 autoComplete="name"
-                className="border-pdt-neutral/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/30 focus:border-pdt-background focus:ring-pdt-background"
+                className="border-pdt-neutral/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/30 focus:border-pdt-accent focus:ring-pdt-accent"
               />
               {errors.name && <p className="text-sm text-red-400">{errors.name.message}</p>}
             </div>
@@ -88,7 +88,7 @@ export function RegisterPage() {
                 type="email"
                 placeholder="you@example.com"
                 autoComplete="email"
-                className="border-pdt-neutral/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/30 focus:border-pdt-background focus:ring-pdt-background"
+                className="border-pdt-neutral/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/30 focus:border-pdt-accent focus:ring-pdt-accent"
               />
               {errors.email && <p className="text-sm text-red-400">{errors.email.message}</p>}
             </div>
@@ -105,7 +105,7 @@ export function RegisterPage() {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Min. 8 characters"
                   autoComplete="new-password"
-                  className="border-pdt-neutral/20 bg-pdt-primary-light pr-10 text-pdt-neutral placeholder:text-pdt-neutral/30 focus:border-pdt-background focus:ring-pdt-background"
+                  className="border-pdt-neutral/20 bg-pdt-primary-light pr-10 text-pdt-neutral placeholder:text-pdt-neutral/30 focus:border-pdt-accent focus:ring-pdt-accent"
                 />
                 <button
                   type="button"
@@ -121,7 +121,7 @@ export function RegisterPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-pdt-background text-pdt-primary font-semibold hover:bg-pdt-background/90"
+              className="w-full bg-pdt-accent text-pdt-primary font-semibold hover:bg-pdt-accent/90"
             >
               {isLoading ? (
                 <>
@@ -139,7 +139,7 @@ export function RegisterPage() {
 
           <p className="mt-6 text-center text-sm text-pdt-neutral/60">
             Already have an account?{' '}
-            <Link to="/login" className="font-medium text-pdt-background underline-offset-4 hover:underline">
+            <Link to="/login" className="font-medium text-pdt-accent underline-offset-4 hover:underline">
               Sign in
             </Link>
           </p>
