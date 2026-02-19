@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Link2, Filter } from 'lucide-react'
 
 import { useListCommitsQuery, useGetMissingCommitsQuery, useLinkToJiraMutation } from '@/infrastructure/services/commit.service'
@@ -6,6 +7,7 @@ import { useListReposQuery } from '@/infrastructure/services/repo.service'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PageHeader, DataCard, StatusBadge, FilterBar } from '@/presentation/components/common'
+import { cn } from '@/lib/utils'
 
 export function CommitsPage() {
   const [repoId, setRepoId] = useState<string>('')
@@ -101,7 +103,15 @@ export function CommitsPage() {
                 </tr>
               ) : (
                 displayCommits?.map((commit) => (
-                  <tr key={commit.id} className="border-t border-pdt-neutral/10">
+                  <tr
+                    key={commit.id}
+                    className={cn(
+                      'border-t border-pdt-neutral/10',
+                      commit.jira_card_key
+                        ? 'border-l-2 border-l-pdt-accent'
+                        : 'border-l-2 border-l-transparent'
+                    )}
+                  >
                     <td className="px-4 py-3">
                       <code className="text-sm text-pdt-accent">{commit.sha.slice(0, 7)}</code>
                     </td>
@@ -114,7 +124,11 @@ export function CommitsPage() {
                     </td>
                     <td className="px-4 py-3">
                       {commit.jira_card_key ? (
-                        <StatusBadge variant="warning">{commit.jira_card_key}</StatusBadge>
+                        <Link to={`/dashboard/jira/cards/${commit.jira_card_key}`}>
+                          <StatusBadge variant="warning" className="cursor-pointer hover:opacity-80">
+                            {commit.jira_card_key}
+                          </StatusBadge>
+                        </Link>
                       ) : (
                         <span className="text-sm text-pdt-neutral/40">-</span>
                       )}

@@ -5,6 +5,7 @@ import { useGetProfileQuery, useUpdateProfileMutation, useValidateIntegrationsMu
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PageHeader, DataCard, StatusBadge } from '@/presentation/components/common'
+import { cn } from '@/lib/utils'
 
 export function SettingsPage() {
   const { data: profile, isLoading } = useGetProfileQuery()
@@ -22,26 +23,31 @@ export function SettingsPage() {
     jira_project_keys: ''
   })
 
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSaveMessage(null)
     const data = Object.fromEntries(
       Object.entries(formData).filter(([_, v]) => v.trim() !== '')
     )
     try {
       await updateProfile(data).unwrap()
-      alert('Settings saved successfully!')
+      setSaveMessage({ type: 'success', text: 'Settings saved successfully!' })
     } catch (error) {
       console.error('Failed to save settings:', error)
-      alert('Failed to save settings')
+      setSaveMessage({ type: 'error', text: 'Failed to save settings.' })
     }
   }
 
   const handleValidate = async () => {
+    setSaveMessage(null)
     try {
       await validate().unwrap()
-      alert('Validation complete!')
+      setSaveMessage({ type: 'success', text: 'All connections validated successfully!' })
     } catch (error) {
       console.error('Validation failed:', error)
+      setSaveMessage({ type: 'error', text: 'Connection validation failed.' })
     }
   }
 
@@ -58,13 +64,10 @@ export function SettingsPage() {
         <p className="text-pdt-neutral/60">{profile?.email}</p>
       </DataCard>
 
-      {/* Integrations */}
-      <DataCard title="Integrations">
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          {/* GitHub */}
+      <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+        {/* GitHub */}
+        <DataCard title="GitHub">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-pdt-neutral">GitHub</label>
             <Input
               type="password"
               placeholder="ghp_xxxxxxxxxxxx"
@@ -80,10 +83,11 @@ export function SettingsPage() {
               )}
             </div>
           </div>
+        </DataCard>
 
-          {/* GitLab */}
+        {/* GitLab */}
+        <DataCard title="GitLab">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-pdt-neutral">GitLab</label>
             <Input
               type="password"
               placeholder="Personal Access Token"
@@ -106,10 +110,11 @@ export function SettingsPage() {
               )}
             </div>
           </div>
+        </DataCard>
 
-          {/* Jira */}
+        {/* Jira */}
+        <DataCard title="Jira">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-pdt-neutral">Jira</label>
             <Input
               type="email"
               placeholder="Email"
@@ -156,28 +161,34 @@ export function SettingsPage() {
               )}
             </div>
           </div>
+        </DataCard>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-4">
-            <Button
-              type="submit"
-              disabled={isUpdating}
-              variant="pdt"
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {isUpdating ? 'Saving...' : 'Save Changes'}
-            </Button>
-            <Button
-              type="button"
-              onClick={handleValidate}
-              disabled={isValidating}
-              variant="pdtOutline"
-            >
-              {isValidating ? 'Validating...' : 'Validate'}
-            </Button>
-          </div>
-        </form>
-      </DataCard>
+        {/* Actions */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="submit"
+            disabled={isUpdating}
+            variant="pdt"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {isUpdating ? 'Saving...' : 'Save Changes'}
+          </Button>
+          <Button
+            type="button"
+            onClick={handleValidate}
+            disabled={isValidating}
+            variant="pdtOutline"
+            size="sm"
+          >
+            {isValidating ? 'Testing...' : 'Test Connection'}
+          </Button>
+          {saveMessage && (
+            <p className={cn('text-sm', saveMessage.type === 'success' ? 'text-green-400' : 'text-red-400')}>
+              {saveMessage.text}
+            </p>
+          )}
+        </div>
+      </form>
     </div>
   )
 }
