@@ -20,14 +20,14 @@ export function Sidebar({ className }: SidebarProps) {
     <TooltipProvider>
       <aside
         className={cn(
-          'flex flex-col border-r bg-background transition-all duration-300',
+          'flex flex-col border-r border-pdt-background/20 bg-pdt-primary transition-all duration-300',
           isCollapsed ? 'w-16' : 'w-64',
           className
         )}
       >
         <div
           className={cn(
-            'flex h-16 items-center border-b px-3',
+            'flex h-16 items-center border-b border-pdt-background/20 px-3',
             isCollapsed && 'justify-center px-2'
           )}
         >
@@ -38,14 +38,14 @@ export function Sidebar({ className }: SidebarProps) {
               className={cn('size-8', isCollapsed && 'size-7')}
             />
             {!isCollapsed && (
-              <span className="text-base font-semibold">Dashboard</span>
+              <span className="text-base font-semibold text-pdt-neutral">Dashboard</span>
             )}
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={toggle}
-            className={cn('ml-auto size-8', isCollapsed && 'ml-0 hidden')}
+            className={cn('ml-auto size-8 text-pdt-background hover:bg-pdt-primary-light hover:text-pdt-background', isCollapsed && 'ml-0 hidden')}
           >
             {isCollapsed ? (
               <PanelLeft className="size-4" />

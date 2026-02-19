@@ -25,7 +25,7 @@ function DashboardLayoutContent() {
   const breadcrumbs = getBreadcrumbsForPath(location.pathname)
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-muted/40">
+    <div className="flex h-screen w-full overflow-hidden bg-pdt-primary">
       {/* Desktop Sidebar */}
       <Sidebar />
 
@@ -36,7 +36,7 @@ function DashboardLayoutContent() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header showMenuButton={isMobile} onMenuClick={() => setIsOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-pdt-primary p-3 sm:p-4 lg:p-6">
           {/* Breadcrumbs */}
           {breadcrumbs.length > 1 && (
             <Breadcrumb className="mb-4">
@@ -45,9 +45,9 @@ function DashboardLayoutContent() {
                   <React.Fragment key={crumb.href}>
                     <BreadcrumbItem>
                       {index === breadcrumbs.length - 1 ? (
-                        <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
+                        <BreadcrumbPage className="text-pdt-neutral">{crumb.title}</BreadcrumbPage>
                       ) : (
-                        <BreadcrumbLink href={crumb.href}>
+                        <BreadcrumbLink href={crumb.href} className="text-pdt-neutral/60 hover:text-pdt-background">
                           {crumb.title}
                         </BreadcrumbLink>
                       )}

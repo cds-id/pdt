@@ -56,7 +56,7 @@ export function Header({
   return (
     <header
       className={cn(
-        'flex h-16 items-center justify-between border-b bg-background px-4 lg:px-6',
+        'flex h-16 items-center justify-between border-b border-pdt-background/20 bg-pdt-primary-light px-4 lg:px-6',
         className
       )}
     >
@@ -66,7 +66,7 @@ export function Header({
             variant="ghost"
             size="icon"
             onClick={onMenuClick}
-            className="md:hidden"
+            className="text-pdt-neutral hover:bg-pdt-primary hover:text-pdt-neutral md:hidden"
           >
             <Menu className="size-5" />
             <span className="sr-only">Toggle menu</span>
@@ -75,48 +75,48 @@ export function Header({
 
         <Link to="/dashboard" className="flex items-center gap-2">
           <img src="/logo.svg" alt="App logo" className="size-7 sm:size-8" />
-          <span className="hidden text-base font-semibold sm:inline-block md:text-lg">
+          <span className="hidden text-base font-semibold text-pdt-neutral sm:inline-block md:text-lg">
             Dashboard
           </span>
         </Link>
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative text-pdt-neutral hover:bg-pdt-primary hover:text-pdt-neutral">
           <Bell className="size-5" />
-          <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />
+          <span className="absolute right-1 top-1 size-2 rounded-full bg-pdt-background" />
           <span className="sr-only">Notifications</span>
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative size-8 rounded-full">
+            <Button variant="ghost" className="relative size-8 rounded-full hover:bg-pdt-primary">
               <Avatar className="size-8">
                 <AvatarImage src="" alt={user?.name || 'User'} />
-                <AvatarFallback>{userInitials}</AvatarFallback>
+                <AvatarFallback className="bg-pdt-background text-pdt-primary">{userInitials}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-56 border-pdt-background/20 bg-pdt-primary-light">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">
+                <p className="text-sm font-medium leading-none text-pdt-neutral">
                   {user?.name || 'User'}
                 </p>
-                <p className="text-xs leading-none text-muted-foreground">
+                <p className="text-xs leading-none text-pdt-neutral/60">
                   {user?.email || 'user@example.com'}
                 </p>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
+            <DropdownMenuSeparator className="bg-pdt-neutral/10" />
+            <DropdownMenuItem asChild className="text-pdt-neutral/70 focus:bg-pdt-primary focus:text-pdt-neutral">
               <Link to="/profile">Profile</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
+            <DropdownMenuItem asChild className="text-pdt-neutral/70 focus:bg-pdt-primary focus:text-pdt-neutral">
               <Link to="/settings">Settings</Link>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-pdt-neutral/10" />
+            <DropdownMenuItem onClick={handleLogout} className="text-pdt-neutral/70 focus:bg-pdt-primary focus:text-pdt-neutral">Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
