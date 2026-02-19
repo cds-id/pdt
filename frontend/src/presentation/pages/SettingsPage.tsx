@@ -18,7 +18,8 @@ export function SettingsPage() {
     jira_email: '',
     jira_token: '',
     jira_workspace: '',
-    jira_username: ''
+    jira_username: '',
+    jira_project_keys: ''
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,7 +73,7 @@ export function SettingsPage() {
               className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
             <div className="flex items-center gap-1 text-xs">
-              {(profile as any)?.hasGithubToken ? (
+              {profile?.has_github_token ? (
                 <StatusBadge variant="success">Configured</StatusBadge>
               ) : (
                 <StatusBadge variant="danger">Not configured</StatusBadge>
@@ -98,7 +99,7 @@ export function SettingsPage() {
               className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
             <div className="flex items-center gap-1 text-xs">
-              {(profile as any)?.hasGitlabToken ? (
+              {profile?.has_gitlab_token ? (
                 <StatusBadge variant="success">Configured</StatusBadge>
               ) : (
                 <StatusBadge variant="danger">Not configured</StatusBadge>
@@ -137,8 +138,18 @@ export function SettingsPage() {
               onChange={(e) => setFormData({ ...formData, jira_username: e.target.value })}
               className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
             />
+            <Input
+              type="text"
+              placeholder="Project keys (e.g., PDT, CORE)"
+              value={formData.jira_project_keys}
+              onChange={(e) => setFormData({ ...formData, jira_project_keys: e.target.value })}
+              className="mb-2 bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+            />
+            <p className="text-xs text-pdt-neutral/40 mb-2">
+              Comma-separated project key prefixes. Leave empty to show all.
+            </p>
             <div className="flex items-center gap-1 text-xs">
-              {(profile as any)?.hasJiraToken ? (
+              {profile?.has_jira_token ? (
                 <StatusBadge variant="success">Configured</StatusBadge>
               ) : (
                 <StatusBadge variant="danger">Not configured</StatusBadge>

@@ -14,8 +14,8 @@ export function CommitsPage() {
   const [linkKeyInput, setLinkKeyInput] = useState<{ [key: string]: string }>({})
 
   const filters = {
-    ...(repoId && { repoId }),
-    ...(jiraKey && { jiraKey })
+    ...(repoId && { repo_id: repoId }),
+    ...(jiraKey && { jira_card_key: jiraKey })
   }
 
   const { data: commitsData, isLoading: commitsLoading } = useListCommitsQuery(filters)
@@ -23,14 +23,14 @@ export function CommitsPage() {
   const { data: repos } = useListReposQuery()
   const [linkToJira, { isLoading: linking }] = useLinkToJiraMutation()
 
-  const displayCommits = showUnlinked ? missingCommits : commitsData?.commits
+  const displayCommits = showUnlinked ? missingCommits : commitsData
   const isLoading = showUnlinked ? missingLoading : commitsLoading
 
   const handleLink = async (sha: string) => {
     const key = linkKeyInput[sha]
     if (!key?.trim()) return
     try {
-      await linkToJira({ sha, jiraKey: key }).unwrap()
+      await linkToJira({ sha, jira_card_key: key }).unwrap()
       setLinkKeyInput((prev) => ({ ...prev, [sha]: '' }))
     } catch (error) {
       console.error('Failed to link commit:', error)
@@ -113,14 +113,14 @@ export function CommitsPage() {
                       {new Date(commit.date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      {(commit as any).jiraCardKey ? (
-                        <StatusBadge variant="warning">{(commit as any).jiraCardKey}</StatusBadge>
+                      {commit.jira_card_key ? (
+                        <StatusBadge variant="warning">{commit.jira_card_key}</StatusBadge>
                       ) : (
                         <span className="text-sm text-pdt-neutral/40">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {(commit as any).jiraCardKey ? (
+                      {commit.jira_card_key ? (
                         <span className="text-xs text-pdt-neutral/40">Linked</span>
                       ) : (
                         <div className="flex items-center gap-2">

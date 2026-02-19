@@ -15,9 +15,9 @@ export function DashboardHomePage() {
   const { data: syncStatus } = useGetSyncStatusQuery()
   const [triggerSync, { isLoading: isSyncing }] = useTriggerSyncMutation()
 
-  const totalCommits = commitsData?.total || 0
-  const commits = commitsData?.commits || []
-  const linkedCommits = commits.filter((c) => (c as any).hasLink || (c as any).jiraCardKey).length
+  const commits = commitsData || []
+  const totalCommits = commits.length
+  const linkedCommits = commits.filter((c) => c.has_link || c.jira_card_key).length
   const linkedPercent = totalCommits > 0 ? Math.round((linkedCommits / totalCommits) * 100) : 0
   const activeSprintCards = activeSprint?.cards?.length || 0
 
@@ -27,8 +27,8 @@ export function DashboardHomePage() {
     {
       title: 'Total Commits (30d)',
       value: totalCommits,
-      description: syncStatus?.lastSyncAt
-        ? `Last sync: ${new Date(syncStatus.lastSyncAt).toLocaleString()}`
+      description: syncStatus?.commits?.last_sync
+        ? `Last sync: ${new Date(syncStatus.commits.last_sync).toLocaleString()}`
         : 'No sync yet',
       icon: GitCommit
     },
@@ -95,8 +95,8 @@ export function DashboardHomePage() {
                     {new Date(commit.date).toLocaleDateString()}
                   </p>
                 </div>
-                {(commit as any).jiraCardKey && (
-                  <StatusBadge variant="warning">{(commit as any).jiraCardKey}</StatusBadge>
+                {commit.jira_card_key && (
+                  <StatusBadge variant="warning">{commit.jira_card_key}</StatusBadge>
                 )}
               </div>
             ))}

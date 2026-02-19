@@ -3,7 +3,14 @@
  */
 
 export interface IUser {
-  id: string
+  id: number
   email: string
-  name: string
+  has_github_token: boolean
+  has_gitlab_token: boolean
+  gitlab_url: string
+  jira_email: string
+  has_jira_token: boolean
+  jira_workspace: string
+  jira_username: string
+  jira_project_keys: string
 }

@@ -12,7 +12,7 @@ export function ReportsPage() {
   const [generateReport, { isLoading: isGenerating }] = useGenerateReportMutation()
   const [deleteReport] = useDeleteReportMutation()
 
-  const reports = reportsData?.reports || []
+  const reports = reportsData || []
 
   const handleGenerate = async () => {
     try {
@@ -77,17 +77,16 @@ export function ReportsPage() {
               >
                 <div>
                   <p className="font-medium text-pdt-neutral">
-                    {(report as any).title || `Report - ${report.date}`}
+                    {report.title || `Report - ${report.date}`}
                   </p>
                   <p className="text-sm text-pdt-neutral/60">
-                    {(report as any).commitsCount || 0} commits &middot;{' '}
-                    {(report as any).jiraCardsCount || 0} Jira cards
+                    {report.date}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {(report as any).fileUrl && (
+                  {report.file_url && (
                     <a
-                      href={(report as any).fileUrl}
+                      href={report.file_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-pdt-background hover:text-pdt-background/80"
@@ -96,7 +95,7 @@ export function ReportsPage() {
                     </a>
                   )}
                   <button
-                    onClick={() => handleDelete(report.id)}
+                    onClick={() => handleDelete(String(report.id))}
                     className="text-pdt-neutral/60 transition-colors hover:text-red-400"
                   >
                     <Trash2 className="h-5 w-5" />

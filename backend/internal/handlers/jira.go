@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/cds-id/pdt/backend/internal/crypto"
+	"github.com/cds-id/pdt/backend/internal/helpers"
 	"github.com/cds-id/pdt/backend/internal/models"
 	"github.com/cds-id/pdt/backend/internal/services/jira"
 	"github.com/gin-gonic/gin"
@@ -98,10 +99,21 @@ func (h *JiraHandler) GetActiveSprint(c *gin.Context) {
 
 	var sprint models.Sprint
 	if err := h.DB.Where("user_id = ? AND state = ?", userID, models.SprintActive).
-		Preload("Cards").First(&sprint).Error; err != nil {
+		Order("start_date DESC").First(&sprint).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no active sprint found"})
 		return
 	}
+
+	// Load cards with optional project key filter
+	cardQuery := h.DB.Where("sprint_id = ?", sprint.ID)
+	var user models.User
+	if err := h.DB.First(&user, userID).Error; err == nil && user.JiraProjectKeys != "" {
+		clause, args := helpers.BuildProjectKeyWhereClauses(user.JiraProjectKeys, "card_key")
+		if clause != "" {
+			cardQuery = cardQuery.Where(clause, args...)
+		}
+	}
+	cardQuery.Find(&sprint.Cards)
 
 	c.JSON(http.StatusOK, sprint)
 }
@@ -124,7 +136,7 @@ func (h *JiraHandler) ListCards(c *gin.Context) {
 		}
 	} else {
 		// Default to active sprint
-		if err := h.DB.Where("user_id = ? AND state = ?", userID, models.SprintActive).First(&sprint).Error; err != nil {
+		if err := h.DB.Where("user_id = ? AND state = ?", userID, models.SprintActive).Order("start_date DESC").First(&sprint).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "no active sprint found"})
 			return
 		}
@@ -152,7 +164,15 @@ func (h *JiraHandler) ListCards(c *gin.Context) {
 	}
 
 	var dbCards []models.JiraCard
-	h.DB.Where("user_id = ? AND sprint_id = ?", userID, sprint.ID).Find(&dbCards)
+	cardQuery := h.DB.Where("user_id = ? AND sprint_id = ?", userID, sprint.ID)
+	var user models.User
+	if err := h.DB.First(&user, userID).Error; err == nil && user.JiraProjectKeys != "" {
+		clause, args := helpers.BuildProjectKeyWhereClauses(user.JiraProjectKeys, "card_key")
+		if clause != "" {
+			cardQuery = cardQuery.Where(clause, args...)
+		}
+	}
+	cardQuery.Find(&dbCards)
 
 	c.JSON(http.StatusOK, dbCards)
 }

@@ -3,7 +3,6 @@ import { PanelLeftClose, PanelLeft } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { TooltipProvider } from '@/components/ui/tooltip'
 
 import { useSidebar } from './SidebarContext'
 import { SidebarNav } from './SidebarNav'
@@ -17,7 +16,6 @@ export function Sidebar({ className }: SidebarProps) {
   }
 
   return (
-    <TooltipProvider>
       <aside
         className={cn(
           'flex flex-col border-r border-pdt-background/20 bg-pdt-primary transition-all duration-300',
@@ -60,6 +58,5 @@ export function Sidebar({ className }: SidebarProps) {
           <SidebarNav />
         </div>
       </aside>
-    </TooltipProvider>
   )
 }

@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/breadcrumb'
 import { getBreadcrumbsForPath } from '@/config/navigation'
 
+import { TooltipProvider } from '@/components/ui/tooltip'
+
 import {
   Sidebar,
   SidebarProvider,
@@ -76,9 +78,11 @@ export function DashboardLayout() {
   }
 
   return (
-    <SidebarProvider>
-      <DashboardLayoutContent />
-    </SidebarProvider>
+    <TooltipProvider>
+      <SidebarProvider>
+        <DashboardLayoutContent />
+      </SidebarProvider>
+    </TooltipProvider>
   )
 }
 

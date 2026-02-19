@@ -4,9 +4,7 @@ import { PageHeader, DataCard, StatusBadge, EmptyState } from '@/presentation/co
 export function JiraPage() {
   const { data: sprints, isLoading: sprintsLoading } = useListSprintsQuery()
   const { data: activeSprint, isLoading: sprintLoading } = useGetActiveSprintQuery()
-  const { data: cardsData } = useListCardsQuery(activeSprint?.id)
-
-  const cards = cardsData?.cards || []
+  const { data: cards = [] } = useListCardsQuery(activeSprint?.id)
 
   return (
     <div className="min-w-0 space-y-4 md:space-y-6">
@@ -21,8 +19,8 @@ export function JiraPage() {
             <div>
               <h2 className="text-lg font-semibold text-pdt-neutral">{activeSprint.name}</h2>
               <p className="text-sm text-pdt-neutral/60">
-                {activeSprint.startDate && new Date(activeSprint.startDate).toLocaleDateString()} -{' '}
-                {activeSprint.endDate && new Date(activeSprint.endDate).toLocaleDateString()}
+                {activeSprint.start_date && new Date(activeSprint.start_date).toLocaleDateString()} -{' '}
+                {activeSprint.end_date && new Date(activeSprint.end_date).toLocaleDateString()}
               </p>
             </div>
             <StatusBadge variant="success">{activeSprint.state}</StatusBadge>
@@ -81,7 +79,7 @@ export function JiraPage() {
                 <div>
                   <p className="font-medium text-pdt-neutral">{sprint.name}</p>
                   <p className="text-sm text-pdt-neutral/60">
-                    {sprint.startDate && new Date(sprint.startDate).toLocaleDateString()}
+                    {sprint.start_date && new Date(sprint.start_date).toLocaleDateString()}
                   </p>
                 </div>
                 <StatusBadge

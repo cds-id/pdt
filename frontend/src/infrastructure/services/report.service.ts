@@ -2,29 +2,23 @@ import { api } from './api'
 import { API_CONSTANTS } from '../constants/api.constants'
 
 export interface Report {
-  id: string
+  id: number
+  user_id: number
+  template_id?: number
   date: string
+  title: string
   content: string
-  commitsCount: number
-  jiraCardsCount: number
-  createdAt: string
+  file_url: string
+  created_at: string
 }
 
 export interface ReportTemplate {
-  id: string
+  id: number
   name: string
   content: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface GenerateReportRequest {
-  date: string
-}
-
-export interface ReportListResponse {
-  reports: Report[]
-  total: number
+  is_default: boolean
+  created_at: string
+  updated_at: string
 }
 
 export const reportApi = api.injectEndpoints({
@@ -37,18 +31,18 @@ export const reportApi = api.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Report' as const, id: 'LIST' }]
     }),
-    listReports: builder.query<ReportListResponse, { fromDate?: string; toDate?: string } | void>({
+    listReports: builder.query<Report[], { from?: string; to?: string } | void>({
       query: (filters) => {
         const params = new URLSearchParams()
-        if (filters?.fromDate) params.append('fromDate', filters.fromDate)
-        if (filters?.toDate) params.append('toDate', filters.toDate)
+        if (filters?.from) params.append('from', filters.from)
+        if (filters?.to) params.append('to', filters.to)
         const query = params.toString()
         return `${API_CONSTANTS.REPORTS.LIST}${query ? `?${query}` : ''}`
       },
       providesTags: (result) =>
         result
           ? [
-              ...result.reports.map(({ id }) => ({ type: 'Report' as const, id })),
+              ...result.map(({ id }) => ({ type: 'Report' as const, id })),
               { type: 'Report', id: 'LIST' }
             ]
           : [{ type: 'Report', id: 'LIST' }]

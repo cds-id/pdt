@@ -94,13 +94,13 @@ export function ReposPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  {(repo as any).isValid ? (
+                  {repo.is_valid ? (
                     <StatusBadge variant="success">Valid</StatusBadge>
                   ) : (
                     <StatusBadge variant="danger">Invalid</StatusBadge>
                   )}
                   <button
-                    onClick={() => handleDelete(repo.id)}
+                    onClick={() => handleDelete(String(repo.id))}
                     className="text-pdt-neutral/60 transition-colors hover:text-red-400"
                   >
                     <Trash2 className="h-5 w-5" />
