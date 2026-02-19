@@ -1,9 +1,9 @@
 # Stage 1: Build
-FROM node:18-alpine AS build
+FROM oven/bun:alpine AS build
 WORKDIR /app
 
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+COPY frontend/package.json ./
+RUN bun install
 
 COPY frontend/ ./
 
@@ -11,7 +11,7 @@ COPY frontend/ ./
 ARG VITE_API_URL
 ENV VITE_API_URL=${VITE_API_URL}
 
-RUN npm run build
+RUN bun run build
 
 # Stage 2: Serve with Nginx
 FROM nginx:alpine
