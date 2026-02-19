@@ -31,22 +31,24 @@ export const reportApi = api.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Report' as const, id: 'LIST' }]
     }),
-    listReports: builder.query<Report[], { from?: string; to?: string } | void>({
-      query: (filters) => {
-        const params = new URLSearchParams()
-        if (filters?.from) params.append('from', filters.from)
-        if (filters?.to) params.append('to', filters.to)
-        const query = params.toString()
-        return `${API_CONSTANTS.REPORTS.LIST}${query ? `?${query}` : ''}`
-      },
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }) => ({ type: 'Report' as const, id })),
-              { type: 'Report', id: 'LIST' }
-            ]
-          : [{ type: 'Report', id: 'LIST' }]
-    }),
+    listReports: builder.query<Report[], { from?: string; to?: string } | void>(
+      {
+        query: (filters) => {
+          const params = new URLSearchParams()
+          if (filters?.from) params.append('from', filters.from)
+          if (filters?.to) params.append('to', filters.to)
+          const query = params.toString()
+          return `${API_CONSTANTS.REPORTS.LIST}${query ? `?${query}` : ''}`
+        },
+        providesTags: (result) =>
+          result
+            ? [
+                ...result.map(({ id }) => ({ type: 'Report' as const, id })),
+                { type: 'Report', id: 'LIST' }
+              ]
+            : [{ type: 'Report', id: 'LIST' }]
+      }
+    ),
     getReport: builder.query<Report, string>({
       query: (id) => API_CONSTANTS.REPORTS.GET(id),
       providesTags: (_, __, id) => [{ type: 'Report' as const, id }]
@@ -59,7 +61,10 @@ export const reportApi = api.injectEndpoints({
       invalidatesTags: [{ type: 'Report', id: 'LIST' }]
     }),
     // Templates
-    createTemplate: builder.mutation<ReportTemplate, { name: string; content: string }>({
+    createTemplate: builder.mutation<
+      ReportTemplate,
+      { name: string; content: string }
+    >({
       query: (data) => ({
         url: API_CONSTANTS.REPORTS.TEMPLATES_CREATE,
         method: 'POST',
@@ -71,7 +76,10 @@ export const reportApi = api.injectEndpoints({
       query: () => API_CONSTANTS.REPORTS.TEMPLATES_LIST,
       providesTags: [{ type: 'ReportTemplate', id: 'LIST' }]
     }),
-    updateTemplate: builder.mutation<ReportTemplate, { id: string; name: string; content: string }>({
+    updateTemplate: builder.mutation<
+      ReportTemplate,
+      { id: string; name: string; content: string }
+    >({
       query: ({ id, name, content }) => ({
         url: API_CONSTANTS.REPORTS.TEMPLATES_UPDATE(id),
         method: 'PUT',
@@ -86,7 +94,10 @@ export const reportApi = api.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'ReportTemplate', id: 'LIST' }]
     }),
-    previewTemplate: builder.query<{ preview: string }, { content: string; date: string }>({
+    previewTemplate: builder.query<
+      { preview: string },
+      { content: string; date: string }
+    >({
       query: ({ content, date }) => ({
         url: API_CONSTANTS.REPORTS.TEMPLATES_PREVIEW,
         method: 'POST',

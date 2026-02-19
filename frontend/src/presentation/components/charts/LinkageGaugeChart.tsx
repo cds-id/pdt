@@ -26,11 +26,7 @@ export function LinkageGaugeChart({ linked, total }: LinkageGaugeChartProps) {
           data={data}
           barSize={20}
         >
-          <RadialBar
-            dataKey="value"
-            cornerRadius={10}
-            background={false}
-          />
+          <RadialBar dataKey="value" cornerRadius={10} background={false} />
         </RadialBarChart>
       </ResponsiveContainer>
       <div className="absolute inset-0 flex flex-col items-center justify-center">

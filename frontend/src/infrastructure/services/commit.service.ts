@@ -27,7 +27,8 @@ export const commitApi = api.injectEndpoints({
       query: (filters) => {
         const params = new URLSearchParams()
         if (filters?.repo_id) params.append('repo_id', filters.repo_id)
-        if (filters?.jira_card_key) params.append('jira_card_key', filters.jira_card_key)
+        if (filters?.jira_card_key)
+          params.append('jira_card_key', filters.jira_card_key)
         const query = params.toString()
         return `${API_CONSTANTS.COMMITS.LIST}${query ? `?${query}` : ''}`
       },
@@ -43,15 +44,25 @@ export const commitApi = api.injectEndpoints({
       query: () => API_CONSTANTS.COMMITS.MISSING,
       providesTags: [{ type: 'Commit', id: 'MISSING' }]
     }),
-    linkToJira: builder.mutation<Commit, { sha: string; jira_card_key: string }>({
+    linkToJira: builder.mutation<
+      Commit,
+      { sha: string; jira_card_key: string }
+    >({
       query: ({ sha, jira_card_key }) => ({
         url: API_CONSTANTS.COMMITS.LINK(sha),
         method: 'POST',
         body: { jira_card_key }
       }),
-      invalidatesTags: [{ type: 'Commit', id: 'LIST' }, { type: 'Commit', id: 'MISSING' }]
+      invalidatesTags: [
+        { type: 'Commit', id: 'LIST' },
+        { type: 'Commit', id: 'MISSING' }
+      ]
     })
   })
 })
 
-export const { useListCommitsQuery, useGetMissingCommitsQuery, useLinkToJiraMutation } = commitApi
+export const {
+  useListCommitsQuery,
+  useGetMissingCommitsQuery,
+  useLinkToJiraMutation
+} = commitApi

@@ -18,9 +18,9 @@ const buttonVariants = cva(
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
-        pdt: 'bg-pdt-accent text-pdt-primary font-semibold border-2 border-pdt-accent hover:bg-pdt-accent-hover hover:border-pdt-accent-hover',
+        pdt: 'border-2 border-pdt-accent bg-pdt-accent font-semibold text-pdt-primary hover:border-pdt-accent-hover hover:bg-pdt-accent-hover',
         pdtOutline:
-          'bg-transparent text-pdt-accent border-2 border-pdt-accent hover:bg-pdt-accent hover:text-pdt-primary font-semibold'
+          'border-2 border-pdt-accent bg-transparent font-semibold text-pdt-accent hover:bg-pdt-accent hover:text-pdt-primary'
       },
       size: {
         default: 'h-10 px-4 py-2',

@@ -1,5 +1,12 @@
 import { useMemo } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend
+} from 'recharts'
 
 import type { JiraCard } from '@/infrastructure/services/jira.service'
 
@@ -8,11 +15,11 @@ interface CardStatusChartProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  'Done': '#22c55e',
+  Done: '#22c55e',
   'In Progress': '#F8C630',
   'To Do': '#6b7280',
   'In Review': '#3b82f6',
-  'Blocked': '#96031A'
+  Blocked: '#96031A'
 }
 
 const DEFAULT_COLOR = '#A66E00'
@@ -62,9 +69,7 @@ export function CardStatusChart({ cards }: CardStatusChartProps) {
             color: '#FBFFFE'
           }}
         />
-        <Legend
-          wrapperStyle={{ color: '#FBFFFE', fontSize: '12px' }}
-        />
+        <Legend wrapperStyle={{ color: '#FBFFFE', fontSize: '12px' }} />
       </PieChart>
     </ResponsiveContainer>
   )

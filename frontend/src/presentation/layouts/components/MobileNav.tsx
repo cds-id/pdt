@@ -44,9 +44,16 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-pdt-accent/20 px-3">
           <div className="flex items-center gap-2">
             <img src="/logo.svg" alt="Logo" className="size-7" />
-            <span className="text-base font-semibold text-pdt-neutral">Menu</span>
+            <span className="text-base font-semibold text-pdt-neutral">
+              Menu
+            </span>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-pdt-neutral hover:bg-pdt-primary-light hover:text-pdt-neutral">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="text-pdt-neutral hover:bg-pdt-primary-light hover:text-pdt-neutral"
+          >
             <X className="size-5" />
             <span className="sr-only">Close menu</span>
           </Button>

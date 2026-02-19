@@ -35,7 +35,10 @@ export function CommitActivityChart({ commits }: CommitActivityChartProps) {
 
     return Object.entries(grouped).map(([date, count]) => ({
       date,
-      label: new Date(date).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+      label: new Date(date).toLocaleDateString('en', {
+        month: 'short',
+        day: 'numeric'
+      }),
       commits: count
     }))
   }, [commits])

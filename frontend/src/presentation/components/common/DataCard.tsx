@@ -8,7 +8,12 @@ interface DataCardProps {
   className?: string
 }
 
-export function DataCard({ title, action, children, className }: DataCardProps) {
+export function DataCard({
+  title,
+  action,
+  children,
+  className
+}: DataCardProps) {
   return (
     <div
       className={cn(

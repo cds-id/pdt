@@ -82,7 +82,11 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="relative text-pdt-neutral hover:bg-pdt-primary hover:text-pdt-neutral">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative text-pdt-neutral hover:bg-pdt-primary hover:text-pdt-neutral"
+        >
           <Bell className="size-5" />
           <span className="absolute right-1 top-1 size-2 rounded-full bg-pdt-accent" />
           <span className="sr-only">Notifications</span>
@@ -90,14 +94,22 @@ export function Header({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative size-8 rounded-full hover:bg-pdt-primary">
+            <Button
+              variant="ghost"
+              className="relative size-8 rounded-full hover:bg-pdt-primary"
+            >
               <Avatar className="size-8">
                 <AvatarImage src="" alt={user?.name || 'User'} />
-                <AvatarFallback className="bg-pdt-accent text-pdt-primary">{userInitials}</AvatarFallback>
+                <AvatarFallback className="bg-pdt-accent text-pdt-primary">
+                  {userInitials}
+                </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 border-pdt-accent/20 bg-pdt-primary-light">
+          <DropdownMenuContent
+            align="end"
+            className="w-56 border-pdt-accent/20 bg-pdt-primary-light"
+          >
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none text-pdt-neutral">
@@ -109,14 +121,25 @@ export function Header({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-pdt-neutral/10" />
-            <DropdownMenuItem asChild className="text-pdt-neutral/70 focus:bg-pdt-primary focus:text-pdt-neutral">
+            <DropdownMenuItem
+              asChild
+              className="text-pdt-neutral/70 focus:bg-pdt-primary focus:text-pdt-neutral"
+            >
               <Link to="/profile">Profile</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="text-pdt-neutral/70 focus:bg-pdt-primary focus:text-pdt-neutral">
+            <DropdownMenuItem
+              asChild
+              className="text-pdt-neutral/70 focus:bg-pdt-primary focus:text-pdt-neutral"
+            >
               <Link to="/settings">Settings</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-pdt-neutral/10" />
-            <DropdownMenuItem onClick={handleLogout} className="text-pdt-neutral/70 focus:bg-pdt-primary focus:text-pdt-neutral">Logout</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-pdt-neutral/70 focus:bg-pdt-primary focus:text-pdt-neutral"
+            >
+              Logout
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

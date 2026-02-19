@@ -45,7 +45,9 @@ export const authApi = api.injectEndpoints({
           localStorage.setItem('auth_token', data.token)
         } catch (error) {
           dispatch(
-            setError(error instanceof Error ? error.message : 'Registration failed')
+            setError(
+              error instanceof Error ? error.message : 'Registration failed'
+            )
           )
         }
       },
@@ -116,4 +118,5 @@ export const authApi = api.injectEndpoints({
 })
 
 // Export the generated hooks
-export const { useRegisterMutation, useLoginMutation, useLogoutMutation } = authApi
+export const { useRegisterMutation, useLoginMutation, useLogoutMutation } =
+  authApi

@@ -2,26 +2,39 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Link2, Filter } from 'lucide-react'
 
-import { useListCommitsQuery, useGetMissingCommitsQuery, useLinkToJiraMutation } from '@/infrastructure/services/commit.service'
+import {
+  useListCommitsQuery,
+  useGetMissingCommitsQuery,
+  useLinkToJiraMutation
+} from '@/infrastructure/services/commit.service'
 import { useListReposQuery } from '@/infrastructure/services/repo.service'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PageHeader, DataCard, StatusBadge, FilterBar } from '@/presentation/components/common'
+import {
+  PageHeader,
+  DataCard,
+  StatusBadge,
+  FilterBar
+} from '@/presentation/components/common'
 import { cn } from '@/lib/utils'
 
 export function CommitsPage() {
   const [repoId, setRepoId] = useState<string>('')
   const [jiraKey, setJiraKey] = useState('')
   const [showUnlinked, setShowUnlinked] = useState(false)
-  const [linkKeyInput, setLinkKeyInput] = useState<{ [key: string]: string }>({})
+  const [linkKeyInput, setLinkKeyInput] = useState<{ [key: string]: string }>(
+    {}
+  )
 
   const filters = {
     ...(repoId && { repo_id: repoId }),
     ...(jiraKey && { jira_card_key: jiraKey })
   }
 
-  const { data: commitsData, isLoading: commitsLoading } = useListCommitsQuery(filters)
-  const { data: missingCommits, isLoading: missingLoading } = useGetMissingCommitsQuery(undefined, { skip: !showUnlinked })
+  const { data: commitsData, isLoading: commitsLoading } =
+    useListCommitsQuery(filters)
+  const { data: missingCommits, isLoading: missingLoading } =
+    useGetMissingCommitsQuery(undefined, { skip: !showUnlinked })
   const { data: repos } = useListReposQuery()
   const [linkToJira, { isLoading: linking }] = useLinkToJiraMutation()
 
@@ -48,7 +61,7 @@ export function CommitsPage() {
         <select
           value={repoId}
           onChange={(e) => setRepoId(e.target.value)}
-          className="rounded-lg border bg-pdt-primary-light border-pdt-accent/20 px-4 py-2 text-pdt-neutral"
+          className="rounded-lg border border-pdt-accent/20 bg-pdt-primary-light px-4 py-2 text-pdt-neutral"
         >
           <option value="">All Repositories</option>
           {repos?.map((repo) => (
@@ -62,14 +75,14 @@ export function CommitsPage() {
           placeholder="Filter by Jira key..."
           value={jiraKey}
           onChange={(e) => setJiraKey(e.target.value)}
-          className="w-40 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+          className="w-40 border-pdt-accent/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/40"
         />
 
         <Button
           variant={showUnlinked ? 'pdt' : 'pdtOutline'}
           onClick={() => setShowUnlinked(!showUnlinked)}
         >
-          <Filter className="mr-2 h-4 w-4" />
+          <Filter className="mr-2 size-4" />
           Show Unlinked Only
         </Button>
       </FilterBar>
@@ -80,24 +93,42 @@ export function CommitsPage() {
           <table className="w-full">
             <thead className="bg-pdt-accent/10">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">SHA</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">Message</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">Author</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">Date</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">Jira</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">Actions</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">
+                  SHA
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">
+                  Message
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">
+                  Author
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">
+                  Date
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">
+                  Jira
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-pdt-neutral">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-pdt-neutral/60">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-8 text-center text-pdt-neutral/60"
+                  >
                     Loading...
                   </td>
                 </tr>
               ) : displayCommits?.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-pdt-neutral/60">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-8 text-center text-pdt-neutral/60"
+                  >
                     No commits found.
                   </td>
                 </tr>
@@ -113,19 +144,28 @@ export function CommitsPage() {
                     )}
                   >
                     <td className="px-4 py-3">
-                      <code className="text-sm text-pdt-accent">{commit.sha.slice(0, 7)}</code>
+                      <code className="text-sm text-pdt-accent">
+                        {commit.sha.slice(0, 7)}
+                      </code>
                     </td>
                     <td className="max-w-xs truncate px-4 py-3 text-pdt-neutral">
                       {commit.message}
                     </td>
-                    <td className="px-4 py-3 text-sm text-pdt-neutral/60">{commit.author}</td>
+                    <td className="px-4 py-3 text-sm text-pdt-neutral/60">
+                      {commit.author}
+                    </td>
                     <td className="px-4 py-3 text-sm text-pdt-neutral/60">
                       {new Date(commit.date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
                       {commit.jira_card_key ? (
-                        <Link to={`/dashboard/jira/cards/${commit.jira_card_key}`}>
-                          <StatusBadge variant="warning" className="cursor-pointer hover:opacity-80">
+                        <Link
+                          to={`/dashboard/jira/cards/${commit.jira_card_key}`}
+                        >
+                          <StatusBadge
+                            variant="warning"
+                            className="cursor-pointer hover:opacity-80"
+                          >
                             {commit.jira_card_key}
                           </StatusBadge>
                         </Link>
@@ -135,7 +175,9 @@ export function CommitsPage() {
                     </td>
                     <td className="px-4 py-3">
                       {commit.jira_card_key ? (
-                        <span className="text-xs text-pdt-neutral/40">Linked</span>
+                        <span className="text-xs text-pdt-neutral/40">
+                          Linked
+                        </span>
                       ) : (
                         <div className="flex items-center gap-2">
                           <Input
@@ -147,16 +189,18 @@ export function CommitsPage() {
                                 [commit.sha]: e.target.value
                               }))
                             }
-                            className="h-8 w-28 bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+                            className="h-8 w-28 border-pdt-accent/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/40"
                           />
                           <Button
                             size="sm"
                             onClick={() => handleLink(commit.sha)}
-                            disabled={linking || !linkKeyInput[commit.sha]?.trim()}
+                            disabled={
+                              linking || !linkKeyInput[commit.sha]?.trim()
+                            }
                             variant="pdt"
                             className="h-8"
                           >
-                            <Link2 className="h-3 w-3" />
+                            <Link2 className="size-3" />
                           </Button>
                         </div>
                       )}

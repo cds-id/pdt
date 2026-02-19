@@ -31,21 +31,15 @@ export const dashboardNavigation: NavGroup[] = [
   },
   {
     title: 'Integrations',
-    items: [
-      { title: 'Jira', href: '/dashboard/jira', icon: Trello }
-    ]
+    items: [{ title: 'Jira', href: '/dashboard/jira', icon: Trello }]
   },
   {
     title: 'Reports',
-    items: [
-      { title: 'Reports', href: '/dashboard/reports', icon: FileText }
-    ]
+    items: [{ title: 'Reports', href: '/dashboard/reports', icon: FileText }]
   },
   {
     title: 'System',
-    items: [
-      { title: 'Settings', href: '/dashboard/settings', icon: Settings }
-    ]
+    items: [{ title: 'Settings', href: '/dashboard/settings', icon: Settings }]
   }
 ]
 

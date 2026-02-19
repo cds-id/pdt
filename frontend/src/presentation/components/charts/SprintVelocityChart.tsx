@@ -23,9 +23,13 @@ export function SprintVelocityChart({ sprints }: SprintVelocityChartProps) {
       .slice(-5)
       .map((sprint) => {
         const total = sprint.cards?.length || 0
-        const done = sprint.cards?.filter((c) => c.status === 'Done').length || 0
+        const done =
+          sprint.cards?.filter((c) => c.status === 'Done').length || 0
         return {
-          name: sprint.name.length > 15 ? sprint.name.slice(0, 15) + '...' : sprint.name,
+          name:
+            sprint.name.length > 15
+              ? sprint.name.slice(0, 15) + '...'
+              : sprint.name,
           total,
           done
         }
@@ -64,8 +68,18 @@ export function SprintVelocityChart({ sprints }: SprintVelocityChartProps) {
             color: '#FBFFFE'
           }}
         />
-        <Bar dataKey="total" fill="#A66E00" radius={[4, 4, 0, 0]} name="Total Cards" />
-        <Bar dataKey="done" fill="#F8C630" radius={[4, 4, 0, 0]} name="Completed" />
+        <Bar
+          dataKey="total"
+          fill="#A66E00"
+          radius={[4, 4, 0, 0]}
+          name="Total Cards"
+        />
+        <Bar
+          dataKey="done"
+          fill="#F8C630"
+          radius={[4, 4, 0, 0]}
+          name="Completed"
+        />
       </BarChart>
     </ResponsiveContainer>
   )

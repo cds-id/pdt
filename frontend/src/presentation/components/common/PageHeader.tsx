@@ -14,10 +14,12 @@ export function PageHeader({ title, description, action }: PageHeaderProps) {
           {title}
         </h1>
         {description && (
-          <p className="text-sm text-pdt-neutral/60 md:text-base">{description}</p>
+          <p className="text-sm text-pdt-neutral/60 md:text-base">
+            {description}
+          </p>
         )}
       </div>
-      {action && <div className="flex-shrink-0">{action}</div>}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   )
 }

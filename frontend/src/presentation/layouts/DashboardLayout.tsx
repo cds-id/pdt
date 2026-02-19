@@ -47,9 +47,14 @@ function DashboardLayoutContent() {
                   <React.Fragment key={crumb.href}>
                     <BreadcrumbItem>
                       {index === breadcrumbs.length - 1 ? (
-                        <BreadcrumbPage className="text-pdt-neutral">{crumb.title}</BreadcrumbPage>
+                        <BreadcrumbPage className="text-pdt-neutral">
+                          {crumb.title}
+                        </BreadcrumbPage>
                       ) : (
-                        <BreadcrumbLink href={crumb.href} className="text-pdt-neutral/60 hover:text-pdt-accent">
+                        <BreadcrumbLink
+                          href={crumb.href}
+                          className="text-pdt-neutral/60 hover:text-pdt-accent"
+                        >
                           {crumb.title}
                         </BreadcrumbLink>
                       )}

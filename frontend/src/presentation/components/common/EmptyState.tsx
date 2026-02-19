@@ -10,7 +10,13 @@ interface EmptyStateProps {
   className?: string
 }
 
-export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  className
+}: EmptyStateProps) {
   return (
     <div
       className={cn(
@@ -19,8 +25,8 @@ export function EmptyState({ icon: Icon, title, description, action, className }
       )}
     >
       {Icon && (
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-pdt-accent/10">
-          <Icon className="h-6 w-6 text-pdt-accent" />
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-pdt-accent/10">
+          <Icon className="size-6 text-pdt-accent" />
         </div>
       )}
       <p className="text-pdt-neutral/60">{title}</p>

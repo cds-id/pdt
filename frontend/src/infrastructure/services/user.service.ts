@@ -32,4 +32,8 @@ export const userApi = api.injectEndpoints({
 })
 
 // Export the generated hooks
-export const { useGetProfileQuery, useUpdateProfileMutation, useValidateIntegrationsMutation } = userApi
+export const {
+  useGetProfileQuery,
+  useUpdateProfileMutation,
+  useValidateIntegrationsMutation
+} = userApi

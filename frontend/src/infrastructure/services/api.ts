@@ -4,7 +4,16 @@ import { API_CONSTANTS } from '../constants/api.constants'
 
 export const api = createApi({
   reducerPath: 'api',
-  tagTypes: ['User', 'Auth', 'Repo', 'Sync', 'Commit', 'Jira', 'Report', 'ReportTemplate'],
+  tagTypes: [
+    'User',
+    'Auth',
+    'Repo',
+    'Sync',
+    'Commit',
+    'Jira',
+    'Report',
+    'ReportTemplate'
+  ],
   baseQuery: fetchBaseQuery({
     baseUrl: `${API_CONSTANTS.BASE_URL}${API_CONSTANTS.API_PREFIX}`,
     prepareHeaders: (headers, { getState }) => {

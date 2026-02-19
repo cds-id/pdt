@@ -16,47 +16,52 @@ export function Sidebar({ className }: SidebarProps) {
   }
 
   return (
-      <aside
+    <aside
+      className={cn(
+        'flex flex-col border-r border-pdt-accent/20 bg-pdt-primary transition-all duration-300',
+        isCollapsed ? 'w-16' : 'w-64',
+        className
+      )}
+    >
+      <div
         className={cn(
-          'flex flex-col border-r border-pdt-accent/20 bg-pdt-primary transition-all duration-300',
-          isCollapsed ? 'w-16' : 'w-64',
-          className
+          'flex h-16 items-center border-b border-pdt-accent/20 px-3',
+          isCollapsed && 'justify-center px-2'
         )}
       >
-        <div
+        <div className="flex items-center gap-2">
+          <img
+            src="/logo.svg"
+            alt="Logo"
+            className={cn('size-8', isCollapsed && 'size-7')}
+          />
+          {!isCollapsed && (
+            <span className="text-base font-semibold text-pdt-neutral">
+              Dashboard
+            </span>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggle}
           className={cn(
-            'flex h-16 items-center border-b border-pdt-accent/20 px-3',
-            isCollapsed && 'justify-center px-2'
+            'ml-auto size-8 text-pdt-accent hover:bg-pdt-primary-light hover:text-pdt-accent',
+            isCollapsed && 'ml-0 hidden'
           )}
         >
-          <div className="flex items-center gap-2">
-            <img
-              src="/logo.svg"
-              alt="Logo"
-              className={cn('size-8', isCollapsed && 'size-7')}
-            />
-            {!isCollapsed && (
-              <span className="text-base font-semibold text-pdt-neutral">Dashboard</span>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggle}
-            className={cn('ml-auto size-8 text-pdt-accent hover:bg-pdt-primary-light hover:text-pdt-accent', isCollapsed && 'ml-0 hidden')}
-          >
-            {isCollapsed ? (
-              <PanelLeft className="size-4" />
-            ) : (
-              <PanelLeftClose className="size-4" />
-            )}
-            <span className="sr-only">Toggle sidebar</span>
-          </Button>
-        </div>
+          {isCollapsed ? (
+            <PanelLeft className="size-4" />
+          ) : (
+            <PanelLeftClose className="size-4" />
+          )}
+          <span className="sr-only">Toggle sidebar</span>
+        </Button>
+      </div>
 
-        <div className="flex-1 overflow-y-auto px-3 scrollbar-none">
-          <SidebarNav />
-        </div>
-      </aside>
+      <div className="flex-1 overflow-y-auto px-3 scrollbar-none">
+        <SidebarNav />
+      </div>
+    </aside>
   )
 }

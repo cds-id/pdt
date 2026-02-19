@@ -1,10 +1,19 @@
 import { useState } from 'react'
 import { Plus, Trash2, Github, Gitlab } from 'lucide-react'
 
-import { useListReposQuery, useAddRepoMutation, useDeleteRepoMutation } from '@/infrastructure/services/repo.service'
+import {
+  useListReposQuery,
+  useAddRepoMutation,
+  useDeleteRepoMutation
+} from '@/infrastructure/services/repo.service'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PageHeader, DataCard, StatusBadge, EmptyState } from '@/presentation/components/common'
+import {
+  PageHeader,
+  DataCard,
+  StatusBadge,
+  EmptyState
+} from '@/presentation/components/common'
 
 export function ReposPage() {
   const { data: repos, isLoading } = useListReposQuery()
@@ -43,20 +52,23 @@ export function ReposPage() {
 
       {/* Add Repo Form */}
       <DataCard title="Add Repository">
-        <form onSubmit={handleAddRepo} className="flex flex-col gap-2 sm:flex-row">
+        <form
+          onSubmit={handleAddRepo}
+          className="flex flex-col gap-2 sm:flex-row"
+        >
           <Input
             type="url"
             placeholder="https://github.com/owner/repo"
             value={newRepoUrl}
             onChange={(e) => setNewRepoUrl(e.target.value)}
-            className="bg-pdt-primary-light border-pdt-accent/20 text-pdt-neutral placeholder:text-pdt-neutral/40"
+            className="border-pdt-accent/20 bg-pdt-primary-light text-pdt-neutral placeholder:text-pdt-neutral/40"
           />
           <Button
             type="submit"
             disabled={isAdding || !newRepoUrl.trim()}
             variant="pdt"
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 size-4" />
             Add Repository
           </Button>
         </form>
@@ -78,18 +90,22 @@ export function ReposPage() {
                 <div className="flex items-center gap-4">
                   {/* Provider Icon */}
                   <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                      repo.provider === 'github' ? 'bg-pdt-primary-light' : 'bg-[#FC6D26]'
+                    className={`flex size-10 items-center justify-center rounded-lg ${
+                      repo.provider === 'github'
+                        ? 'bg-pdt-primary-light'
+                        : 'bg-[#FC6D26]'
                     }`}
                   >
                     {repo.provider === 'github' ? (
-                      <Github className="h-5 w-5 text-pdt-neutral" />
+                      <Github className="size-5 text-pdt-neutral" />
                     ) : (
-                      <Gitlab className="h-5 w-5 text-pdt-neutral" />
+                      <Gitlab className="size-5 text-pdt-neutral" />
                     )}
                   </div>
                   <div>
-                    <p className="font-semibold text-pdt-neutral">{repo.name}</p>
+                    <p className="font-semibold text-pdt-neutral">
+                      {repo.name}
+                    </p>
                     <p className="text-sm text-pdt-neutral/60">{repo.owner}</p>
                   </div>
                 </div>
@@ -103,7 +119,7 @@ export function ReposPage() {
                     onClick={() => handleDelete(String(repo.id))}
                     className="text-pdt-neutral/60 transition-colors hover:text-red-400"
                   >
-                    <Trash2 className="h-5 w-5" />
+                    <Trash2 className="size-5" />
                   </button>
                 </div>
               </div>
