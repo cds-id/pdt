@@ -4,6 +4,7 @@ import { FilePlus, Trash2, Download } from 'lucide-react'
 import { useListReportsQuery, useGenerateReportMutation, useDeleteReportMutation } from '@/infrastructure/services/report.service'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PageHeader, DataCard, EmptyState } from '@/presentation/components/common'
 
 export function ReportsPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
@@ -11,7 +12,7 @@ export function ReportsPage() {
   const [generateReport, { isLoading: isGenerating }] = useGenerateReportMutation()
   const [deleteReport] = useDeleteReportMutation()
 
-  const reports = reportsData?.reports || []
+  const reports = reportsData || []
 
   const handleGenerate = async () => {
     try {
@@ -33,74 +34,69 @@ export function ReportsPage() {
 
   return (
     <div className="min-w-0 space-y-4 md:space-y-6">
-      <h1 className="text-2xl font-bold text-[#FBFFFE] md:text-3xl">Reports</h1>
+      <PageHeader title="Reports" />
 
       {/* Generate Report */}
-      <div className="rounded-lg border border-[#F8C630]/20 bg-[#1B1B1E] p-4">
-        <h2 className="mb-4 text-lg font-semibold text-[#FBFFFE]">Generate Report</h2>
+      <DataCard title="Generate Report">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <div>
-            <label className="mb-1 block text-sm text-[#FBFFFE]/60">Date</label>
+            <label className="mb-1 block text-sm text-pdt-neutral/60">Date</label>
             <Input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="bg-[#1B1B1E] border-[#F8C630]/20 text-[#FBFFFE]"
+              className="bg-pdt-primary-light border-pdt-background/20 text-pdt-neutral"
             />
           </div>
           <Button
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="bg-[#F8C630] text-[#1B1B1E] hover:bg-[#F8C630]/90"
+            variant="pdt"
           >
             <FilePlus className="mr-2 h-4 w-4" />
             {isGenerating ? 'Generating...' : 'Generate'}
           </Button>
         </div>
-      </div>
+      </DataCard>
 
       {/* Reports List */}
-      <div>
-        <h2 className="mb-4 text-lg font-semibold text-[#FBFFFE]">Past Reports</h2>
+      <DataCard title="Past Reports">
         {isLoading ? (
-          <p className="text-[#FBFFFE]/60">Loading...</p>
+          <p className="text-pdt-neutral/60">Loading...</p>
         ) : reports.length === 0 ? (
-          <div className="rounded-lg border border-[#F8C630]/20 bg-[#1B1B1E] p-8 text-center">
-            <p className="text-[#FBFFFE]/60">No reports generated yet.</p>
-            <p className="mt-2 text-sm text-[#FBFFFE]/40">
-              Generate a report above to get started.
-            </p>
-          </div>
+          <EmptyState
+            title="No reports generated yet."
+            description="Generate a report above to get started."
+          />
         ) : (
           <div className="space-y-2">
             {reports.map((report) => (
               <div
                 key={report.id}
-                className="flex items-center justify-between rounded-lg border border-[#F8C630]/20 bg-[#1B1B1E] p-4"
+                className="flex items-center justify-between rounded-lg border border-pdt-neutral/10 bg-pdt-primary-light p-4"
               >
                 <div>
-                  <p className="font-medium text-[#FBFFFE]">
-                    {(report as any).title || `Report - ${report.date}`}
+                  <p className="font-medium text-pdt-neutral">
+                    {report.title || `Report - ${report.date}`}
                   </p>
-                  <p className="text-sm text-[#FBFFFE]/60">
-                    {(report as any).commitsCount || 0} commits &middot;{' '}
-                    {(report as any).jiraCardsCount || 0} Jira cards
+                  <p className="text-sm text-pdt-neutral/60">
+                    {report.date}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {(report as any).fileUrl && (
+                  {report.file_url && (
                     <a
-                      href={(report as any).fileUrl}
+                      href={report.file_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#F8C630] transition-colors hover:text-[#F8C630]/80"
+                      className="text-pdt-background hover:text-pdt-background/80"
                     >
                       <Download className="h-5 w-5" />
                     </a>
                   )}
                   <button
-                    onClick={() => handleDelete(report.id)}
-                    className="text-[#FBFFFE]/60 transition-colors hover:text-red-400"
+                    onClick={() => handleDelete(String(report.id))}
+                    className="text-pdt-neutral/60 transition-colors hover:text-red-400"
                   >
                     <Trash2 className="h-5 w-5" />
                   </button>
@@ -109,7 +105,7 @@ export function ReportsPage() {
             ))}
           </div>
         )}
-      </div>
+      </DataCard>
     </div>
   )
 }

@@ -13,7 +13,8 @@ type User struct {
 	JiraEmail     string    `gorm:"type:varchar(255)" json:"jira_email"`
 	JiraToken     string    `gorm:"type:text" json:"-"`
 	JiraWorkspace string    `gorm:"type:varchar(255)" json:"jira_workspace"`
-	JiraUsername  string    `gorm:"type:varchar(255)" json:"jira_username"`
-	CreatedAt     time.Time `json:"created_at"`
+	JiraUsername    string    `gorm:"type:varchar(255)" json:"jira_username"`
+	JiraProjectKeys string    `gorm:"type:varchar(500)" json:"jira_project_keys"`
+	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

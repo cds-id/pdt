@@ -2,29 +2,25 @@ import { api } from './api'
 import { API_CONSTANTS } from '../constants/api.constants'
 
 export interface JiraSprint {
-  id: string
+  id: number
+  jira_sprint_id: string
   name: string
   state: 'active' | 'closed' | 'future'
-  startDate?: string
-  endDate?: string
-  completeDate?: string
+  start_date?: string
+  end_date?: string
+  created_at: string
+  cards?: JiraCard[]
 }
 
 export interface JiraCard {
+  id: number
   key: string
   summary: string
   status: string
-  type: 'story' | 'bug' | 'task' | 'subtask'
   assignee?: string
-  priority: string
-  created: string
-  updated: string
-  commits: string[]
-}
-
-export interface JiraCardsResponse {
-  cards: JiraCard[]
-  total: number
+  sprint_id?: number
+  details_json?: string
+  created_at: string
 }
 
 export const jiraApi = api.injectEndpoints({
@@ -37,14 +33,21 @@ export const jiraApi = api.injectEndpoints({
       query: (id) => API_CONSTANTS.JIRA.SPRINT(id),
       providesTags: (_, __, id) => [{ type: 'Jira' as const, id }]
     }),
-    getActiveSprint: builder.query<JiraSprint, void>({
-      query: () => API_CONSTANTS.JIRA.ACTIVE_SPRINT,
+    getActiveSprint: builder.query<JiraSprint | null, void>({
+      async queryFn(_arg, _queryApi, _extraOptions, fetchWithBQ) {
+        const result = await fetchWithBQ(API_CONSTANTS.JIRA.ACTIVE_SPRINT)
+        if (result.error) {
+          if (result.error.status === 404) return { data: null }
+          return { error: result.error }
+        }
+        return { data: result.data as JiraSprint }
+      },
       providesTags: [{ type: 'Jira' as const, id: 'ACTIVE_SPRINT' }]
     }),
-    listCards: builder.query<JiraCardsResponse, string | void>({
+    listCards: builder.query<JiraCard[], number | void>({
       query: (sprintId) =>
         sprintId
-          ? `${API_CONSTANTS.JIRA.CARDS}?sprintId=${sprintId}`
+          ? `${API_CONSTANTS.JIRA.CARDS}?sprint_id=${sprintId}`
           : API_CONSTANTS.JIRA.CARDS,
       providesTags: [{ type: 'Jira' as const, id: 'CARDS' }]
     }),

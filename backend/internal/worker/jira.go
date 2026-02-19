@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/cds-id/pdt/backend/internal/crypto"
+	"github.com/cds-id/pdt/backend/internal/helpers"
 	"github.com/cds-id/pdt/backend/internal/models"
 	"github.com/cds-id/pdt/backend/internal/services/jira"
 	"gorm.io/gorm"
@@ -61,6 +62,11 @@ func SyncUserJira(db *gorm.DB, enc *crypto.Encryptor, userID uint) error {
 				}
 
 				for _, card := range cards {
+					// Skip cards not matching configured project keys
+					if !helpers.FilterByProjectKeys(card.Key, user.JiraProjectKeys) {
+						continue
+					}
+
 					jiraCard := models.JiraCard{
 						UserID:   userID,
 						Key:      card.Key,

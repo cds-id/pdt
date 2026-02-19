@@ -18,7 +18,7 @@ export function SidebarNavGroup({ title, items }: SidebarNavGroupProps) {
       {showTitle && (
         <h4
           className={cn(
-            'mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground'
+            'mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-pdt-neutral/40'
           )}
         >
           {title}

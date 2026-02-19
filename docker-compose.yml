@@ -1,0 +1,49 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-pdt}
+      MYSQL_USER: ${DB_USER:-pdt}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-pdtpassword}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    environment:
+      SERVER_PORT: "8080"
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_USER: ${DB_USER:-pdt}
+      DB_PASSWORD: ${DB_PASSWORD:-pdtpassword}
+      DB_NAME: ${DB_NAME:-pdt}
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      SYNC_ENABLED: ${SYNC_ENABLED:-true}
+      SYNC_INTERVAL_COMMITS: ${SYNC_INTERVAL_COMMITS:-15m}
+      SYNC_INTERVAL_JIRA: ${SYNC_INTERVAL_JIRA:-30m}
+      REPORT_AUTO_GENERATE: ${REPORT_AUTO_GENERATE:-true}
+      REPORT_AUTO_TIME: ${REPORT_AUTO_TIME:-23:00}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
+      R2_PUBLIC_DOMAIN: ${R2_PUBLIC_DOMAIN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:

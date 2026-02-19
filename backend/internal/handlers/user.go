@@ -23,7 +23,8 @@ type profileResponse struct {
 	JiraEmail     string `json:"jira_email"`
 	HasJiraToken  bool   `json:"has_jira_token"`
 	JiraWorkspace string `json:"jira_workspace"`
-	JiraUsername  string `json:"jira_username"`
+	JiraUsername     string `json:"jira_username"`
+	JiraProjectKeys string `json:"jira_project_keys"`
 }
 
 type updateProfileRequest struct {
@@ -33,7 +34,8 @@ type updateProfileRequest struct {
 	JiraEmail     *string `json:"jira_email"`
 	JiraToken     *string `json:"jira_token"`
 	JiraWorkspace *string `json:"jira_workspace"`
-	JiraUsername  *string `json:"jira_username"`
+	JiraUsername     *string `json:"jira_username"`
+	JiraProjectKeys *string `json:"jira_project_keys"`
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
@@ -54,7 +56,8 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		JiraEmail:     user.JiraEmail,
 		HasJiraToken:  user.JiraToken != "",
 		JiraWorkspace: user.JiraWorkspace,
-		JiraUsername:  user.JiraUsername,
+		JiraUsername:     user.JiraUsername,
+		JiraProjectKeys: user.JiraProjectKeys,
 	})
 }
 
@@ -110,6 +113,9 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	}
 	if req.JiraUsername != nil {
 		updates["jira_username"] = *req.JiraUsername
+	}
+	if req.JiraProjectKeys != nil {
+		updates["jira_project_keys"] = *req.JiraProjectKeys
 	}
 
 	if len(updates) > 0 {

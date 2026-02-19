@@ -2,13 +2,14 @@ import { api } from './api'
 import { API_CONSTANTS } from '../constants/api.constants'
 
 export interface Repository {
-  id: string
+  id: number
   url: string
   name: string
+  owner: string
   provider: 'github' | 'gitlab'
-  isValid: boolean
-  lastSyncedAt?: string
-  createdAt: string
+  is_valid: boolean
+  last_synced_at?: string
+  created_at: string
 }
 
 export interface AddRepoRequest {

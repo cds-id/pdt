@@ -85,14 +85,11 @@ export function LandingPage() {
             <nav className="flex items-center gap-6">
               <Link
                 to="/login"
-                className="text-[#1B1B1E] hover:text-[#96031A] font-medium transition-colors"
+                className="text-pdt-primary hover:text-pdt-primary/70 font-medium transition-colors underline-offset-4 hover:underline"
               >
                 Login
               </Link>
-              <Button
-                asChild
-                className="bg-[#1B1B1E] hover:bg-[#F8C630] hover:text-[#1B1B1E] text-[#F8C630]"
-              >
+              <Button asChild variant="pdt">
                 <Link to="/register">Get Started</Link>
               </Button>
             </nav>
@@ -116,15 +113,16 @@ export function LandingPage() {
             <Button
               asChild
               size="lg"
-              className="bg-[#1B1B1E] hover:bg-[#F8C630] hover:text-[#1B1B1E] text-[#F8C630] text-base sm:text-lg px-6 sm:px-8"
+              variant="pdt"
+              className="text-base sm:text-lg px-6 sm:px-8"
             >
               <Link to="/register">Get Started Free</Link>
             </Button>
             <Button
               asChild
-              variant="outline"
               size="lg"
-              className="border-2 border-[#1B1B1E] text-[#1B1B1E] hover:bg-[#1B1B1E] hover:text-[#F8C630] text-base sm:text-lg px-6 sm:px-8"
+              variant="pdtOutline"
+              className="text-base sm:text-lg px-6 sm:px-8"
             >
               <Link to="/login">View Demo</Link>
             </Button>
@@ -224,7 +222,8 @@ export function LandingPage() {
           <Button
             asChild
             size="lg"
-            className="bg-[#1B1B1E] hover:bg-[#96031A] text-[#F8C630] text-lg px-8"
+            variant="pdt"
+            className="text-lg px-8"
           >
             <Link to="/register">Sign Up Free</Link>
           </Button>

@@ -24,7 +24,7 @@ export interface NavGroup {
 export const dashboardNavigation: NavGroup[] = [
   {
     items: [
-      { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { title: 'Dashboard', href: '/dashboard/home', icon: LayoutDashboard },
       { title: 'Repositories', href: '/dashboard/repos', icon: GitBranch },
       { title: 'Commits', href: '/dashboard/commits', icon: GitCommit }
     ]
