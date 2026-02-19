@@ -64,6 +64,13 @@ export const getBreadcrumbsForPath = (
     { title: 'Home', href: '/dashboard' }
   ]
 
+  const cardMatch = pathname.match(/^\/dashboard\/jira\/cards\/(.+)$/)
+  if (cardMatch) {
+    breadcrumbs.push({ title: 'Jira', href: '/dashboard/jira' })
+    breadcrumbs.push({ title: cardMatch[1], href: pathname })
+    return breadcrumbs
+  }
+
   const item = getNavItemByHref(pathname)
   if (item && item.href !== '/dashboard') {
     breadcrumbs.push({ title: item.title, href: item.href })

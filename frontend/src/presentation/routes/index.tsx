@@ -10,6 +10,7 @@ import { DashboardHomePage } from '../pages/DashboardHomePage'
 import { ReposPage } from '../pages/ReposPage'
 import { CommitsPage } from '../pages/CommitsPage'
 import { JiraPage } from '../pages/JiraPage'
+import { JiraCardDetailPage } from '../pages/JiraCardDetailPage'
 import { ReportsPage } from '../pages/ReportsPage'
 import { SettingsPage } from '../pages/SettingsPage'
 
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard/repos', element: <ReposPage /> },
       { path: 'dashboard/commits', element: <CommitsPage /> },
       { path: 'dashboard/jira', element: <JiraPage /> },
+      { path: 'dashboard/jira/cards/:key', element: <JiraCardDetailPage /> },
       { path: 'dashboard/reports', element: <ReportsPage /> },
       { path: 'dashboard/settings', element: <SettingsPage /> }
     ]
