@@ -94,3 +94,24 @@
     clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 0% 100%);
   }
 }
+
+@layer utilities {
+  .hazard-stripe {
+    background: repeating-linear-gradient(
+      -45deg,
+      #F8C630,
+      #F8C630 10px,
+      #1B1B1E 10px,
+      #1B1B1E 20px
+    );
+  }
+  .hazard-stripe-subtle {
+    background: repeating-linear-gradient(
+      -45deg,
+      #F8C63015,
+      #F8C63015 10px,
+      transparent 10px,
+      transparent 20px
+    );
+  }
+}
