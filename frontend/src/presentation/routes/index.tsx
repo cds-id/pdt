@@ -37,9 +37,12 @@ export const router = createBrowserRouter([
       { path: 'dashboard/jira', element: <JiraPage /> },
       { path: 'dashboard/jira/cards/:key', element: <JiraCardDetailPage /> },
       { path: 'dashboard/reports', element: <ReportsPage /> },
-      { path: 'dashboard/settings', element: <SettingsPage /> },
-      { path: 'dashboard/assistant', element: <AssistantPage /> }
+      { path: 'dashboard/settings', element: <SettingsPage /> }
     ]
+  },
+  {
+    path: 'assistant',
+    element: <AssistantPage />
   },
   { path: '*', element: <NotFoundPage /> }
 ])

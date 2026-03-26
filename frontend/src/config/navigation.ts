@@ -40,7 +40,7 @@ export const dashboardNavigation: NavGroup[] = [
   },
   {
     title: 'AI',
-    items: [{ title: 'AI Assistant', href: '/dashboard/assistant', icon: Bot }]
+    items: [{ title: 'AI Assistant', href: '/assistant', icon: Bot }]
   },
   {
     title: 'System',
