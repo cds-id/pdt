@@ -176,7 +176,7 @@ func (a *GitAgent) listRepos() (any, error) {
 		results = append(results, result{
 			Name:     r.Name,
 			Owner:    r.Owner,
-			Provider: r.Provider,
+			Provider: string(r.Provider),
 			URL:      r.URL,
 		})
 	}

@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/config"
 	"github.com/cds-id/pdt/backend/internal/crypto"
 	"github.com/cds-id/pdt/backend/internal/database"
@@ -16,8 +17,8 @@ import (
 	"github.com/cds-id/pdt/backend/internal/services/report"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
 	"github.com/cds-id/pdt/backend/internal/worker"
-	"github.com/gin-gonic/gin"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -74,6 +75,20 @@ func main() {
 	jiraHandler := &handlers.JiraHandler{DB: db, Encryptor: encryptor}
 	reportGen := report.NewGenerator(db, encryptor)
 	reportHandler := &handlers.ReportHandler{DB: db, Generator: reportGen, R2: r2Client}
+
+	var miniMaxClient *minimax.Client
+	if cfg.MiniMaxAPIKey != "" {
+		miniMaxClient = minimax.NewClient(cfg.MiniMaxAPIKey, cfg.MiniMaxGroupID)
+	}
+
+	chatHandler := &handlers.ChatHandler{
+		DB:              db,
+		MiniMaxClient:   miniMaxClient,
+		Encryptor:       encryptor,
+		R2:              r2Client,
+		ReportGenerator: reportGen,
+		ContextWindow:   cfg.AIContextWindow,
+	}
 
 	// Router
 	r := gin.Default()
@@ -149,6 +164,13 @@ func main() {
 					templates.DELETE("/:id", reportHandler.DeleteTemplate)
 					templates.POST("/preview", reportHandler.PreviewTemplate)
 				}
+			}
+
+			if miniMaxClient != nil {
+				protected.GET("/ws/chat", chatHandler.HandleWebSocket)
+				protected.GET("/conversations", chatHandler.ListConversations)
+				protected.GET("/conversations/:id", chatHandler.GetConversation)
+				protected.DELETE("/conversations/:id", chatHandler.DeleteConversation)
 			}
 		}
 	}
