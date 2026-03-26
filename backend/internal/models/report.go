@@ -21,6 +21,9 @@ type Report struct {
 	Title      string    `gorm:"type:varchar(500)" json:"title"`
 	Content    string    `gorm:"type:text" json:"content"`
 	FileURL    string    `gorm:"type:varchar(500)" json:"file_url"`
+	ReportType string    `gorm:"type:varchar(10);default:daily" json:"report_type"`
+	Month      *int      `json:"month,omitempty"`
+	Year       *int      `json:"year,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
 	User       User      `gorm:"foreignKey:UserID" json:"-"`
 }

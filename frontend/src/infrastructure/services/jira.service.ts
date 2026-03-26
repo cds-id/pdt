@@ -23,6 +23,16 @@ export interface JiraCard {
   created_at: string
 }
 
+export interface JiraComment {
+  id: number
+  card_key: string
+  comment_id: string
+  author: string
+  author_email: string
+  body: string
+  commented_at: string
+}
+
 export const jiraApi = api.injectEndpoints({
   endpoints: (builder) => ({
     listSprints: builder.query<JiraSprint[], void>({
@@ -54,6 +64,10 @@ export const jiraApi = api.injectEndpoints({
     getCard: builder.query<JiraCard, string>({
       query: (key) => API_CONSTANTS.JIRA.CARD(key),
       providesTags: (_, __, key) => [{ type: 'Jira' as const, id: key }]
+    }),
+    getCardComments: builder.query<JiraComment[], string>({
+      query: (key) => `/jira/cards/${key}/comments`,
+      providesTags: (_result, _error, key) => [{ type: 'Jira' as const, id: `comments-${key}` }]
     })
   })
 })
@@ -63,5 +77,6 @@ export const {
   useGetSprintQuery,
   useGetActiveSprintQuery,
   useListCardsQuery,
-  useGetCardQuery
+  useGetCardQuery,
+  useGetCardCommentsQuery
 } = jiraApi

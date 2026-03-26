@@ -13,30 +13,34 @@ import (
 )
 
 type Scheduler struct {
-	DB                 *gorm.DB
-	Encryptor          *crypto.Encryptor
-	CommitInterval     time.Duration
-	JiraInterval       time.Duration
-	Status             *SyncStatus
-	ReportAutoGenerate bool
-	ReportAutoTime     string
-	R2                 *storage.R2Client
-	commitRunning      atomic.Bool
-	jiraRunning        atomic.Bool
-	reportRunning      atomic.Bool
-	lastReportDate     string
+	DB                    *gorm.DB
+	Encryptor             *crypto.Encryptor
+	CommitInterval        time.Duration
+	JiraInterval          time.Duration
+	Status                *SyncStatus
+	ReportAutoGenerate    bool
+	ReportAutoTime        string
+	ReportMonthlyAutoTime string
+	R2                    *storage.R2Client
+	commitRunning         atomic.Bool
+	jiraRunning           atomic.Bool
+	reportRunning         atomic.Bool
+	lastReportDate        string
+	lastMonthlyReport     string
+	monthlyRunning        atomic.Bool
 }
 
-func NewScheduler(db *gorm.DB, enc *crypto.Encryptor, commitInterval, jiraInterval time.Duration, reportAutoGen bool, reportAutoTime string, r2 *storage.R2Client) *Scheduler {
+func NewScheduler(db *gorm.DB, enc *crypto.Encryptor, commitInterval, jiraInterval time.Duration, reportAutoGen bool, reportAutoTime string, reportMonthlyAutoTime string, r2 *storage.R2Client) *Scheduler {
 	return &Scheduler{
-		DB:                 db,
-		Encryptor:          enc,
-		CommitInterval:     commitInterval,
-		JiraInterval:       jiraInterval,
-		Status:             NewSyncStatus(),
-		ReportAutoGenerate: reportAutoGen,
-		ReportAutoTime:     reportAutoTime,
-		R2:                 r2,
+		DB:                    db,
+		Encryptor:             enc,
+		CommitInterval:        commitInterval,
+		JiraInterval:          jiraInterval,
+		Status:                NewSyncStatus(),
+		ReportAutoGenerate:    reportAutoGen,
+		ReportAutoTime:        reportAutoTime,
+		ReportMonthlyAutoTime: reportMonthlyAutoTime,
+		R2:                    r2,
 	}
 }
 
@@ -48,6 +52,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 	go s.jiraSyncLoop(ctx)
 	if s.ReportAutoGenerate {
 		go s.reportLoop(ctx)
+		go s.monthlyReportLoop(ctx)
 	}
 }
 
@@ -160,6 +165,47 @@ func (s *Scheduler) reportLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			s.checkAndGenerateReport()
+		}
+	}
+}
+
+func (s *Scheduler) monthlyReportLoop(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			now := time.Now()
+			if now.Day() != 1 {
+				continue
+			}
+			currentKey := now.Format("2006-01")
+			if currentKey == s.lastMonthlyReport {
+				continue
+			}
+			if now.Format("15:04") < s.ReportMonthlyAutoTime {
+				continue
+			}
+			if !s.monthlyRunning.CompareAndSwap(false, true) {
+				continue
+			}
+
+			prevMonth := now.AddDate(0, -1, 0)
+			month := int(prevMonth.Month())
+			year := prevMonth.Year()
+
+			var userIDs []uint
+			s.DB.Model(&models.User{}).Pluck("id", &userIDs)
+			for _, uid := range userIDs {
+				if err := GenerateMonthlyReportForUser(s.DB, s.Encryptor, s.R2, uid, month, year); err != nil {
+					log.Printf("[monthly-report] user=%d error: %v", uid, err)
+				}
+			}
+			s.lastMonthlyReport = currentKey
+			s.monthlyRunning.Store(false)
 		}
 	}
 }

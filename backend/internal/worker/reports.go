@@ -13,6 +13,51 @@ import (
 	"gorm.io/gorm"
 )
 
+// GenerateMonthlyReportForUser generates a monthly report for a single user for the given month/year.
+func GenerateMonthlyReportForUser(db *gorm.DB, enc *crypto.Encryptor, r2 *storage.R2Client, userID uint, month, year int) error {
+	generator := report.NewGenerator(db, enc)
+	data, err := generator.BuildMonthlyReportData(userID, month, year)
+	if err != nil {
+		return fmt.Errorf("build monthly data: %w", err)
+	}
+
+	if data.TotalCommits == 0 {
+		log.Printf("[report-worker] user=%d no activity in %d-%02d, skipping monthly report", userID, year, month)
+		return nil
+	}
+
+	templateContent := generator.GetMonthlyTemplateContent(userID)
+	rendered, err := generator.RenderMonthly(templateContent, data)
+	if err != nil {
+		return fmt.Errorf("render monthly: %w", err)
+	}
+
+	m := month
+	y := year
+	dateStr := fmt.Sprintf("%04d-%02d", year, month)
+	rpt := models.Report{
+		UserID:     userID,
+		Date:       dateStr,
+		Title:      fmt.Sprintf("Monthly Report — %s %d", time.Month(month).String(), year),
+		Content:    rendered,
+		ReportType: "monthly",
+		Month:      &m,
+		Year:       &y,
+	}
+
+	var existing models.Report
+	if db.Where("user_id = ? AND report_type = ? AND month = ? AND year = ?", userID, "monthly", month, year).First(&existing).Error == nil {
+		existing.Content = rendered
+		existing.Title = rpt.Title
+		db.Save(&existing)
+	} else {
+		db.Create(&rpt)
+	}
+
+	log.Printf("[report-worker] user=%d monthly report generated for %d-%02d", userID, year, month)
+	return nil
+}
+
 // AutoGenerateReports generates daily reports for all users who don't have one for today.
 func AutoGenerateReports(db *gorm.DB, enc *crypto.Encryptor, r2 *storage.R2Client) {
 	today := time.Now().Format("2006-01-02")

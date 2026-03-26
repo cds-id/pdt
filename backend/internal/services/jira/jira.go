@@ -72,25 +72,18 @@ type boardResponse struct {
 		ID   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"values"`
+	StartAt    int  `json:"startAt"`
+	MaxResults int  `json:"maxResults"`
+	Total      int  `json:"total"`
+	IsLast     bool `json:"isLast"`
 }
 
 type sprintResponse struct {
-	Values []SprintInfo `json:"values"`
-}
-
-type issueResponse struct {
-	Issues []struct {
-		Key    string `json:"key"`
-		Fields struct {
-			Summary string `json:"summary"`
-			Status  struct {
-				Name string `json:"name"`
-			} `json:"status"`
-			Assignee *struct {
-				DisplayName string `json:"displayName"`
-			} `json:"assignee"`
-		} `json:"fields"`
-	} `json:"issues"`
+	Values     []SprintInfo `json:"values"`
+	StartAt    int          `json:"startAt"`
+	MaxResults int          `json:"maxResults"`
+	Total      int          `json:"total"`
+	IsLast     bool         `json:"isLast"`
 }
 
 func (c *Client) baseURL() string {
@@ -98,66 +91,120 @@ func (c *Client) baseURL() string {
 }
 
 func (c *Client) FetchBoards() ([]int, error) {
-	url := fmt.Sprintf("%s/agile/1.0/board", c.baseURL())
-	body, err := c.doRequest(url)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp boardResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("failed to parse boards: %w", err)
-	}
-
 	var ids []int
-	for _, b := range resp.Values {
-		ids = append(ids, b.ID)
+	startAt := 0
+	maxResults := 50
+
+	for {
+		url := fmt.Sprintf("%s/agile/1.0/board?startAt=%d&maxResults=%d",
+			c.baseURL(), startAt, maxResults)
+		body, err := c.doRequest(url)
+		if err != nil {
+			return nil, err
+		}
+
+		var resp boardResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("failed to parse boards: %w", err)
+		}
+
+		for _, b := range resp.Values {
+			ids = append(ids, b.ID)
+		}
+
+		if len(resp.Values) == 0 || resp.IsLast || startAt+len(resp.Values) >= resp.Total {
+			break
+		}
+		startAt += len(resp.Values)
 	}
+
 	return ids, nil
 }
 
 func (c *Client) FetchSprints(boardID int) ([]SprintInfo, error) {
-	url := fmt.Sprintf("%s/agile/1.0/board/%d/sprint", c.baseURL(), boardID)
-	body, err := c.doRequest(url)
-	if err != nil {
-		return nil, err
+	var allSprints []SprintInfo
+	startAt := 0
+	maxResults := 50
+
+	for {
+		url := fmt.Sprintf("%s/agile/1.0/board/%d/sprint?startAt=%d&maxResults=%d",
+			c.baseURL(), boardID, startAt, maxResults)
+		body, err := c.doRequest(url)
+		if err != nil {
+			return nil, err
+		}
+
+		var resp sprintResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("failed to parse sprints: %w", err)
+		}
+
+		allSprints = append(allSprints, resp.Values...)
+
+		if len(resp.Values) == 0 || resp.IsLast || startAt+len(resp.Values) >= resp.Total {
+			break
+		}
+		startAt += len(resp.Values)
 	}
 
-	var resp sprintResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("failed to parse sprints: %w", err)
-	}
-
-	return resp.Values, nil
+	return allSprints, nil
 }
 
 func (c *Client) FetchSprintIssues(sprintID int) ([]CardInfo, error) {
-	url := fmt.Sprintf("%s/agile/1.0/sprint/%d/issue?maxResults=200", c.baseURL(), sprintID)
-	body, err := c.doRequest(url)
-	if err != nil {
-		return nil, err
-	}
+	var allCards []CardInfo
+	startAt := 0
+	maxResults := 50
 
-	var resp issueResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("failed to parse issues: %w", err)
-	}
+	for {
+		url := fmt.Sprintf("%s/agile/1.0/sprint/%d/issue?startAt=%d&maxResults=%d",
+			c.baseURL(), sprintID, startAt, maxResults)
 
-	var cards []CardInfo
-	for _, issue := range resp.Issues {
-		assignee := ""
-		if issue.Fields.Assignee != nil {
-			assignee = issue.Fields.Assignee.DisplayName
+		body, err := c.doRequest(url)
+		if err != nil {
+			return nil, fmt.Errorf("fetch sprint issues: %w", err)
 		}
-		cards = append(cards, CardInfo{
-			Key:      issue.Key,
-			Summary:  issue.Fields.Summary,
-			Status:   issue.Fields.Status.Name,
-			Assignee: assignee,
-		})
+
+		var resp struct {
+			Issues []struct {
+				Key    string `json:"key"`
+				Fields struct {
+					Summary  string `json:"summary"`
+					Status   struct{ Name string } `json:"status"`
+					Assignee *struct{ DisplayName string } `json:"assignee"`
+				} `json:"fields"`
+			} `json:"issues"`
+			StartAt    int `json:"startAt"`
+			MaxResults int `json:"maxResults"`
+			Total      int `json:"total"`
+		}
+
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("parse sprint issues: %w", err)
+		}
+
+		for _, issue := range resp.Issues {
+			assignee := ""
+			if issue.Fields.Assignee != nil {
+				assignee = issue.Fields.Assignee.DisplayName
+			}
+			allCards = append(allCards, CardInfo{
+				Key:      issue.Key,
+				Summary:  issue.Fields.Summary,
+				Status:   issue.Fields.Status.Name,
+				Assignee: assignee,
+			})
+		}
+
+		if len(resp.Issues) == 0 {
+			break
+		}
+		startAt += len(resp.Issues)
+		if startAt >= resp.Total {
+			break
+		}
 	}
 
-	return cards, nil
+	return allCards, nil
 }
 
 func (c *Client) FetchIssue(key string) (*IssueDetail, error) {
@@ -269,6 +316,55 @@ func (c *Client) FetchIssue(key string) (*IssueDetail, error) {
 	}
 
 	return detail, nil
+}
+
+type CommentInfo struct {
+	ID          string    `json:"id"`
+	Author      string    `json:"author"`
+	AuthorEmail string    `json:"author_email"`
+	Body        string    `json:"body"`
+	Created     time.Time `json:"created"`
+}
+
+func (c *Client) FetchIssueComments(key string) ([]CommentInfo, error) {
+	url := fmt.Sprintf("%s/api/2/issue/%s?fields=comment", c.baseURL(), key)
+	body, err := c.doRequest(url)
+	if err != nil {
+		return nil, fmt.Errorf("fetch comments for %s: %w", key, err)
+	}
+
+	var resp struct {
+		Fields struct {
+			Comment struct {
+				Comments []struct {
+					ID     string `json:"id"`
+					Author struct {
+						DisplayName  string `json:"displayName"`
+						EmailAddress string `json:"emailAddress"`
+					} `json:"author"`
+					Body    string `json:"body"`
+					Created string `json:"created"`
+				} `json:"comments"`
+			} `json:"comment"`
+		} `json:"fields"`
+	}
+
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("parse comments for %s: %w", key, err)
+	}
+
+	var comments []CommentInfo
+	for _, c := range resp.Fields.Comment.Comments {
+		created, _ := time.Parse("2006-01-02T15:04:05.000-0700", c.Created)
+		comments = append(comments, CommentInfo{
+			ID:          c.ID,
+			Author:      c.Author.DisplayName,
+			AuthorEmail: c.Author.EmailAddress,
+			Body:        c.Body,
+			Created:     created,
+		})
+	}
+	return comments, nil
 }
 
 func (c *Client) Validate() error {

@@ -22,19 +22,24 @@ type Config struct {
 	SyncEnabled         bool
 	SyncIntervalCommits time.Duration
 	SyncIntervalJira    time.Duration
-	ReportAutoGenerate  bool
-	ReportAutoTime      string
+	ReportAutoGenerate     bool
+	ReportAutoTime         string
+	ReportMonthlyAutoTime  string
 	R2AccountID         string
 	R2AccessKeyID       string
 	R2SecretAccessKey   string
 	R2BucketName        string
 	R2PublicDomain      string
+	MiniMaxAPIKey       string
+	MiniMaxGroupID      string
+	AIContextWindow     int
 }
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	expiryHours, _ := strconv.Atoi(getEnv("JWT_EXPIRY_HOURS", "72"))
+	aiContextWindow, _ := strconv.Atoi(getEnv("AI_CONTEXT_WINDOW", "20"))
 
 	cfg := &Config{
 		ServerPort:     getEnv("SERVER_PORT", "8080"),
@@ -66,12 +71,17 @@ func Load() (*Config, error) {
 	reportAutoGen := getEnv("REPORT_AUTO_GENERATE", "true")
 	cfg.ReportAutoGenerate = reportAutoGen == "true" || reportAutoGen == "1"
 	cfg.ReportAutoTime = getEnv("REPORT_AUTO_TIME", "23:00")
+	cfg.ReportMonthlyAutoTime = getEnv("REPORT_MONTHLY_AUTO_TIME", "08:00")
 
 	cfg.R2AccountID = getEnv("R2_ACCOUNT_ID", "")
 	cfg.R2AccessKeyID = getEnv("R2_ACCESS_KEY_ID", "")
 	cfg.R2SecretAccessKey = getEnv("R2_SECRET_ACCESS_KEY", "")
 	cfg.R2BucketName = getEnv("R2_BUCKET_NAME", "")
 	cfg.R2PublicDomain = getEnv("R2_PUBLIC_DOMAIN", "")
+
+	cfg.MiniMaxAPIKey = getEnv("MINIMAX_API_KEY", "")
+	cfg.MiniMaxGroupID = getEnv("MINIMAX_GROUP_ID", "")
+	cfg.AIContextWindow = aiContextWindow
 
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")

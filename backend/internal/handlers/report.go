@@ -101,6 +101,64 @@ func (h *ReportHandler) Generate(c *gin.Context) {
 	c.JSON(http.StatusCreated, rpt)
 }
 
+func (h *ReportHandler) GenerateMonthly(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	var req struct {
+		Month int `json:"month" binding:"required"`
+		Year  int `json:"year" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "month and year are required"})
+		return
+	}
+
+	data, err := h.Generator.BuildMonthlyReportData(userID, req.Month, req.Year)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	templateContent := h.Generator.GetMonthlyTemplateContent(userID)
+	rendered, err := h.Generator.RenderMonthly(templateContent, data)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	dateStr := fmt.Sprintf("%04d-%02d", req.Year, req.Month)
+	fileURL := h.uploadToR2(userID, "monthly-"+dateStr, rendered)
+
+	month := req.Month
+	year := req.Year
+	rpt := models.Report{
+		UserID:     userID,
+		Date:       dateStr,
+		Title:      fmt.Sprintf("Monthly Report — %s %d", time.Month(month).String(), year),
+		Content:    rendered,
+		FileURL:    fileURL,
+		ReportType: "monthly",
+		Month:      &month,
+		Year:       &year,
+	}
+
+	var existing models.Report
+	if h.DB.Where("user_id = ? AND report_type = ? AND month = ? AND year = ?", userID, "monthly", month, year).First(&existing).Error == nil {
+		existing.Content = rendered
+		existing.Title = rpt.Title
+		existing.FileURL = fileURL
+		h.DB.Save(&existing)
+		c.JSON(http.StatusOK, existing)
+		return
+	}
+
+	if err := h.DB.Create(&rpt).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, rpt)
+}
+
 func (h *ReportHandler) List(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	from := c.Query("from")

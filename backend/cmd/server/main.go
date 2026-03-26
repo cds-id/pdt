@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/config"
 	"github.com/cds-id/pdt/backend/internal/crypto"
 	"github.com/cds-id/pdt/backend/internal/database"
@@ -16,8 +17,8 @@ import (
 	"github.com/cds-id/pdt/backend/internal/services/report"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
 	"github.com/cds-id/pdt/backend/internal/worker"
-	"github.com/gin-gonic/gin"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -54,7 +55,7 @@ func main() {
 	// Worker scheduler
 	var syncStatus *worker.SyncStatus
 	if cfg.SyncEnabled {
-		scheduler := worker.NewScheduler(db, encryptor, cfg.SyncIntervalCommits, cfg.SyncIntervalJira, cfg.ReportAutoGenerate, cfg.ReportAutoTime, r2Client)
+		scheduler := worker.NewScheduler(db, encryptor, cfg.SyncIntervalCommits, cfg.SyncIntervalJira, cfg.ReportAutoGenerate, cfg.ReportAutoTime, cfg.ReportMonthlyAutoTime, r2Client)
 		scheduler.Start(ctx)
 		syncStatus = scheduler.Status
 	} else {
@@ -74,6 +75,20 @@ func main() {
 	jiraHandler := &handlers.JiraHandler{DB: db, Encryptor: encryptor}
 	reportGen := report.NewGenerator(db, encryptor)
 	reportHandler := &handlers.ReportHandler{DB: db, Generator: reportGen, R2: r2Client}
+
+	var miniMaxClient *minimax.Client
+	if cfg.MiniMaxAPIKey != "" {
+		miniMaxClient = minimax.NewClient(cfg.MiniMaxAPIKey, cfg.MiniMaxGroupID)
+	}
+
+	chatHandler := &handlers.ChatHandler{
+		DB:              db,
+		MiniMaxClient:   miniMaxClient,
+		Encryptor:       encryptor,
+		R2:              r2Client,
+		ReportGenerator: reportGen,
+		ContextWindow:   cfg.AIContextWindow,
+	}
 
 	// Router
 	r := gin.Default()
@@ -131,11 +146,13 @@ func main() {
 				jira.GET("/active-sprint", jiraHandler.GetActiveSprint)
 				jira.GET("/cards", jiraHandler.ListCards)
 				jira.GET("/cards/:key", jiraHandler.GetCard)
+				jira.GET("/cards/:key/comments", jiraHandler.GetCardComments)
 			}
 
 			reports := protected.Group("/reports")
 			{
 				reports.POST("/generate", reportHandler.Generate)
+				reports.POST("/generate/monthly", reportHandler.GenerateMonthly)
 				reports.GET("", reportHandler.List)
 				reports.GET("/:id", reportHandler.Get)
 				reports.DELETE("/:id", reportHandler.Delete)
@@ -148,6 +165,13 @@ func main() {
 					templates.DELETE("/:id", reportHandler.DeleteTemplate)
 					templates.POST("/preview", reportHandler.PreviewTemplate)
 				}
+			}
+
+			if miniMaxClient != nil {
+				protected.GET("/ws/chat", chatHandler.HandleWebSocket)
+				protected.GET("/conversations", chatHandler.ListConversations)
+				protected.GET("/conversations/:id", chatHandler.GetConversation)
+				protected.DELETE("/conversations/:id", chatHandler.DeleteConversation)
 			}
 		}
 	}
