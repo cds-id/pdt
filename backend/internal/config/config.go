@@ -22,8 +22,9 @@ type Config struct {
 	SyncEnabled         bool
 	SyncIntervalCommits time.Duration
 	SyncIntervalJira    time.Duration
-	ReportAutoGenerate  bool
-	ReportAutoTime      string
+	ReportAutoGenerate     bool
+	ReportAutoTime         string
+	ReportMonthlyAutoTime  string
 	R2AccountID         string
 	R2AccessKeyID       string
 	R2SecretAccessKey   string
@@ -70,6 +71,7 @@ func Load() (*Config, error) {
 	reportAutoGen := getEnv("REPORT_AUTO_GENERATE", "true")
 	cfg.ReportAutoGenerate = reportAutoGen == "true" || reportAutoGen == "1"
 	cfg.ReportAutoTime = getEnv("REPORT_AUTO_TIME", "23:00")
+	cfg.ReportMonthlyAutoTime = getEnv("REPORT_MONTHLY_AUTO_TIME", "08:00")
 
 	cfg.R2AccountID = getEnv("R2_ACCOUNT_ID", "")
 	cfg.R2AccessKeyID = getEnv("R2_ACCESS_KEY_ID", "")
