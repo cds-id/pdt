@@ -345,68 +345,81 @@ export function AssistantPage() {
                     </div>
                   </div>
                 </ConversationEmptyState>
-              ) : (
-                <>
-                  {messages.map((msg) => (
-                    <Message key={msg.id} from={msg.role}>
-                      <MessageContent>
-                        {msg.role === 'assistant' ? (
-                          <MessageResponse isAnimating={msg.isStreaming}>
-                            {msg.content}
-                          </MessageResponse>
-                        ) : (
-                          msg.content
+              ) : (() => {
+                const completedMessages = messages.filter((m) => !m.isStreaming)
+                const streamingMessage = messages.find((m) => m.isStreaming)
+
+                return (
+                  <>
+                    {completedMessages.map((msg) => (
+                      <Message key={msg.id} from={msg.role}>
+                        <MessageContent>
+                          {msg.role === 'assistant' ? (
+                            <MessageResponse>{msg.content}</MessageResponse>
+                          ) : (
+                            msg.content
+                          )}
+                        </MessageContent>
+                        {msg.role === 'assistant' && (
+                          <MessageActions>
+                            <MessageAction
+                              tooltip="Copy"
+                              onClick={() => handleCopy(msg.content, msg.id)}
+                            >
+                              {copiedId === msg.id ? (
+                                <Check className="size-3.5" />
+                              ) : (
+                                <Copy className="size-3.5" />
+                              )}
+                            </MessageAction>
+                          </MessageActions>
                         )}
-                      </MessageContent>
-                      {msg.role === 'assistant' && !msg.isStreaming && (
-                        <MessageActions>
-                          <MessageAction
-                            tooltip="Copy"
-                            onClick={() => handleCopy(msg.content, msg.id)}
-                          >
-                            {copiedId === msg.id ? (
-                              <Check className="size-3.5" />
-                            ) : (
-                              <Copy className="size-3.5" />
-                            )}
-                          </MessageAction>
-                        </MessageActions>
-                      )}
-                    </Message>
-                  ))}
+                      </Message>
+                    ))}
 
-                  {(isThinking || hasThought) && (
-                    <Reasoning isStreaming={isThinking}>
-                      <ReasoningTrigger />
-                      <ReasoningContent>{thinkingMessage || 'Thinking...'}</ReasoningContent>
-                    </Reasoning>
-                  )}
+                    {(isThinking || hasThought) && (
+                      <Reasoning isStreaming={isThinking}>
+                        <ReasoningTrigger />
+                        <ReasoningContent>{thinkingMessage || 'Thinking...'}</ReasoningContent>
+                      </Reasoning>
+                    )}
 
-                  {toolStatuses.length > 0 && (
-                    <ChainOfThought defaultOpen>
-                      <ChainOfThoughtHeader>Tool execution</ChainOfThoughtHeader>
-                      <ChainOfThoughtContent>
-                        {toolStatuses.map((ts) => (
-                          <ChainOfThoughtStep
-                            key={ts.tool}
-                            icon={ts.status === 'executing' ? Loader2 : CheckCircle}
-                            label={toolLabels[ts.tool] || ts.tool}
-                            status={ts.status === 'executing' ? 'active' : 'complete'}
-                          />
+                    {toolStatuses.length > 0 && (
+                      <ChainOfThought defaultOpen>
+                        <ChainOfThoughtHeader>Tool execution</ChainOfThoughtHeader>
+                        <ChainOfThoughtContent>
+                          {toolStatuses.map((ts) => (
+                            <ChainOfThoughtStep
+                              key={ts.tool}
+                              icon={ts.status === 'executing' ? Loader2 : CheckCircle}
+                              label={toolLabels[ts.tool] || ts.tool}
+                              status={ts.status === 'executing' ? 'active' : 'complete'}
+                            />
+                          ))}
+                        </ChainOfThoughtContent>
+                      </ChainOfThought>
+                    )}
+
+                    {streamingMessage && (
+                      <Message from="assistant">
+                        <MessageContent>
+                          <MessageResponse isAnimating>
+                            {streamingMessage.content}
+                          </MessageResponse>
+                        </MessageContent>
+                      </Message>
+                    )}
+
+                    {showFollowups && (
+                      <div className="flex flex-wrap gap-2">
+                        {FOLLOWUP_SUGGESTIONS.map((s) => (
+                          <Suggestion key={s} suggestion={s} onClick={handleSend} />
                         ))}
-                      </ChainOfThoughtContent>
-                    </ChainOfThought>
-                  )}
-
-                  {showFollowups && (
-                    <div className="flex flex-wrap gap-2">
-                      {FOLLOWUP_SUGGESTIONS.map((s) => (
-                        <Suggestion key={s} suggestion={s} onClick={handleSend} />
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>
