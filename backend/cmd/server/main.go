@@ -146,6 +146,7 @@ func main() {
 				jira.GET("/active-sprint", jiraHandler.GetActiveSprint)
 				jira.GET("/cards", jiraHandler.ListCards)
 				jira.GET("/cards/:key", jiraHandler.GetCard)
+				jira.GET("/cards/:key/comments", jiraHandler.GetCardComments)
 			}
 
 			reports := protected.Group("/reports")

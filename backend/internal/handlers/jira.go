@@ -246,3 +246,15 @@ func (h *JiraHandler) GetCard(c *gin.Context) {
 
 	c.JSON(http.StatusOK, result)
 }
+
+func (h *JiraHandler) GetCardComments(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	cardKey := c.Param("key")
+
+	var comments []models.JiraComment
+	h.DB.Where("user_id = ? AND card_key = ?", userID, cardKey).
+		Order("commented_at asc").
+		Find(&comments)
+
+	c.JSON(http.StatusOK, comments)
+}
