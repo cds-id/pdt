@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -38,14 +39,15 @@ type CardInfo struct {
 }
 
 type IssueDetail struct {
-	Key       string          `json:"key"`
-	Summary   string          `json:"summary"`
-	Status    string          `json:"status"`
-	Assignee  string          `json:"assignee"`
-	IssueType string          `json:"issue_type"`
-	Parent    *IssueRef       `json:"parent,omitempty"`
-	Subtasks  []IssueRef      `json:"subtasks,omitempty"`
-	Changelog []ChangeHistory `json:"changelog,omitempty"`
+	Key         string          `json:"key"`
+	Summary     string          `json:"summary"`
+	Description string          `json:"description,omitempty"`
+	Status      string          `json:"status"`
+	Assignee    string          `json:"assignee"`
+	IssueType   string          `json:"issue_type"`
+	Parent      *IssueRef       `json:"parent,omitempty"`
+	Subtasks    []IssueRef      `json:"subtasks,omitempty"`
+	Changelog   []ChangeHistory `json:"changelog,omitempty"`
 }
 
 type IssueRef struct {
@@ -208,7 +210,7 @@ func (c *Client) FetchSprintIssues(sprintID int) ([]CardInfo, error) {
 }
 
 func (c *Client) FetchIssue(key string) (*IssueDetail, error) {
-	reqURL := fmt.Sprintf("%s/api/2/issue/%s?fields=summary,status,assignee,parent,subtasks,issuetype&expand=changelog", c.baseURL(), key)
+	reqURL := fmt.Sprintf("%s/api/2/issue/%s?fields=summary,description,status,assignee,parent,subtasks,issuetype&expand=changelog", c.baseURL(), key)
 	body, err := c.doRequest(reqURL)
 	if err != nil {
 		return nil, err
@@ -217,8 +219,9 @@ func (c *Client) FetchIssue(key string) (*IssueDetail, error) {
 	var raw struct {
 		Key    string `json:"key"`
 		Fields struct {
-			Summary   string `json:"summary"`
-			IssueType struct {
+			Summary     string          `json:"summary"`
+			Description json.RawMessage `json:"description"`
+			IssueType   struct {
 				Name string `json:"name"`
 			} `json:"issuetype"`
 			Status struct {
@@ -276,6 +279,34 @@ func (c *Client) FetchIssue(key string) (*IssueDetail, error) {
 		Summary:   raw.Fields.Summary,
 		Status:    raw.Fields.Status.Name,
 		IssueType: raw.Fields.IssueType.Name,
+	}
+
+	// Parse description — can be a plain string or ADF (Atlassian Document Format) object
+	if len(raw.Fields.Description) > 0 {
+		var descStr string
+		if err := json.Unmarshal(raw.Fields.Description, &descStr); err == nil {
+			detail.Description = descStr
+		} else {
+			// ADF format — extract text content
+			var adf struct {
+				Content []struct {
+					Content []struct {
+						Text string `json:"text"`
+					} `json:"content"`
+				} `json:"content"`
+			}
+			if err := json.Unmarshal(raw.Fields.Description, &adf); err == nil {
+				var texts []string
+				for _, block := range adf.Content {
+					for _, inline := range block.Content {
+						if inline.Text != "" {
+							texts = append(texts, inline.Text)
+						}
+					}
+				}
+				detail.Description = strings.Join(texts, "\n")
+			}
+		}
 	}
 
 	if raw.Fields.Assignee != nil {
