@@ -326,8 +326,8 @@ export function AssistantPage() {
           onDelete={handleDeleteConversation}
         />
         <div className="flex-1 flex flex-col bg-[#242428] min-h-0 min-w-0">
-          <Conversation className="flex-1 min-h-0">
-            <ConversationContent className="max-w-3xl mx-auto w-full px-3 sm:px-4">
+          <Conversation className="flex-1 min-h-0 overflow-x-hidden">
+            <ConversationContent className="max-w-3xl mx-auto w-full px-3 sm:px-4 overflow-x-hidden">
               {messages.length === 0 ? (
                 <ConversationEmptyState>
                   <div className="flex flex-col items-center gap-3">
@@ -338,11 +338,11 @@ export function AssistantPage() {
                       <h3 className="font-medium text-sm">PDT Assistant</h3>
                       <p className="text-muted-foreground text-sm">Ask about your commits, Jira cards, or reports</p>
                     </div>
-                    <Suggestions className="mt-4">
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
                       {STARTER_SUGGESTIONS.map((s) => (
                         <Suggestion key={s} suggestion={s} onClick={handleSend} />
                       ))}
-                    </Suggestions>
+                    </div>
                   </div>
                 </ConversationEmptyState>
               ) : (
@@ -399,11 +399,11 @@ export function AssistantPage() {
                   )}
 
                   {showFollowups && (
-                    <Suggestions>
+                    <div className="flex flex-wrap gap-2">
                       {FOLLOWUP_SUGGESTIONS.map((s) => (
                         <Suggestion key={s} suggestion={s} onClick={handleSend} />
                       ))}
-                    </Suggestions>
+                    </div>
                   )}
                 </>
               )}
