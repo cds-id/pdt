@@ -16,7 +16,8 @@ import {
   useListTemplatesQuery,
   useCreateTemplateMutation,
   useUpdateTemplateMutation,
-  useDeleteTemplateMutation
+  useDeleteTemplateMutation,
+  useGenerateMonthlyReportMutation
 } from '@/infrastructure/services/report.service'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,7 +37,12 @@ export function ReportsPage() {
   const reports = reportsData || []
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'reports' | 'templates'>('reports')
+  const [activeTab, setActiveTab] = useState<'reports' | 'templates' | 'monthly'>('reports')
+
+  // Monthly report state
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [generateMonthly, { isLoading: isGeneratingMonthly }] = useGenerateMonthlyReportMutation()
 
   // Template state
   const { data: templates = [] } = useListTemplatesQuery()
@@ -145,6 +151,14 @@ export function ReportsPage() {
           <FilePlus className="mr-2 size-4" />
           Templates
         </Button>
+        <Button
+          variant={activeTab === 'monthly' ? 'pdt' : 'pdtOutline'}
+          size="sm"
+          onClick={() => setActiveTab('monthly')}
+        >
+          <FileCode className="mr-2 size-4" />
+          Monthly
+        </Button>
       </div>
 
       {activeTab === 'reports' ? (
@@ -240,6 +254,79 @@ export function ReportsPage() {
                 ))}
               </div>
             )}
+          </DataCard>
+        </>
+      ) : activeTab === 'monthly' ? (
+        <>
+          {/* Monthly Reports Tab */}
+          <DataCard title="Monthly Reports">
+            <div className="flex gap-4 items-end mb-6">
+              <div>
+                <label className="block text-xs text-pdt-neutral/60 mb-1">Month</label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                  className="bg-pdt-primary-light border border-pdt-accent/20 rounded px-3 py-2 text-sm text-pdt-neutral"
+                >
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      {new Date(2026, i).toLocaleString('default', { month: 'long' })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-pdt-neutral/60 mb-1">Year</label>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="bg-pdt-primary-light border border-pdt-accent/20 rounded px-3 py-2 text-sm text-pdt-neutral"
+                >
+                  {[2024, 2025, 2026].map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                onClick={() => generateMonthly({ month: selectedMonth, year: selectedYear })}
+                disabled={isGeneratingMonthly}
+                variant="pdt"
+              >
+                <FilePlus className="mr-2 size-4" />
+                {isGeneratingMonthly ? 'Generating...' : 'Generate Monthly Report'}
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {(reportsData || [])
+                .filter((r) => r.report_type === 'monthly')
+                .map((report) => (
+                  <div
+                    key={report.id}
+                    className="p-4 rounded-lg border border-pdt-neutral/10 bg-pdt-primary-light"
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm font-medium text-pdt-neutral">
+                          {report.title}
+                        </p>
+                        <p className="text-xs text-pdt-neutral/60">{report.date}</p>
+                      </div>
+                      <button
+                        onClick={() => handleDelete(String(report.id))}
+                        className="text-pdt-neutral/60 transition-colors hover:text-red-400"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              {(reportsData || []).filter((r) => r.report_type === 'monthly').length === 0 && (
+                <EmptyState
+                  title="No monthly reports yet."
+                  description="Generate a monthly report above to get started."
+                />
+              )}
+            </div>
           </DataCard>
         </>
       ) : (

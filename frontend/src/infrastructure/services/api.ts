@@ -12,7 +12,8 @@ export const api = createApi({
     'Commit',
     'Jira',
     'Report',
-    'ReportTemplate'
+    'ReportTemplate',
+    'Conversation'
   ],
   baseQuery: fetchBaseQuery({
     baseUrl: `${API_CONSTANTS.BASE_URL}${API_CONSTANTS.API_PREFIX}`,

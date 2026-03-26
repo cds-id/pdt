@@ -9,6 +9,7 @@ export interface Report {
   title: string
   content: string
   file_url: string
+  report_type?: string
   created_at: string
 }
 
@@ -103,7 +104,15 @@ export const reportApi = api.injectEndpoints({
         method: 'POST',
         body: { content, date }
       })
-    })
+    }),
+    generateMonthlyReport: builder.mutation<Report, { month: number; year: number }>({
+      query: ({ month, year }) => ({
+        url: API_CONSTANTS.REPORTS.GENERATE_MONTHLY,
+        method: 'POST',
+        body: { month, year },
+      }),
+      invalidatesTags: [{ type: 'Report', id: 'LIST' }],
+    }),
   })
 })
 
@@ -116,5 +125,6 @@ export const {
   useListTemplatesQuery,
   useUpdateTemplateMutation,
   useDeleteTemplateMutation,
-  usePreviewTemplateQuery
+  usePreviewTemplateQuery,
+  useGenerateMonthlyReportMutation
 } = reportApi

@@ -5,6 +5,7 @@ import {
   Trello,
   FileText,
   Settings,
+  Bot,
   type LucideIcon
 } from 'lucide-react'
 
@@ -36,6 +37,10 @@ export const dashboardNavigation: NavGroup[] = [
   {
     title: 'Reports',
     items: [{ title: 'Reports', href: '/dashboard/reports', icon: FileText }]
+  },
+  {
+    title: 'AI',
+    items: [{ title: 'AI Assistant', href: '/dashboard/assistant', icon: Bot }]
   },
   {
     title: 'System',

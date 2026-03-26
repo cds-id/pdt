@@ -13,6 +13,7 @@ import { JiraPage } from '../pages/JiraPage'
 import { JiraCardDetailPage } from '../pages/JiraCardDetailPage'
 import { ReportsPage } from '../pages/ReportsPage'
 import { SettingsPage } from '../pages/SettingsPage'
+import { AssistantPage } from '../pages/AssistantPage'
 
 export const router = createBrowserRouter([
   {
@@ -36,7 +37,8 @@ export const router = createBrowserRouter([
       { path: 'dashboard/jira', element: <JiraPage /> },
       { path: 'dashboard/jira/cards/:key', element: <JiraCardDetailPage /> },
       { path: 'dashboard/reports', element: <ReportsPage /> },
-      { path: 'dashboard/settings', element: <SettingsPage /> }
+      { path: 'dashboard/settings', element: <SettingsPage /> },
+      { path: 'dashboard/assistant', element: <AssistantPage /> }
     ]
   },
   { path: '*', element: <NotFoundPage /> }

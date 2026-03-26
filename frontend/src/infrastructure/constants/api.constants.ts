@@ -52,6 +52,7 @@ export const API_CONSTANTS = {
   // Report Endpoints
   REPORTS: {
     GENERATE: '/reports/generate',
+    GENERATE_MONTHLY: '/reports/generate/monthly',
     LIST: '/reports',
     GET: (id: string) => `/reports/${id}`,
     DELETE: (id: string) => `/reports/${id}`,
@@ -60,7 +61,19 @@ export const API_CONSTANTS = {
     TEMPLATES_UPDATE: (id: string) => `/reports/templates/${id}`,
     TEMPLATES_DELETE: (id: string) => `/reports/templates/${id}`,
     TEMPLATES_PREVIEW: '/reports/templates/preview'
-  }
+  },
+
+  // Conversation Endpoints
+  CONVERSATIONS: {
+    LIST: '/conversations',
+    GET: (id: string) => `/conversations/${id}`,
+    DELETE: (id: string) => `/conversations/${id}`,
+  },
+
+  // Chat Endpoints
+  CHAT: {
+    WS: '/ws/chat',
+  },
 }
 
 // Helper to build full URL
