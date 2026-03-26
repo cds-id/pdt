@@ -32,18 +32,19 @@ export function JiraCardDetailPage() {
     )
   }
 
-  let subtasks: { key: string; summary: string; status: string; type: string }[] = []
-  let description = ''
-  let parent: { key: string; summary: string; status: string; type: string } | null = null
-  let issueType = ''
+  let subtasks: { key: string; summary: string; status: string; type: string }[] = (card as any).subtasks || []
+  let description = (card as any).description || ''
+  let parent: { key: string; summary: string; status: string; type: string } | null = (card as any).parent || null
+  let issueType = (card as any).issue_type || ''
 
-  if (card.details_json) {
+  // Fallback to details_json if direct fields are missing
+  if (!description && card.details_json) {
     try {
       const details = JSON.parse(card.details_json)
-      subtasks = details.subtasks || []
+      subtasks = subtasks.length ? subtasks : (details.subtasks || [])
       description = details.description || ''
-      issueType = details.issue_type || ''
-      if (details.parent) {
+      issueType = issueType || details.issue_type || ''
+      if (!parent && details.parent) {
         parent = details.parent
       }
     } catch {

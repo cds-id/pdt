@@ -236,6 +236,7 @@ func (h *JiraHandler) GetCard(c *gin.Context) {
 
 	if issueDetail != nil {
 		result["summary"] = issueDetail.Summary
+		result["description"] = issueDetail.Description
 		result["status"] = issueDetail.Status
 		result["assignee"] = issueDetail.Assignee
 		result["issue_type"] = issueDetail.IssueType
