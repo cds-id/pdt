@@ -312,8 +312,8 @@ export function AssistantPage() {
           onNew={handleNewConversation}
           onDelete={handleDeleteConversation}
         />
-        <div className="flex-1 flex flex-col bg-[#242428]">
-          <Conversation className="flex-1">
+        <div className="flex-1 flex flex-col bg-[#242428] min-h-0">
+          <Conversation className="flex-1 min-h-0">
             <ConversationContent className="max-w-3xl mx-auto w-full">
               {messages.length === 0 ? (
                 <ConversationEmptyState>
@@ -398,7 +398,7 @@ export function AssistantPage() {
             <ConversationScrollButton />
           </Conversation>
 
-          <div className="p-3 pt-0 bg-[#1B1B1E] border-t border-border">
+          <div className="shrink-0 p-3 bg-[#1B1B1E] border-t border-border">
             <PromptInput
               onSubmit={handlePromptSubmit}
             >
