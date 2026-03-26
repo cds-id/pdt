@@ -85,6 +85,33 @@ func TestJiraService_FetchSprints(t *testing.T) {
 	}
 }
 
+func TestJiraService_FetchIssueWithDescription(t *testing.T) {
+	skipIfNoJira(t)
+
+	client := jiraClient(t)
+	detail, err := client.FetchIssue("BNS-2719")
+	if err != nil {
+		t.Fatalf("FetchIssue failed: %v", err)
+	}
+
+	t.Logf("Key: %s", detail.Key)
+	t.Logf("Summary: %s", detail.Summary)
+	t.Logf("Status: %s", detail.Status)
+	t.Logf("Assignee: %s", detail.Assignee)
+	t.Logf("IssueType: %s", detail.IssueType)
+	t.Logf("Description: %s", detail.Description)
+
+	if detail.Description == "" {
+		t.Error("Description is empty — expected content from Jira")
+	} else {
+		t.Logf("Description length: %d chars", len(detail.Description))
+	}
+
+	// Also verify it appears in JSON serialization
+	detailJSON, _ := json.MarshalIndent(detail, "", "  ")
+	t.Logf("Full JSON:\n%s", string(detailJSON))
+}
+
 func TestJiraService_FetchActiveSprintIssues(t *testing.T) {
 	skipIfNoJira(t)
 
