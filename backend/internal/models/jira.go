@@ -31,7 +31,7 @@ type JiraCard struct {
 	Status      string    `gorm:"type:varchar(100)" json:"status"`
 	Assignee    string    `gorm:"type:varchar(255)" json:"assignee"`
 	SprintID    *uint     `gorm:"index" json:"sprint_id"`
-	DetailsJSON string    `gorm:"type:text" json:"details_json,omitempty"`
+	DetailsJSON string    `gorm:"type:longtext" json:"details_json,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	User        User      `gorm:"foreignKey:UserID" json:"-"`
 	Sprint      *Sprint   `gorm:"foreignKey:SprintID" json:"-"`
