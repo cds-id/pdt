@@ -80,7 +80,9 @@ func (a *ProofAgent) Tools() []minimax.Tool {
 			InputSchema: json.RawMessage(`{
 				"type": "object",
 				"properties": {
-					"sprint_id": {"type": "integer", "description": "Optional sprint ID to limit the check; defaults to all active sprints"}
+					"sprint_id": {"type": "integer", "description": "Optional sprint ID to limit the check; defaults to all active sprints"},
+					"sprint_name": {"type": "string", "description": "Optional sprint name (e.g., 'BNS Sprint 13')"},
+					"assignee": {"type": "string", "description": "Optional assignee name filter (partial match)"}
 				}
 			}`),
 		},
@@ -287,14 +289,21 @@ func (a *ProofAgent) getCommentTimeline(args json.RawMessage) (any, error) {
 
 func (a *ProofAgent) detectQualityIssues(args json.RawMessage) (any, error) {
 	var params struct {
-		SprintID int `json:"sprint_id"`
+		SprintID   int    `json:"sprint_id"`
+		SprintName string `json:"sprint_name"`
+		Assignee   string `json:"assignee"`
 	}
 	json.Unmarshal(args, &params)
 
-	// Find active sprint IDs
+	// Find sprint IDs
 	var sprintIDs []uint
 	if params.SprintID > 0 {
 		sprintIDs = []uint{uint(params.SprintID)}
+	} else if params.SprintName != "" {
+		var sprint models.Sprint
+		if err := a.DB.Where("user_id = ? AND name = ?", a.UserID, params.SprintName).First(&sprint).Error; err == nil {
+			sprintIDs = []uint{sprint.ID}
+		}
 	} else {
 		var sprints []models.Sprint
 		a.DB.Where("user_id = ? AND state = ?", a.UserID, models.SprintActive).Find(&sprints)
@@ -307,9 +316,13 @@ func (a *ProofAgent) detectQualityIssues(args json.RawMessage) (any, error) {
 		return []any{}, nil
 	}
 
-	// Fetch all cards in those sprints
+	// Fetch cards in those sprints
+	query := a.DB.Where("user_id = ? AND sprint_id IN ?", a.UserID, sprintIDs)
+	if params.Assignee != "" {
+		query = query.Where("assignee LIKE ?", "%"+params.Assignee+"%")
+	}
 	var cards []models.JiraCard
-	a.DB.Where("user_id = ? AND sprint_id IN ?", a.UserID, sprintIDs).Find(&cards)
+	query.Find(&cards)
 
 	type issueCard struct {
 		Key      string   `json:"key"`

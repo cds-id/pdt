@@ -36,12 +36,14 @@ func (a *JiraAgent) Tools() []minimax.Tool {
 		},
 		{
 			Name:        "get_cards",
-			Description: "List Jira cards, optionally filtered by sprint or status",
+			Description: "List Jira cards, optionally filtered by sprint, status, or assignee",
 			InputSchema: json.RawMessage(`{
 				"type": "object",
 				"properties": {
 					"sprint_id": {"type": "integer", "description": "Filter by sprint ID"},
-					"status": {"type": "string", "description": "Filter by card status (e.g., 'Done', 'In Progress')"},
+					"sprint_name": {"type": "string", "description": "Filter by sprint name (e.g., 'BNS Sprint 13')"},
+					"status": {"type": "string", "description": "Filter by card status (case-insensitive, e.g., 'Done', 'In Progress', 'READY TO TEST')"},
+					"assignee": {"type": "string", "description": "Filter by assignee name (partial match)"},
 					"keyword": {"type": "string", "description": "Search keyword in card summary"},
 					"limit": {"type": "integer", "description": "Max results (default 30)"}
 				}
@@ -147,10 +149,12 @@ func (a *JiraAgent) getSprints(args json.RawMessage) (any, error) {
 
 func (a *JiraAgent) getCards(args json.RawMessage) (any, error) {
 	var params struct {
-		SprintID int    `json:"sprint_id"`
-		Status   string `json:"status"`
-		Keyword  string `json:"keyword"`
-		Limit    int    `json:"limit"`
+		SprintID   int    `json:"sprint_id"`
+		SprintName string `json:"sprint_name"`
+		Status     string `json:"status"`
+		Assignee   string `json:"assignee"`
+		Keyword    string `json:"keyword"`
+		Limit      int    `json:"limit"`
 	}
 	json.Unmarshal(args, &params)
 	if params.Limit == 0 {
@@ -161,12 +165,23 @@ func (a *JiraAgent) getCards(args json.RawMessage) (any, error) {
 	var user models.User
 	a.DB.First(&user, a.UserID)
 
-	query := a.DB.Where("user_id = ?", a.UserID)
+	query := a.DB.Where("jira_cards.user_id = ?", a.UserID)
+
+	// Resolve sprint by name if provided
+	if params.SprintName != "" && params.SprintID == 0 {
+		var sprint models.Sprint
+		if err := a.DB.Where("user_id = ? AND name = ?", a.UserID, params.SprintName).First(&sprint).Error; err == nil {
+			params.SprintID = int(sprint.ID)
+		}
+	}
 	if params.SprintID > 0 {
 		query = query.Where("sprint_id = ?", params.SprintID)
 	}
 	if params.Status != "" {
-		query = query.Where("status = ?", params.Status)
+		query = query.Where("LOWER(status) = LOWER(?)", params.Status)
+	}
+	if params.Assignee != "" {
+		query = query.Where("assignee LIKE ?", "%"+params.Assignee+"%")
 	}
 	if params.Keyword != "" {
 		query = query.Where("summary LIKE ?", "%"+params.Keyword+"%")
@@ -181,19 +196,30 @@ func (a *JiraAgent) getCards(args json.RawMessage) (any, error) {
 	query.Order("created_at desc").Limit(params.Limit).Find(&cards)
 
 	type result struct {
-		Key      string `json:"key"`
-		Summary  string `json:"summary"`
-		Status   string `json:"status"`
-		Assignee string `json:"assignee"`
+		Key         string `json:"key"`
+		Summary     string `json:"summary"`
+		Status      string `json:"status"`
+		Assignee    string `json:"assignee"`
+		Description string `json:"description,omitempty"`
 	}
 	var results []result
 	for _, c := range cards {
-		results = append(results, result{
+		r := result{
 			Key:      c.Key,
 			Summary:  c.Summary,
 			Status:   c.Status,
 			Assignee: c.Assignee,
-		})
+		}
+		// Extract description from DetailsJSON
+		if c.DetailsJSON != "" {
+			var details map[string]any
+			if json.Unmarshal([]byte(c.DetailsJSON), &details) == nil {
+				if desc, ok := details["description"].(string); ok {
+					r.Description = desc
+				}
+			}
+		}
+		results = append(results, r)
 	}
 	return results, nil
 }
