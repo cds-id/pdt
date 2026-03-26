@@ -1,5 +1,4 @@
 import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { Bot, User } from 'lucide-react'
 import {
   ChatEvent,
@@ -45,7 +44,7 @@ export function ChatMessage({ role, content, isStreaming, timestamp }: ChatMessa
             prose-strong:text-foreground
             prose-a:text-pdt-accent
             prose-td:text-foreground prose-th:text-foreground">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            <ReactMarkdown>{content}</ReactMarkdown>
           </div>
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-pdt-accent animate-pulse ml-0.5" />
