@@ -179,6 +179,8 @@ func (a *BriefingAgent) generateBriefing(args json.RawMessage) (any, error) {
 		Key           string   `json:"key"`
 		Summary       string   `json:"summary"`
 		Status        string   `json:"status"`
+		CompletedDate string   `json:"completed_date,omitempty"`
+		LastCommitDate string  `json:"last_commit_date,omitempty"`
 		RecentCommits []string `json:"recent_commits,omitempty"`
 	}
 
@@ -186,7 +188,7 @@ func (a *BriefingAgent) generateBriefing(args json.RawMessage) (any, error) {
 	for _, c := range cards {
 		entry := cardEntry{Key: c.Key, Summary: c.Summary, Status: c.Status}
 
-		// Find recent commits for this card
+		// Find recent commits for this card (within days_back window)
 		var commits []models.Commit
 		a.DB.Joins("JOIN repositories ON repositories.id = commits.repo_id").
 			Where("repositories.user_id = ? AND commits.jira_card_key = ? AND commits.date >= ?",
@@ -198,12 +200,58 @@ func (a *BriefingAgent) generateBriefing(args json.RawMessage) (any, error) {
 			if len([]rune(msg)) > 80 {
 				msg = string([]rune(msg)[:80]) + "..."
 			}
-			entry.RecentCommits = append(entry.RecentCommits, fmt.Sprintf("%s: %s", cm.SHA[:7], msg))
+			entry.RecentCommits = append(entry.RecentCommits, fmt.Sprintf("%s: %s (%s)", cm.SHA[:7], msg, cm.Date.Format("2006-01-02")))
+		}
+
+		// Get last commit date for this card (any time)
+		var lastCommit models.Commit
+		if a.DB.Joins("JOIN repositories ON repositories.id = commits.repo_id").
+			Where("repositories.user_id = ? AND commits.jira_card_key = ?", a.UserID, c.Key).
+			Order("commits.date desc").First(&lastCommit).Error == nil {
+			entry.LastCommitDate = lastCommit.Date.Format("2006-01-02")
+		}
+
+		// Determine completion date from changelog
+		isDone := c.Status == "Done" || c.Status == "READY TO TEST" || c.Status == "IN REVIEW"
+		if isDone && c.DetailsJSON != "" {
+			var details struct {
+				Changelog []struct {
+					Created string `json:"created"`
+					Items   []struct {
+						Field    string `json:"field"`
+						ToString string `json:"to_string"`
+					} `json:"items"`
+				} `json:"changelog"`
+			}
+			if json.Unmarshal([]byte(c.DetailsJSON), &details) == nil {
+				for _, h := range details.Changelog {
+					for _, item := range h.Items {
+						if item.Field == "status" && (item.ToString == c.Status) {
+							if t, err := time.Parse("2006-01-02T15:04:05.000-0700", h.Created); err == nil {
+								entry.CompletedDate = t.Format("2006-01-02")
+							}
+						}
+					}
+				}
+			}
 		}
 
 		switch {
-		case c.Status == "Done" || c.Status == "READY TO TEST" || c.Status == "IN REVIEW":
-			done = append(done, entry)
+		case isDone:
+			// Only include in "done" if completed within the days_back window
+			if entry.CompletedDate != "" {
+				if completedTime, err := time.Parse("2006-01-02", entry.CompletedDate); err == nil {
+					if completedTime.After(since) {
+						done = append(done, entry)
+						continue
+					}
+				}
+			}
+			// Fallback: if no completion date found, check last commit date
+			if len(commits) > 0 {
+				done = append(done, entry)
+			}
+			// Otherwise skip old done cards
 		case c.Status == "In Progress":
 			inProgress = append(inProgress, entry)
 		default:
