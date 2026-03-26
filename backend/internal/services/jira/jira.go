@@ -318,6 +318,55 @@ func (c *Client) FetchIssue(key string) (*IssueDetail, error) {
 	return detail, nil
 }
 
+type CommentInfo struct {
+	ID          string    `json:"id"`
+	Author      string    `json:"author"`
+	AuthorEmail string    `json:"author_email"`
+	Body        string    `json:"body"`
+	Created     time.Time `json:"created"`
+}
+
+func (c *Client) FetchIssueComments(key string) ([]CommentInfo, error) {
+	url := fmt.Sprintf("%s/api/2/issue/%s?fields=comment", c.baseURL(), key)
+	body, err := c.doRequest(url)
+	if err != nil {
+		return nil, fmt.Errorf("fetch comments for %s: %w", key, err)
+	}
+
+	var resp struct {
+		Fields struct {
+			Comment struct {
+				Comments []struct {
+					ID     string `json:"id"`
+					Author struct {
+						DisplayName  string `json:"displayName"`
+						EmailAddress string `json:"emailAddress"`
+					} `json:"author"`
+					Body    string `json:"body"`
+					Created string `json:"created"`
+				} `json:"comments"`
+			} `json:"comment"`
+		} `json:"fields"`
+	}
+
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("parse comments for %s: %w", key, err)
+	}
+
+	var comments []CommentInfo
+	for _, c := range resp.Fields.Comment.Comments {
+		created, _ := time.Parse("2006-01-02T15:04:05.000-0700", c.Created)
+		comments = append(comments, CommentInfo{
+			ID:          c.ID,
+			Author:      c.Author.DisplayName,
+			AuthorEmail: c.Author.EmailAddress,
+			Body:        c.Body,
+			Created:     created,
+		})
+	}
+	return comments, nil
+}
+
 func (c *Client) Validate() error {
 	url := fmt.Sprintf("%s/api/2/myself", c.baseURL())
 	_, err := c.doRequest(url)

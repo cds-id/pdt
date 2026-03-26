@@ -36,5 +36,6 @@ func Migrate(db *gorm.DB) error {
 		&models.Conversation{},
 		&models.ChatMessage{},
 		&models.AIUsage{},
+		&models.JiraComment{},
 	)
 }

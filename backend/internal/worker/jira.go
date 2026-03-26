@@ -92,6 +92,27 @@ func SyncUserJira(db *gorm.DB, enc *crypto.Encryptor, userID uint) error {
 
 					db.Where("user_id = ? AND card_key = ?", userID, card.Key).
 						Assign(jiraCard).FirstOrCreate(&jiraCard)
+
+					// Sync comments for this card
+					comments, err := client.FetchIssueComments(card.Key)
+					if err != nil {
+						log.Printf("[jira-sync] user=%d card=%s fetch comments error: %v", userID, card.Key, err)
+					} else {
+						for _, comment := range comments {
+							jiraComment := models.JiraComment{
+								UserID:      userID,
+								CardKey:     card.Key,
+								CommentID:   comment.ID,
+								Author:      comment.Author,
+								AuthorEmail: comment.AuthorEmail,
+								Body:        comment.Body,
+								CommentedAt: comment.Created,
+							}
+							db.Where("comment_id = ?", comment.ID).
+								Assign(jiraComment).FirstOrCreate(&jiraComment)
+						}
+					}
+
 					savedCount++
 				}
 
