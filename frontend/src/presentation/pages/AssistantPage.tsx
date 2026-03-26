@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Send } from 'lucide-react'
+import { Send, ArrowLeft } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAppSelector } from '../../application/hooks/useAppSelector'
 import {
   useListConversationsQuery,
   useDeleteConversationMutation,
 } from '../../infrastructure/services/chat.service'
 import { API_CONSTANTS } from '../../infrastructure/constants/api.constants'
-import { PageHeader } from '../components/common/PageHeader'
 import { ChatSidebar } from '../components/chat/ChatSidebar'
 import { ChatMessage } from '../components/chat/ChatMessage'
 import { ThinkingIndicator } from '../components/chat/ThinkingIndicator'
@@ -47,6 +47,7 @@ export function AssistantPage() {
   const [inputValue, setInputValue] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
   const streamBufferRef = useRef('')
+  const navigate = useNavigate()
 
   // Connect WebSocket
   useEffect(() => {
@@ -218,9 +219,22 @@ export function AssistantPage() {
   }
 
   return (
-    <div className="min-w-0 flex flex-col h-[calc(100vh-4rem)]">
-      <PageHeader title="AI Assistant" description="Chat with your development data" />
-      <div className="flex flex-1 overflow-hidden border border-border rounded-lg mx-4 mb-4">
+    <div className="h-screen flex flex-col bg-[#1B1B1E]">
+      {/* Top Bar */}
+      <div className="h-12 flex items-center justify-between px-4 border-b border-border bg-[#1B1B1E] shrink-0">
+        <button
+          onClick={() => navigate('/dashboard/home')}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="size-4" />
+          Back to Dashboard
+        </button>
+        <span className="text-sm font-medium text-foreground">PDT Assistant</span>
+        <div className="w-[140px]" />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-1 overflow-hidden">
         <ChatSidebar
           conversations={conversations}
           activeId={activeConversationId}
@@ -228,9 +242,9 @@ export function AssistantPage() {
           onNew={handleNewConversation}
           onDelete={handleDeleteConversation}
         />
-        <Chat className="flex-1">
+        <Chat className="flex-1 bg-[#242428]">
           <ChatMessages>
-            <div className="flex flex-col">
+            <div className="flex flex-col max-w-3xl mx-auto w-full px-4">
               {messages.length === 0 && (
                 <div className="flex items-center justify-center h-full min-h-[200px] text-muted-foreground text-sm">
                   Start a conversation...
@@ -259,7 +273,11 @@ export function AssistantPage() {
               disabled={isStreaming}
             />
             <ChatToolbarAddon align="inline-end">
-              <ChatToolbarButton onClick={handleSubmit} disabled={isStreaming || !inputValue.trim()}>
+              <ChatToolbarButton
+                onClick={handleSubmit}
+                disabled={isStreaming || !inputValue.trim()}
+                className="bg-pdt-accent text-pdt-primary hover:bg-pdt-accent-hover"
+              >
                 <Send />
               </ChatToolbarButton>
             </ChatToolbarAddon>
