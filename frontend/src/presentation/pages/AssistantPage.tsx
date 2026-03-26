@@ -101,6 +101,7 @@ export function AssistantPage() {
   const [toolStatuses, setToolStatuses] = useState<ToolStatusItem[]>([])
   const [isThinking, setIsThinking] = useState(false)
   const [thinkingMessage, setThinkingMessage] = useState('')
+  const [hasThought, setHasThought] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const streamBufferRef = useRef('')
@@ -158,6 +159,7 @@ export function AssistantPage() {
 
         case 'thinking':
           setIsThinking(true)
+          setHasThought(true)
           setThinkingMessage(data.content || 'Thinking...')
           break
 
@@ -186,6 +188,7 @@ export function AssistantPage() {
           })
           setToolStatuses([])
           setIsThinking(false)
+          setHasThought(false)
           setIsStreaming(false)
           streamBufferRef.current = ''
           refetch()
@@ -372,10 +375,10 @@ export function AssistantPage() {
                     </Message>
                   ))}
 
-                  {isThinking && (
+                  {(isThinking || hasThought) && (
                     <Reasoning isStreaming={isThinking}>
                       <ReasoningTrigger />
-                      <ReasoningContent>{thinkingMessage}</ReasoningContent>
+                      <ReasoningContent>{thinkingMessage || 'Thinking...'}</ReasoningContent>
                     </Reasoning>
                   )}
 
