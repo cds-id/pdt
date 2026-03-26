@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/cds-id/pdt/backend/internal/services"
@@ -138,6 +139,93 @@ func (c *Client) FetchBranchCommits(owner, repo, branch, token string, since tim
 	}
 
 	return allCommits, nil
+}
+
+func (c *Client) FetchCommitDiff(owner, repo, sha, token string) (*services.CommitDiff, error) {
+	projectPath := url.PathEscape(owner + "/" + repo)
+
+	// Fetch commit detail for message
+	commitURL := fmt.Sprintf("%s/api/v4/projects/%s/repository/commits/%s", c.BaseURL, projectPath, sha)
+	commitBody, err := c.doRequest(commitURL, token)
+	if err != nil {
+		return nil, fmt.Errorf("fetch commit detail: %w", err)
+	}
+
+	var commitResp struct {
+		ID      string `json:"id"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(commitBody, &commitResp); err != nil {
+		return nil, fmt.Errorf("parse commit detail: %w", err)
+	}
+
+	// Fetch diff
+	diffURL := fmt.Sprintf("%s/api/v4/projects/%s/repository/commits/%s/diff", c.BaseURL, projectPath, sha)
+	diffBody, err := c.doRequest(diffURL, token)
+	if err != nil {
+		return nil, fmt.Errorf("fetch commit diff: %w", err)
+	}
+
+	var fileDiffs []struct {
+		OldPath     string `json:"old_path"`
+		NewPath     string `json:"new_path"`
+		NewFile     bool   `json:"new_file"`
+		RenamedFile bool   `json:"renamed_file"`
+		DeletedFile bool   `json:"deleted_file"`
+		Diff        string `json:"diff"`
+	}
+	if err := json.Unmarshal(diffBody, &fileDiffs); err != nil {
+		return nil, fmt.Errorf("parse commit diff: %w", err)
+	}
+
+	diff := &services.CommitDiff{
+		SHA:     commitResp.ID,
+		Message: commitResp.Message,
+	}
+
+	for _, f := range fileDiffs {
+		status := "modified"
+		if f.NewFile {
+			status = "added"
+		} else if f.DeletedFile {
+			status = "removed"
+		} else if f.RenamedFile {
+			status = "renamed"
+		}
+
+		patch := f.Diff
+		if len(patch) > 500 {
+			patch = patch[:500] + "\n... (truncated)"
+		}
+
+		// Count additions/deletions from diff lines
+		additions, deletions := 0, 0
+		for _, line := range strings.Split(f.Diff, "\n") {
+			if len(line) > 0 && line[0] == '+' && (len(line) < 3 || line[1] != '+' || line[2] != '+') {
+				additions++
+			} else if len(line) > 0 && line[0] == '-' && (len(line) < 3 || line[1] != '-' || line[2] != '-') {
+				deletions++
+			}
+		}
+
+		filename := f.NewPath
+		if filename == "" {
+			filename = f.OldPath
+		}
+
+		diff.Files = append(diff.Files, services.FileChange{
+			Filename:  filename,
+			Status:    status,
+			Additions: additions,
+			Deletions: deletions,
+			Patch:     patch,
+		})
+		diff.Stats.Additions += additions
+		diff.Stats.Deletions += deletions
+		diff.Stats.Total += additions + deletions
+	}
+
+	return diff, nil
 }
 
 func (c *Client) ValidateAccess(owner, repo, token string) error {

@@ -7,13 +7,18 @@ import (
 	"time"
 
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
+	"github.com/cds-id/pdt/backend/internal/crypto"
 	"github.com/cds-id/pdt/backend/internal/models"
+	"github.com/cds-id/pdt/backend/internal/services"
+	githubsvc "github.com/cds-id/pdt/backend/internal/services/github"
+	gitlabsvc "github.com/cds-id/pdt/backend/internal/services/gitlab"
 	"gorm.io/gorm"
 )
 
 type GitAgent struct {
-	DB     *gorm.DB
-	UserID uint
+	DB        *gorm.DB
+	UserID    uint
+	Encryptor *crypto.Encryptor
 }
 
 func shortSHA(sha string) string {
@@ -73,6 +78,28 @@ func (a *GitAgent) Tools() []minimax.Tool {
 				"required": ["sha"]
 			}`),
 		},
+		{
+			Name:        "get_commit_changes",
+			Description: "Get the file changes and diff for a specific commit",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"sha": {"type": "string", "description": "Commit SHA (full or short)"}
+				},
+				"required": ["sha"]
+			}`),
+		},
+		{
+			Name:        "analyze_card_changes",
+			Description: "Get all file changes across all commits linked to a Jira card",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"card_key": {"type": "string", "description": "Jira card key (e.g. PROJ-123)"}
+				},
+				"required": ["card_key"]
+			}`),
+		},
 	}
 }
 
@@ -86,6 +113,10 @@ func (a *GitAgent) ExecuteTool(ctx context.Context, name string, args json.RawMe
 		return a.getRepoStats(args)
 	case "get_commit_detail":
 		return a.getCommitDetail(args)
+	case "get_commit_changes":
+		return a.getCommitChanges(args)
+	case "analyze_card_changes":
+		return a.analyzeCardChanges(args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -246,4 +277,134 @@ func (a *GitAgent) getCommitDetail(args json.RawMessage) (any, error) {
 		"jira_key":     commit.JiraCardKey,
 		"has_link":     commit.HasLink,
 	}, nil
+}
+
+func (a *GitAgent) fetchDiffForCommit(commit models.Commit) (*services.CommitDiff, error) {
+	if a.Encryptor == nil {
+		return nil, fmt.Errorf("encryptor not configured")
+	}
+
+	repo := commit.Repository
+
+	// Load user to get token
+	var user models.User
+	if err := a.DB.First(&user, a.UserID).Error; err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	var provider services.DiffProvider
+	switch repo.Provider {
+	case models.ProviderGitHub:
+		token, err := a.Encryptor.Decrypt(user.GithubToken)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt github token: %w", err)
+		}
+		client := githubsvc.New()
+		return client.FetchCommitDiff(repo.Owner, repo.Name, commit.SHA, token)
+	case models.ProviderGitLab:
+		token, err := a.Encryptor.Decrypt(user.GitlabToken)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt gitlab token: %w", err)
+		}
+		client := gitlabsvc.New(user.GitlabURL)
+		provider = client
+		return provider.FetchCommitDiff(repo.Owner, repo.Name, commit.SHA, token)
+	default:
+		return nil, fmt.Errorf("unsupported provider: %s", repo.Provider)
+	}
+}
+
+func (a *GitAgent) getCommitChanges(args json.RawMessage) (any, error) {
+	var params struct {
+		SHA string `json:"sha"`
+	}
+	json.Unmarshal(args, &params)
+
+	var commit models.Commit
+	if err := a.DB.Joins("JOIN repositories ON repositories.id = commits.repo_id").
+		Where("repositories.user_id = ? AND commits.sha LIKE ?", a.UserID, params.SHA+"%").
+		Preload("Repository").
+		First(&commit).Error; err != nil {
+		return nil, fmt.Errorf("commit not found: %s", params.SHA)
+	}
+
+	diff, err := a.fetchDiffForCommit(commit)
+	if err != nil {
+		return nil, fmt.Errorf("fetch diff: %w", err)
+	}
+
+	return diff, nil
+}
+
+func (a *GitAgent) analyzeCardChanges(args json.RawMessage) (any, error) {
+	var params struct {
+		CardKey string `json:"card_key"`
+	}
+	json.Unmarshal(args, &params)
+
+	var commits []models.Commit
+	if err := a.DB.Joins("JOIN repositories ON repositories.id = commits.repo_id").
+		Where("repositories.user_id = ? AND commits.jira_card_key = ?", a.UserID, params.CardKey).
+		Preload("Repository").
+		Find(&commits).Error; err != nil {
+		return nil, fmt.Errorf("query commits: %w", err)
+	}
+
+	if len(commits) == 0 {
+		return map[string]any{
+			"card_key":     params.CardKey,
+			"total_commits": 0,
+			"message":      "no commits linked to this card",
+		}, nil
+	}
+
+	type fileSummary struct {
+		Filename   string `json:"filename"`
+		Additions  int    `json:"additions"`
+		Deletions  int    `json:"deletions"`
+		CommitCount int   `json:"commit_count"`
+	}
+
+	fileMap := map[string]*fileSummary{}
+	totalAdditions, totalDeletions := 0, 0
+	fetchedCount := 0
+	var fetchErrors []string
+
+	for _, commit := range commits {
+		diff, err := a.fetchDiffForCommit(commit)
+		if err != nil {
+			fetchErrors = append(fetchErrors, fmt.Sprintf("%s: %v", commit.SHA[:8], err))
+			continue
+		}
+		fetchedCount++
+
+		for _, f := range diff.Files {
+			if _, ok := fileMap[f.Filename]; !ok {
+				fileMap[f.Filename] = &fileSummary{Filename: f.Filename}
+			}
+			fileMap[f.Filename].Additions += f.Additions
+			fileMap[f.Filename].Deletions += f.Deletions
+			fileMap[f.Filename].CommitCount++
+		}
+		totalAdditions += diff.Stats.Additions
+		totalDeletions += diff.Stats.Deletions
+	}
+
+	var files []fileSummary
+	for _, f := range fileMap {
+		files = append(files, *f)
+	}
+
+	result := map[string]any{
+		"card_key":         params.CardKey,
+		"total_commits":    len(commits),
+		"fetched_commits":  fetchedCount,
+		"total_additions":  totalAdditions,
+		"total_deletions":  totalDeletions,
+		"files_changed":    files,
+	}
+	if len(fetchErrors) > 0 {
+		result["fetch_errors"] = fetchErrors
+	}
+	return result, nil
 }

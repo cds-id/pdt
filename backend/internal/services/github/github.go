@@ -136,6 +136,63 @@ func (c *Client) FetchBranchCommits(owner, repo, branch, token string, since tim
 	return allCommits, nil
 }
 
+func (c *Client) FetchCommitDiff(owner, repo, sha, token string) (*services.CommitDiff, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/commits/%s", baseURL, owner, repo, sha)
+	body, err := c.doRequest(url, token)
+	if err != nil {
+		return nil, fmt.Errorf("fetch commit diff: %w", err)
+	}
+
+	var resp struct {
+		SHA    string `json:"sha"`
+		Commit struct {
+			Message string `json:"message"`
+		} `json:"commit"`
+		Files []struct {
+			Filename  string `json:"filename"`
+			Status    string `json:"status"`
+			Additions int    `json:"additions"`
+			Deletions int    `json:"deletions"`
+			Patch     string `json:"patch"`
+		} `json:"files"`
+		Stats struct {
+			Additions int `json:"additions"`
+			Deletions int `json:"deletions"`
+			Total     int `json:"total"`
+		} `json:"stats"`
+	}
+
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("parse commit diff: %w", err)
+	}
+
+	diff := &services.CommitDiff{
+		SHA:     resp.SHA,
+		Message: resp.Commit.Message,
+		Stats: services.DiffStats{
+			Additions: resp.Stats.Additions,
+			Deletions: resp.Stats.Deletions,
+			Total:     resp.Stats.Total,
+		},
+	}
+
+	for _, f := range resp.Files {
+		patch := f.Patch
+		if len(patch) > 500 {
+			patch = patch[:500] + "\n... (truncated)"
+		}
+		diff.Files = append(diff.Files, services.FileChange{
+			Filename:  f.Filename,
+			Status:    f.Status,
+			Additions: f.Additions,
+			Deletions: f.Deletions,
+			Patch:     patch,
+		})
+	}
+
+	return diff, nil
+}
+
 func (c *Client) ValidateAccess(owner, repo, token string) error {
 	url := fmt.Sprintf("%s/repos/%s/%s", baseURL, owner, repo)
 	_, err := c.doRequest(url, token)
