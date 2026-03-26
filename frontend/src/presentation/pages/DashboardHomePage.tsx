@@ -1,7 +1,7 @@
 import {
   GitCommit,
   Link2,
-  Trello,
+  Kanban,
   RefreshCw,
   GitBranch,
   RotateCcw,
@@ -84,7 +84,7 @@ export function DashboardHomePage() {
       title: 'Active Sprint',
       value: activeSprintCards,
       description: activeSprint?.name || 'No active sprint',
-      icon: Trello
+      icon: Kanban
     },
     {
       title: 'Repositories',

@@ -63,22 +63,22 @@ export default {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			},
-			pdt: {
-				primary: {
-					DEFAULT: '#1B1B1E',
-					light: '#2d2d32',
-					dark: '#000000',
-				},
-				accent: {
-					DEFAULT: '#F8C630',
-					hover: '#E5A100',
-					dark: '#CC8400',
-				},
-				background: '#F8C630',
-				danger: '#96031A',
-				neutral: '#FBFFFE',
-			},
-		},
+  			pdt: {
+  				primary: {
+  					DEFAULT: '#1B1B1E',
+  					light: '#2d2d32',
+  					dark: '#000000'
+  				},
+  				accent: {
+  					DEFAULT: '#F8C630',
+  					hover: '#E5A100',
+  					dark: '#CC8400'
+  				},
+  				background: '#F8C630',
+  				danger: '#96031A',
+  				neutral: '#FBFFFE'
+  			}
+  		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
@@ -87,7 +87,7 @@ export default {
   		keyframes: {
   			'accordion-down': {
   				from: {
-  					height: 0
+  					height: '0'
   				},
   				to: {
   					height: 'var(--radix-accordion-content-height)'
@@ -98,7 +98,7 @@ export default {
   					height: 'var(--radix-accordion-content-height)'
   				},
   				to: {
-  					height: 0
+  					height: '0'
   				}
   			}
   		},

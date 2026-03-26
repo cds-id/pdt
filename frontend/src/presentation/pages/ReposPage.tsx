@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Github, Gitlab } from 'lucide-react'
+import { Plus, Trash2, GitBranch } from 'lucide-react'
 
 import {
   useListReposQuery,
@@ -97,9 +97,9 @@ export function ReposPage() {
                     }`}
                   >
                     {repo.provider === 'github' ? (
-                      <Github className="size-5 text-pdt-neutral" />
+                      <GitBranch className="size-5 text-pdt-neutral" />
                     ) : (
-                      <Gitlab className="size-5 text-pdt-neutral" />
+                      <GitBranch className="size-5 text-pdt-neutral" />
                     )}
                   </div>
                   <div>

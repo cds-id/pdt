@@ -2,7 +2,7 @@ import {
   LayoutDashboard,
   GitBranch,
   GitCommit,
-  Trello,
+  Kanban,
   FileText,
   Settings,
   Bot,
@@ -32,7 +32,7 @@ export const dashboardNavigation: NavGroup[] = [
   },
   {
     title: 'Integrations',
-    items: [{ title: 'Jira', href: '/dashboard/jira', icon: Trello }]
+    items: [{ title: 'Jira', href: '/dashboard/jira', icon: Kanban }]
   },
   {
     title: 'Reports',
