@@ -9,7 +9,7 @@ import {
   ChatEventContent,
   ChatEventTitle,
   ChatEventTime,
-} from '@/components/chat/chat-event'
+} from '../../../components/chat/chat-event'
 
 interface ChatMessageProps {
   role: 'user' | 'assistant'

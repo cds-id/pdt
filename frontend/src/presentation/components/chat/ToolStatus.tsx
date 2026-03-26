@@ -1,5 +1,5 @@
 import { Loader2, CheckCircle } from 'lucide-react'
-import { ChatEvent, ChatEventAddon, ChatEventBody, ChatEventContent } from '@/components/chat/chat-event'
+import { ChatEvent, ChatEventAddon, ChatEventBody, ChatEventContent } from '../../../components/chat/chat-event'
 
 interface ToolStatusProps {
   toolName: string

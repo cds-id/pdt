@@ -11,14 +11,14 @@ import { ChatSidebar } from '../components/chat/ChatSidebar'
 import { ChatMessage } from '../components/chat/ChatMessage'
 import { ThinkingIndicator } from '../components/chat/ThinkingIndicator'
 import { ToolStatus } from '../components/chat/ToolStatus'
-import { Chat } from '@/components/chat/chat'
-import { ChatMessages } from '@/components/chat/chat-messages'
+import { Chat } from '../../components/chat/chat'
+import { ChatMessages } from '../../components/chat/chat-messages'
 import {
   ChatToolbar,
   ChatToolbarTextarea,
   ChatToolbarAddon,
   ChatToolbarButton,
-} from '@/components/chat/chat-toolbar'
+} from '../../components/chat/chat-toolbar'
 import type { IWSResponse } from '../../domain/chat/interfaces/chat.interface'
 
 interface DisplayMessage {

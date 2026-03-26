@@ -1,5 +1,5 @@
 import { Brain } from 'lucide-react'
-import { ChatEvent, ChatEventAddon, ChatEventBody, ChatEventContent } from '@/components/chat/chat-event'
+import { ChatEvent, ChatEventAddon, ChatEventBody, ChatEventContent } from '../../../components/chat/chat-event'
 
 interface ThinkingIndicatorProps {
   message: string
