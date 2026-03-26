@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Send } from 'lucide-react'
 import { useAppSelector } from '../../application/hooks/useAppSelector'
 import {
   useListConversationsQuery,
@@ -8,8 +9,16 @@ import { API_CONSTANTS } from '../../infrastructure/constants/api.constants'
 import { PageHeader } from '../components/common/PageHeader'
 import { ChatSidebar } from '../components/chat/ChatSidebar'
 import { ChatMessage } from '../components/chat/ChatMessage'
-import { ChatInput } from '../components/chat/ChatInput'
+import { ThinkingIndicator } from '../components/chat/ThinkingIndicator'
 import { ToolStatus } from '../components/chat/ToolStatus'
+import { Chat } from '@/components/chat/chat'
+import { ChatMessages } from '@/components/chat/chat-messages'
+import {
+  ChatToolbar,
+  ChatToolbarTextarea,
+  ChatToolbarAddon,
+  ChatToolbarButton,
+} from '@/components/chat/chat-toolbar'
 import type { IWSResponse } from '../../domain/chat/interfaces/chat.interface'
 
 interface DisplayMessage {
@@ -35,17 +44,9 @@ export function AssistantPage() {
   const [isThinking, setIsThinking] = useState(false)
   const [thinkingMessage, setThinkingMessage] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
+  const [inputValue, setInputValue] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const streamBufferRef = useRef('')
-
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [])
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages, toolStatuses, scrollToBottom])
 
   // Connect WebSocket
   useEffect(() => {
@@ -150,7 +151,7 @@ export function AssistantPage() {
     }
   }, [token])
 
-  const handleSend = (content: string) => {
+  const handleSend = useCallback((content: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
 
     setMessages((prev) => [
@@ -167,7 +168,14 @@ export function AssistantPage() {
         conversation_id: activeConversationId,
       })
     )
-  }
+  }, [activeConversationId])
+
+  const handleSubmit = useCallback(() => {
+    const trimmed = inputValue.trim()
+    if (!trimmed || isStreaming) return
+    handleSend(trimmed)
+    setInputValue('')
+  }, [inputValue, isStreaming, handleSend])
 
   const handleNewConversation = () => {
     setActiveConversationId(undefined)
@@ -220,38 +228,43 @@ export function AssistantPage() {
           onNew={handleNewConversation}
           onDelete={handleDeleteConversation}
         />
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 0 && (
-              <div className="flex items-center justify-center h-full text-pdt-neutral-500 text-sm">
-                Start a conversation — ask about your commits, Jira cards, or reports.
-              </div>
-            )}
-            {messages.map((msg) => (
-              <ChatMessage
-                key={msg.id}
-                role={msg.role}
-                content={msg.content}
-                isStreaming={msg.isStreaming}
-              />
-            ))}
-            {isThinking && (
-              <div className="flex items-center gap-2 text-sm text-pdt-neutral-400 px-3 py-2">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-pdt-accent animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-pdt-accent animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-pdt-accent animate-bounce" style={{ animationDelay: '300ms' }} />
+        <Chat className="flex-1">
+          <ChatMessages>
+            <div className="flex flex-col">
+              {messages.length === 0 && (
+                <div className="flex items-center justify-center h-full min-h-[200px] text-pdt-neutral-500 text-sm">
+                  Start a conversation...
                 </div>
-                <span>{thinkingMessage}</span>
-              </div>
-            )}
-            {toolStatuses.map((ts) => (
-              <ToolStatus key={ts.tool} toolName={ts.tool} status={ts.status} />
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-          <ChatInput onSend={handleSend} disabled={isStreaming} />
-        </div>
+              )}
+              {messages.map((msg) => (
+                <ChatMessage
+                  key={msg.id}
+                  role={msg.role}
+                  content={msg.content}
+                  isStreaming={msg.isStreaming}
+                />
+              ))}
+              {isThinking && <ThinkingIndicator message={thinkingMessage} />}
+              {toolStatuses.map((ts) => (
+                <ToolStatus key={ts.tool} toolName={ts.tool} status={ts.status} />
+              ))}
+            </div>
+          </ChatMessages>
+          <ChatToolbar>
+            <ChatToolbarTextarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onSubmit={handleSubmit}
+              placeholder="Ask about your commits, Jira cards, or reports..."
+              disabled={isStreaming}
+            />
+            <ChatToolbarAddon align="inline-end">
+              <ChatToolbarButton onClick={handleSubmit} disabled={isStreaming || !inputValue.trim()}>
+                <Send />
+              </ChatToolbarButton>
+            </ChatToolbarAddon>
+          </ChatToolbar>
+        </Chat>
       </div>
     </div>
   )

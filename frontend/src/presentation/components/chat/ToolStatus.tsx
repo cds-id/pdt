@@ -1,4 +1,5 @@
 import { Loader2, CheckCircle } from 'lucide-react'
+import { ChatEvent, ChatEventAddon, ChatEventBody, ChatEventContent } from '@/components/chat/chat-event'
 
 interface ToolStatusProps {
   toolName: string
@@ -8,6 +9,8 @@ interface ToolStatusProps {
 const toolLabels: Record<string, string> = {
   search_commits: 'Searching commits',
   get_commit_detail: 'Getting commit details',
+  get_commit_changes: 'Fetching code changes',
+  analyze_card_changes: 'Analyzing card changes',
   list_repos: 'Listing repositories',
   get_repo_stats: 'Getting repo statistics',
   get_sprints: 'Fetching sprints',
@@ -20,19 +23,33 @@ const toolLabels: Record<string, string> = {
   list_reports: 'Listing reports',
   get_report: 'Getting report',
   preview_template: 'Previewing template',
+  search_comments: 'Searching comments',
+  get_card_comments: 'Fetching card comments',
+  find_person_statements: 'Finding statements',
+  get_comment_timeline: 'Building timeline',
+  detect_quality_issues: 'Detecting quality issues',
+  check_requirement_coverage: 'Checking requirement coverage',
 }
 
 export function ToolStatus({ toolName, status }: ToolStatusProps) {
   const label = toolLabels[toolName] || toolName
 
   return (
-    <div className="flex items-center gap-2 text-xs text-pdt-neutral-400 py-1 px-3">
-      {status === 'executing' ? (
-        <Loader2 className="w-3 h-3 animate-spin" />
-      ) : (
-        <CheckCircle className="w-3 h-3 text-green-500" />
-      )}
-      <span>{label}...</span>
-    </div>
+    <ChatEvent className="py-1">
+      <ChatEventAddon className="w-10">
+        <div className="size-5 flex items-center justify-center">
+          {status === 'executing' ? (
+            <Loader2 className="size-3.5 animate-spin text-pdt-accent" />
+          ) : (
+            <CheckCircle className="size-3.5 text-green-500" />
+          )}
+        </div>
+      </ChatEventAddon>
+      <ChatEventBody>
+        <ChatEventContent className="text-xs text-pdt-neutral-400">
+          {label}...
+        </ChatEventContent>
+      </ChatEventBody>
+    </ChatEvent>
   )
 }
