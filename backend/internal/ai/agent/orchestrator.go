@@ -37,26 +37,23 @@ If the user's message is a simple greeting or general question not related to an
 For all other messages, use the route_to_agent tool to delegate to the appropriate agent.`
 
 var routerTool = minimax.Tool{
-	Type: "function",
-	Function: minimax.FunctionDef{
-		Name:        "route_to_agent",
-		Description: "Route the user's message to a specialist agent",
-		Parameters: json.RawMessage(`{
-			"type": "object",
-			"properties": {
-				"agent_name": {
-					"type": "string",
-					"enum": ["git", "jira", "report"],
-					"description": "The specialist agent to route to"
-				},
-				"reason": {
-					"type": "string",
-					"description": "Brief reason for routing to this agent"
-				}
+	Name:        "route_to_agent",
+	Description: "Route the user's message to a specialist agent",
+	InputSchema: json.RawMessage(`{
+		"type": "object",
+		"properties": {
+			"agent_name": {
+				"type": "string",
+				"enum": ["git", "jira", "report"],
+				"description": "The specialist agent to route to"
 			},
-			"required": ["agent_name", "reason"]
-		}`),
-	},
+			"reason": {
+				"type": "string",
+				"description": "Brief reason for routing to this agent"
+			}
+		},
+		"required": ["agent_name", "reason"]
+	}`),
 }
 
 func (o *Orchestrator) HandleMessage(ctx context.Context, messages []minimax.Message, writer StreamWriter) (*LoopResult, error) {

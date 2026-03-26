@@ -24,7 +24,7 @@ export interface IWSMessage {
 }
 
 export interface IWSResponse {
-  type: 'stream' | 'tool_status' | 'done' | 'error'
+  type: 'stream' | 'thinking' | 'tool_status' | 'done' | 'error'
   content?: string
   conversation_id?: string
   tool?: string

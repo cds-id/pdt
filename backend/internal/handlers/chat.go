@@ -50,6 +50,14 @@ func (w *wsStreamWriter) WriteContent(content string) error {
 	})
 }
 
+func (w *wsStreamWriter) WriteThinking(message string) error {
+	return w.writeJSON(map[string]string{
+		"type":            "thinking",
+		"content":         message,
+		"conversation_id": w.conversationID,
+	})
+}
+
 func (w *wsStreamWriter) WriteToolStatus(toolName, status string) error {
 	return w.writeJSON(map[string]string{
 		"type":   "tool_status",

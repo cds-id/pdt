@@ -71,6 +71,11 @@ func RunLoop(ctx context.Context, client *minimax.Client, agent Agent, messages 
 			}, nil
 		}
 
+		// Send thinking indicator before executing tools
+		if err := writer.WriteThinking("Analyzing your request..."); err != nil {
+			log.Printf("[agent-loop] write thinking error: %v", err)
+		}
+
 		conversation = append(conversation, minimax.Message{
 			Role:      "assistant",
 			Content:   fullContent,

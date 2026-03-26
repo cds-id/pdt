@@ -29,74 +29,59 @@ func (a *ReportAgent) SystemPrompt() string {
 func (a *ReportAgent) Tools() []minimax.Tool {
 	return []minimax.Tool{
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "generate_daily_report",
-				Description: "Generate a daily development report for a specific date",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"date": {"type": "string", "description": "Date in YYYY-MM-DD format (default: today)"}
-					}
-				}`),
-			},
+			Name:        "generate_daily_report",
+			Description: "Generate a daily development report for a specific date",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"date": {"type": "string", "description": "Date in YYYY-MM-DD format (default: today)"}
+				}
+			}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "generate_monthly_report",
-				Description: "Generate a monthly report with aggregated stats and AI narrative",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"month": {"type": "integer", "description": "Month number (1-12)"},
-						"year": {"type": "integer", "description": "Year (e.g., 2026)"}
-					},
-					"required": ["month", "year"]
-				}`),
-			},
+			Name:        "generate_monthly_report",
+			Description: "Generate a monthly report with aggregated stats and AI narrative",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"month": {"type": "integer", "description": "Month number (1-12)"},
+					"year": {"type": "integer", "description": "Year (e.g., 2026)"}
+				},
+				"required": ["month", "year"]
+			}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "list_reports",
-				Description: "List existing reports, optionally filtered by type",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"report_type": {"type": "string", "enum": ["daily", "monthly"], "description": "Filter by report type"},
-						"limit": {"type": "integer", "description": "Max results (default 20)"}
-					}
-				}`),
-			},
+			Name:        "list_reports",
+			Description: "List existing reports, optionally filtered by type",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"report_type": {"type": "string", "enum": ["daily", "monthly"], "description": "Filter by report type"},
+					"limit": {"type": "integer", "description": "Max results (default 20)"}
+				}
+			}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "get_report",
-				Description: "Get the full content of a specific report by ID",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"id": {"type": "integer", "description": "Report ID"}
-					},
-					"required": ["id"]
-				}`),
-			},
+			Name:        "get_report",
+			Description: "Get the full content of a specific report by ID",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"id": {"type": "integer", "description": "Report ID"}
+				},
+				"required": ["id"]
+			}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "preview_template",
-				Description: "Preview a report template rendered with today's data",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"template_id": {"type": "integer", "description": "Template ID to preview"}
-					},
-					"required": ["template_id"]
-				}`),
-			},
+			Name:        "preview_template",
+			Description: "Preview a report template rendered with today's data",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"template_id": {"type": "integer", "description": "Template ID to preview"}
+				},
+				"required": ["template_id"]
+			}`),
 		},
 	}
 }

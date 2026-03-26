@@ -32,58 +32,46 @@ func (a *GitAgent) SystemPrompt() string {
 func (a *GitAgent) Tools() []minimax.Tool {
 	return []minimax.Tool{
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "search_commits",
-				Description: "Search commits by message keyword, author, repo, or date range",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"keyword": {"type": "string", "description": "Search keyword in commit message"},
-						"repo": {"type": "string", "description": "Repository name filter"},
-						"since": {"type": "string", "description": "Start date (YYYY-MM-DD)"},
-						"until": {"type": "string", "description": "End date (YYYY-MM-DD)"},
-						"limit": {"type": "integer", "description": "Max results (default 20)"}
-					}
-				}`),
-			},
+			Name:        "search_commits",
+			Description: "Search commits by message keyword, author, repo, or date range",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"keyword": {"type": "string", "description": "Search keyword in commit message"},
+					"repo": {"type": "string", "description": "Repository name filter"},
+					"since": {"type": "string", "description": "Start date (YYYY-MM-DD)"},
+					"until": {"type": "string", "description": "End date (YYYY-MM-DD)"},
+					"limit": {"type": "integer", "description": "Max results (default 20)"}
+				}
+			}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "list_repos",
-				Description: "List all tracked repositories for the user",
-				Parameters: json.RawMessage(`{"type": "object", "properties": {}}`),
-			},
+			Name:        "list_repos",
+			Description: "List all tracked repositories for the user",
+			InputSchema: json.RawMessage(`{"type": "object", "properties": {}}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "get_repo_stats",
-				Description: "Get commit statistics for a specific repository",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"repo": {"type": "string", "description": "Repository name"},
-						"days": {"type": "integer", "description": "Number of days to look back (default 30)"}
-					},
-					"required": ["repo"]
-				}`),
-			},
+			Name:        "get_repo_stats",
+			Description: "Get commit statistics for a specific repository",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"repo": {"type": "string", "description": "Repository name"},
+					"days": {"type": "integer", "description": "Number of days to look back (default 30)"}
+				},
+				"required": ["repo"]
+			}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "get_commit_detail",
-				Description: "Get detailed information about a specific commit by SHA",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"sha": {"type": "string", "description": "Commit SHA (full or short)"}
-					},
-					"required": ["sha"]
-				}`),
-			},
+			Name:        "get_commit_detail",
+			Description: "Get detailed information about a specific commit by SHA",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"sha": {"type": "string", "description": "Commit SHA (full or short)"}
+				},
+				"required": ["sha"]
+			}`),
 		},
 	}
 }

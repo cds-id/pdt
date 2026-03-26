@@ -25,77 +25,62 @@ func (a *JiraAgent) SystemPrompt() string {
 func (a *JiraAgent) Tools() []minimax.Tool {
 	return []minimax.Tool{
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "get_sprints",
-				Description: "List all synced Jira sprints, optionally filtered by state",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"state": {"type": "string", "enum": ["active", "closed", "future"], "description": "Filter by sprint state"}
-					}
-				}`),
-			},
+			Name:        "get_sprints",
+			Description: "List all synced Jira sprints, optionally filtered by state",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"state": {"type": "string", "enum": ["active", "closed", "future"], "description": "Filter by sprint state"}
+				}
+			}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "get_cards",
-				Description: "List Jira cards, optionally filtered by sprint or status",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"sprint_id": {"type": "integer", "description": "Filter by sprint ID"},
-						"status": {"type": "string", "description": "Filter by card status (e.g., 'Done', 'In Progress')"},
-						"keyword": {"type": "string", "description": "Search keyword in card summary"},
-						"limit": {"type": "integer", "description": "Max results (default 30)"}
-					}
-				}`),
-			},
+			Name:        "get_cards",
+			Description: "List Jira cards, optionally filtered by sprint or status",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"sprint_id": {"type": "integer", "description": "Filter by sprint ID"},
+					"status": {"type": "string", "description": "Filter by card status (e.g., 'Done', 'In Progress')"},
+					"keyword": {"type": "string", "description": "Search keyword in card summary"},
+					"limit": {"type": "integer", "description": "Max results (default 30)"}
+				}
+			}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "get_card_detail",
-				Description: "Get detailed information about a specific Jira card by key",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"key": {"type": "string", "description": "Jira card key (e.g., PDT-123)"}
-					},
-					"required": ["key"]
-				}`),
-			},
+			Name:        "get_card_detail",
+			Description: "Get detailed information about a specific Jira card by key",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"key": {"type": "string", "description": "Jira card key (e.g., PDT-123)"}
+				},
+				"required": ["key"]
+			}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "search_cards",
-				Description: "Search Jira cards by keyword across all sprints",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"keyword": {"type": "string", "description": "Search keyword"},
-						"limit": {"type": "integer", "description": "Max results (default 20)"}
-					},
-					"required": ["keyword"]
-				}`),
-			},
+			Name:        "search_cards",
+			Description: "Search Jira cards by keyword across all sprints",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"keyword": {"type": "string", "description": "Search keyword"},
+					"limit": {"type": "integer", "description": "Max results (default 20)"}
+				},
+				"required": ["keyword"]
+			}`),
 		},
 		{
-			Type: "function",
-			Function: minimax.FunctionDef{
-				Name:        "link_commit_to_card",
-				Description: "Link a commit to a Jira card by SHA and card key",
-				Parameters: json.RawMessage(`{
-					"type": "object",
-					"properties": {
-						"sha": {"type": "string", "description": "Commit SHA (full or short)"},
-						"card_key": {"type": "string", "description": "Jira card key (e.g., PDT-123)"}
-					},
-					"required": ["sha", "card_key"]
-				}`),
-			},
+			Name:        "link_commit_to_card",
+			Description: "Link a commit to a Jira card by SHA and card key",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"sha": {"type": "string", "description": "Commit SHA (full or short)"},
+					"card_key": {"type": "string", "description": "Jira card key (e.g., PDT-123)"}
+				},
+				"required": ["sha", "card_key"]
+			}`),
 		},
 	}
 }

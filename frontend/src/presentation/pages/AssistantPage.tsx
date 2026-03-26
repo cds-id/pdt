@@ -32,6 +32,8 @@ export function AssistantPage() {
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>()
   const [messages, setMessages] = useState<DisplayMessage[]>([])
   const [toolStatuses, setToolStatuses] = useState<ToolStatusItem[]>([])
+  const [isThinking, setIsThinking] = useState(false)
+  const [thinkingMessage, setThinkingMessage] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -61,6 +63,7 @@ export function AssistantPage() {
 
       switch (data.type) {
         case 'stream':
+          setIsThinking(false)
           if (data.conversation_id && !activeConversationId) {
             setActiveConversationId(data.conversation_id)
           }
@@ -85,7 +88,13 @@ export function AssistantPage() {
           })
           break
 
+        case 'thinking':
+          setIsThinking(true)
+          setThinkingMessage(data.content || 'Thinking...')
+          break
+
         case 'tool_status':
+          setIsThinking(false)
           if (data.tool && data.status) {
             setToolStatuses((prev) => {
               const existing = prev.findIndex((t) => t.tool === data.tool)
@@ -108,6 +117,7 @@ export function AssistantPage() {
             return prev
           })
           setToolStatuses([])
+          setIsThinking(false)
           setIsStreaming(false)
           streamBufferRef.current = ''
           refetch()
@@ -225,6 +235,16 @@ export function AssistantPage() {
                 isStreaming={msg.isStreaming}
               />
             ))}
+            {isThinking && (
+              <div className="flex items-center gap-2 text-sm text-pdt-neutral-400 px-3 py-2">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 rounded-full bg-pdt-accent animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-pdt-accent animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-pdt-accent animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+                <span>{thinkingMessage}</span>
+              </div>
+            )}
             {toolStatuses.map((ts) => (
               <ToolStatus key={ts.tool} toolName={ts.tool} status={ts.status} />
             ))}

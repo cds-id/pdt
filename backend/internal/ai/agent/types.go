@@ -16,6 +16,7 @@ type Agent interface {
 
 type StreamWriter interface {
 	WriteContent(content string) error
+	WriteThinking(message string) error
 	WriteToolStatus(toolName string, status string) error
 	WriteDone() error
 	WriteError(msg string) error
