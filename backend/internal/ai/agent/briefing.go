@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
@@ -20,28 +21,48 @@ func (a *BriefingAgent) Name() string { return "briefing" }
 
 func (a *BriefingAgent) SystemPrompt() string {
 	today := time.Now().Format("2006-01-02")
-	return fmt.Sprintf(`You are a Morning Briefing assistant for PDT. Today is %s. You understand Indonesian and English. You help developers prepare for standup/morning briefings.
 
-IMPORTANT: When user asks to prepare a briefing or report, you MUST call ALL relevant tools to build a complete picture. Do not just call one tool. A typical flow:
-1. Call generate_briefing (with appropriate days_back) to get done/in-progress/todo
-2. Call find_blockers to identify any blockers or risks
-3. Call search_comments to find miscommunication or unanswered questions from product/PM
-4. Call audit_sprint_cards if user asks for risk analysis
+	// Get user info for self-awareness
+	var user models.User
+	a.DB.First(&user, a.UserID)
+	username := user.JiraUsername
+	if username == "" {
+		username = "the user"
+	}
 
-After gathering all data, synthesize into a clear briefing report in the user's language (Indonesian or English based on their message).
+	return fmt.Sprintf(`You are a Morning Briefing assistant for PDT. Today is %s. You understand Indonesian and English.
 
-Format the final briefing as:
+CRITICAL RULES — NEVER BREAK THESE:
+1. NEVER fabricate or hallucinate data. Only present information that comes from tool results.
+2. If a tool returns empty results, say "tidak ada data" — do NOT make up comments, dates, or feedback.
+3. NEVER invent QA feedback, manager comments, or any text that is not in the tool results.
+4. When quoting comments, use the EXACT text from tool results. Do not paraphrase or embellish.
+
+SELF-AWARENESS:
+- The current user is "%s". When you see comments authored by "%s" or similar names, those are the USER'S OWN comments — they are explaining or responding to others, NOT external pressure.
+- Comments from other people (especially "siswamedia product", PMs, QA) are external — these may contain requests, questions, or pressure directed at the user.
+- Distinguish clearly: "Anda berkomentar: ..." vs "siswamedia product berkomentar: ..."
+
+WORKFLOW:
+- Prefer calling "full_report" tool which gathers all data in one call.
+- Present results based ONLY on tool output.
+
+FORMAT (respond in user's language):
 ## Laporan Morning Briefing — [date]
-### ✅ Selesai (Done)
-- [KEY] Summary — evidence (commits, dates)
+### ✅ Selesai (Done) — within requested timeframe
+- [KEY] Summary — completed on [date], commits: [evidence]
 ### 🔄 Sedang Dikerjakan (In Progress)
-- [KEY] Summary — status, last commit
+- [KEY] Summary — last commit [date]
+### 📋 Belum Dimulai (To Do)
+- [KEY] Summary
 ### ⚠️ Blocker / Risiko
-- [KEY] Issue — suggestion
-### 💬 Catatan Komunikasi
-- Any miscommunication, unanswered PM questions, or escalation risks
+- [KEY] Issue — severity, suggestion
+### 💬 Komentar Eksternal (dari orang lain)
+- [KEY] [author] on [date]: "[exact quote]"
+### 📝 Komentar Anda
+- [KEY] on [date]: "[exact quote]"
 
-Be direct, specific, and include card keys. The user needs this to defend their progress in front of product/PM.`, today)
+If no data exists for a section, write "Tidak ada" — do NOT fill it with made-up content.`, today, username, username)
 }
 
 func (a *BriefingAgent) Tools() []minimax.Tool {
@@ -180,23 +201,46 @@ func (a *BriefingAgent) fullReport(args json.RawMessage) (any, error) {
 	audit, _ := a.auditSprintCards(subArgs)
 	blockers, _ := a.findBlockers(subArgs)
 
-	// Search comments from non-assignee in the time window
+	// Search all comments in the time window
 	assignee := a.getAssignee(params.Assignee)
 	since := time.Now().AddDate(0, 0, -params.DaysBack).Format("2006-01-02")
 	commentArgs, _ := json.Marshal(map[string]any{
 		"since": since,
-		"limit": 30,
+		"limit": 50,
 	})
-	comments, _ := a.searchComments(commentArgs)
+	allComments, _ := a.searchComments(commentArgs)
+
+	// Split comments into user's own vs external
+	type commentEntry struct {
+		CardKey string `json:"card_key"`
+		Author  string `json:"author"`
+		Date    string `json:"date"`
+		Body    string `json:"body"`
+	}
+	var externalComments, myComments []commentEntry
+	// Convert through JSON to handle the local type
+	if raw, err := json.Marshal(allComments); err == nil {
+		var commentList []commentEntry
+		if json.Unmarshal(raw, &commentList) == nil {
+			for _, c := range commentList {
+				if assignee != "" && strings.Contains(strings.ToLower(c.Author), strings.ToLower(assignee)) {
+					myComments = append(myComments, c)
+				} else {
+					externalComments = append(externalComments, c)
+				}
+			}
+		}
+	}
 
 	return map[string]any{
-		"briefing":        briefing,
-		"audit":           audit,
-		"blockers":        blockers,
-		"recent_comments": comments,
-		"assignee":        assignee,
-		"date":            time.Now().Format("2006-01-02"),
-		"days_back":       params.DaysBack,
+		"briefing":           briefing,
+		"audit":              audit,
+		"blockers":           blockers,
+		"external_comments":  externalComments,
+		"my_comments":        myComments,
+		"assignee":           assignee,
+		"date":               time.Now().Format("2006-01-02"),
+		"days_back":          params.DaysBack,
 	}, nil
 }
 
