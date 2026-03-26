@@ -33,5 +33,8 @@ func Migrate(db *gorm.DB) error {
 		&models.JiraCard{},
 		&models.ReportTemplate{},
 		&models.Report{},
+		&models.Conversation{},
+		&models.ChatMessage{},
+		&models.AIUsage{},
 	)
 }
