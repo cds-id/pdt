@@ -32,6 +32,7 @@ Available agents:
 - "jira": Handles questions about Jira sprints, cards, issues, and linking commits to cards.
 - "report": Handles report generation (daily/monthly), listing reports, and report templates.
 - "proof": Handles finding evidence in Jira comments, detecting quality issues in cards, and checking requirement coverage. Use this when users ask about what someone said, want proof of decisions, or want to find quality problems.
+- "briefing": Handles morning briefing preparation, sprint auditing for risks, and blocker analysis. Use this when users ask to prepare for standup, audit their cards, find blockers, or identify risky tickets that could be questioned.
 
 If the user's message is a simple greeting or general question not related to any agent, respond directly without routing.
 
@@ -45,7 +46,7 @@ var routerTool = minimax.Tool{
 		"properties": {
 			"agent_name": {
 				"type": "string",
-				"enum": ["git", "jira", "report", "proof"],
+				"enum": ["git", "jira", "report", "proof", "briefing"],
 				"description": "The specialist agent to route to"
 			},
 			"reason": {
