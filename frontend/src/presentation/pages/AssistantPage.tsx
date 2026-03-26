@@ -311,12 +311,12 @@ export function AssistantPage() {
             <span className="hidden sm:inline">Back to Dashboard</span>
           </button>
         </div>
-        <span className="text-sm font-medium text-foreground">PDT Assistant</span>
-        <div className="w-[140px]" />
+        <span className="text-sm font-medium text-foreground hidden sm:inline">PDT Assistant</span>
+        <div className="hidden sm:block w-[140px]" />
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         <ChatSidebar
           conversations={conversations}
           activeId={activeConversationId}
@@ -325,9 +325,9 @@ export function AssistantPage() {
           onNew={() => { handleNewConversation(); setSidebarOpen(false) }}
           onDelete={handleDeleteConversation}
         />
-        <div className="flex-1 flex flex-col bg-[#242428] min-h-0">
+        <div className="flex-1 flex flex-col bg-[#242428] min-h-0 min-w-0">
           <Conversation className="flex-1 min-h-0">
-            <ConversationContent className="max-w-3xl mx-auto w-full">
+            <ConversationContent className="max-w-3xl mx-auto w-full px-3 sm:px-4">
               {messages.length === 0 ? (
                 <ConversationEmptyState>
                   <div className="flex flex-col items-center gap-3">
