@@ -10,6 +10,7 @@ Redesign the AI Assistant page from a poorly styled dashboard-embedded view into
 - Uses golden yellow (`#F8C630`) as background color — overwhelming and visually poor
 - Generic layout with no visual distinction from other dashboard pages
 - Messages lack visual hierarchy and polish
+- **Root cause:** `index.html` has no `class="dark"` on `<html>`, so the app uses `:root` CSS variables where `--background` is golden yellow (`46 90% 56%`). The `.dark` variables (proper dark palette) are never activated. Components using hardcoded `pdt-*` hex colors look dark, but anything using CSS variable tokens (`bg-background`, `bg-primary`, `text-primary-foreground`) renders with the wrong light-mode palette — e.g., default shadcn buttons appear as invisible black buttons with no border
 
 ## Design Goals
 
@@ -132,9 +133,14 @@ Update any navigation links pointing to `/dashboard/assistant` to point to `/ass
 ### ToolStatus.tsx
 - Update colors to match new theme
 
+### Global Dark Mode Fix
+- Add `class="dark"` to `<html>` in `index.html` — this activates the `.dark` CSS variables which already have the correct dark palette
+- This fixes shadcn components globally (buttons, cards, inputs, etc.) across ALL pages, not just the assistant page
+- The `:root` (light mode) variables can remain as-is since they won't be used
+
 ### CSS Variables (index.css)
-- Fix `--background` in dark mode — should NOT be golden
-- Ensure light mode also works if needed, but primary experience is dark
+- Review `.dark` variables to ensure they align with the industrial theme
+- No changes expected — the existing `.dark` palette is already correct
 
 ## What NOT to Change
 
@@ -146,6 +152,7 @@ Update any navigation links pointing to `/dashboard/assistant` to point to `/ass
 
 ## Success Criteria
 
+- `class="dark"` on `<html>` — all shadcn components render correctly across all pages
 - Assistant page is full-screen with no dashboard sidebar/navbar
 - Dark industrial look with golden accent used sparingly
 - Back button navigates to dashboard
@@ -153,3 +160,4 @@ Update any navigation links pointing to `/dashboard/assistant` to point to `/ass
 - Messages display in subtle dark cards
 - Input is docked at bottom
 - Conversation sidebar always visible on the left
+- Existing dashboard pages (Jira, Commits, Reports, etc.) still look correct after the dark mode fix
