@@ -274,12 +274,13 @@ func (a *BriefingAgent) generateBriefing(args json.RawMessage) (any, error) {
 	since := time.Now().AddDate(0, 0, -params.DaysBack)
 
 	type cardEntry struct {
-		Key           string   `json:"key"`
-		Summary       string   `json:"summary"`
-		Status        string   `json:"status"`
-		CompletedDate string   `json:"completed_date,omitempty"`
-		LastCommitDate string  `json:"last_commit_date,omitempty"`
-		RecentCommits []string `json:"recent_commits,omitempty"`
+		Key            string `json:"key"`
+		Summary        string `json:"summary"`
+		Status         string `json:"status"`
+		CompletedDate  string `json:"completed_date,omitempty"`
+		LastTransition string `json:"last_transition,omitempty"`
+		LastCommitDate string `json:"last_commit_date,omitempty"`
+		RecentCommits  []string `json:"recent_commits,omitempty"`
 	}
 
 	var done, inProgress, todo []cardEntry
@@ -316,17 +317,25 @@ func (a *BriefingAgent) generateBriefing(args json.RawMessage) (any, error) {
 				Changelog []struct {
 					Created string `json:"created"`
 					Items   []struct {
-						Field    string `json:"field"`
-						ToString string `json:"to_string"`
+						Field      string `json:"field"`
+						FromString string `json:"from_string"`
+						ToString   string `json:"to_string"`
 					} `json:"items"`
 				} `json:"changelog"`
 			}
 			if json.Unmarshal([]byte(c.DetailsJSON), &details) == nil {
+				var latestTransitionTime time.Time
 				for _, h := range details.Changelog {
 					for _, item := range h.Items {
-						if item.Field == "status" && (item.ToString == c.Status) {
+						if item.Field == "status" {
 							if t, err := time.Parse("2006-01-02T15:04:05.000-0700", h.Created); err == nil {
-								entry.CompletedDate = t.Format("2006-01-02")
+								if t.After(latestTransitionTime) {
+									latestTransitionTime = t
+									entry.LastTransition = fmt.Sprintf("%s → %s on %s", item.FromString, item.ToString, t.Format("2006-01-02"))
+								}
+								if item.ToString == c.Status {
+									entry.CompletedDate = t.Format("2006-01-02")
+								}
 							}
 						}
 					}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/helpers"
@@ -239,6 +240,45 @@ func (a *JiraAgent) getCardDetail(args json.RawMessage) (any, error) {
 	return result, nil
 }
 
+// extractTransitions pulls status transitions from DetailsJSON changelog
+func (a *JiraAgent) extractTransitions(detailsJSON string) []map[string]string {
+	if detailsJSON == "" {
+		return nil
+	}
+	var details struct {
+		Changelog []struct {
+			Author  string `json:"author"`
+			Created string `json:"created"`
+			Items   []struct {
+				Field      string `json:"field"`
+				FromString string `json:"from_string"`
+				ToString   string `json:"to_string"`
+			} `json:"items"`
+		} `json:"changelog"`
+	}
+	if json.Unmarshal([]byte(detailsJSON), &details) != nil {
+		return nil
+	}
+
+	var transitions []map[string]string
+	for _, h := range details.Changelog {
+		date := h.Created
+		if t, err := time.Parse("2006-01-02T15:04:05.000-0700", h.Created); err == nil {
+			date = t.Format("2006-01-02 15:04")
+		}
+		for _, item := range h.Items {
+			transitions = append(transitions, map[string]string{
+				"field": item.Field,
+				"from":  item.FromString,
+				"to":    item.ToString,
+				"by":    h.Author,
+				"date":  date,
+			})
+		}
+	}
+	return transitions
+}
+
 // buildCardContext returns full context for a card including description, commits, comments, parent, and subtasks
 func (a *JiraAgent) buildCardContext(card models.JiraCard) map[string]any {
 	type commitInfo struct {
@@ -252,12 +292,13 @@ func (a *JiraAgent) buildCardContext(card models.JiraCard) map[string]any {
 		Body   string `json:"body"`
 	}
 	type childCard struct {
-		Key         string        `json:"key"`
-		Summary     string        `json:"summary"`
-		Status      string        `json:"status"`
-		Description string        `json:"description,omitempty"`
-		Commits     []commitInfo  `json:"commits,omitempty"`
-		Comments    []commentInfo `json:"comments,omitempty"`
+		Key         string              `json:"key"`
+		Summary     string              `json:"summary"`
+		Status      string              `json:"status"`
+		Description string              `json:"description,omitempty"`
+		Commits     []commitInfo        `json:"commits,omitempty"`
+		Comments    []commentInfo       `json:"comments,omitempty"`
+		Transitions []map[string]string `json:"transitions,omitempty"`
 	}
 
 	// Commits
@@ -294,12 +335,13 @@ func (a *JiraAgent) buildCardContext(card models.JiraCard) map[string]any {
 	}
 
 	result := map[string]any{
-		"key":      card.Key,
-		"summary":  card.Summary,
-		"status":   card.Status,
-		"assignee": card.Assignee,
-		"commits":  linkedCommits,
-		"comments": cardComments,
+		"key":         card.Key,
+		"summary":     card.Summary,
+		"status":      card.Status,
+		"assignee":    card.Assignee,
+		"commits":     linkedCommits,
+		"comments":    cardComments,
+		"transitions": a.extractTransitions(card.DetailsJSON),
 	}
 
 	// Parse DetailsJSON for description, parent, subtasks
@@ -372,6 +414,7 @@ func (a *JiraAgent) buildCardContext(card models.JiraCard) map[string]any {
 									child.Description = desc
 								}
 							}
+							child.Transitions = a.extractTransitions(stCard.DetailsJSON)
 						}
 					}
 
