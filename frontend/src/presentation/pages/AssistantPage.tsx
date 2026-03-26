@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ArrowLeft, Bot, Copy, Check, Loader2, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Bot, Copy, Check, Loader2, CheckCircle, Menu, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAppSelector } from '../../application/hooks/useAppSelector'
 import {
@@ -107,6 +107,7 @@ export function AssistantPage() {
   const navigate = useNavigate()
 
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleCopy = useCallback((content: string, id: string) => {
     navigator.clipboard.writeText(content)
@@ -292,13 +293,21 @@ export function AssistantPage() {
     <div className="h-screen flex flex-col bg-[#1B1B1E]">
       {/* Top Bar */}
       <div className="h-12 flex items-center justify-between px-4 border-b border-border bg-[#1B1B1E] shrink-0">
-        <button
-          onClick={() => navigate('/dashboard/home')}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="size-4" />
-          Back to Dashboard
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="md:hidden flex items-center justify-center size-8 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {sidebarOpen ? <X className="size-4" /> : <Menu className="size-4" />}
+          </button>
+          <button
+            onClick={() => navigate('/dashboard/home')}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+            <span className="hidden sm:inline">Back to Dashboard</span>
+          </button>
+        </div>
         <span className="text-sm font-medium text-foreground">PDT Assistant</span>
         <div className="w-[140px]" />
       </div>
@@ -308,8 +317,9 @@ export function AssistantPage() {
         <ChatSidebar
           conversations={conversations}
           activeId={activeConversationId}
-          onSelect={handleSelectConversation}
-          onNew={handleNewConversation}
+          isOpen={sidebarOpen}
+          onSelect={(id) => { handleSelectConversation(id); setSidebarOpen(false) }}
+          onNew={() => { handleNewConversation(); setSidebarOpen(false) }}
           onDelete={handleDeleteConversation}
         />
         <div className="flex-1 flex flex-col bg-[#242428] min-h-0">

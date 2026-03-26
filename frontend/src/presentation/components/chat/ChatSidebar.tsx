@@ -4,14 +4,17 @@ import type { IConversation } from '../../../domain/chat/interfaces/chat.interfa
 interface ChatSidebarProps {
   conversations: IConversation[]
   activeId?: string
+  isOpen?: boolean
   onSelect: (id: string) => void
   onNew: () => void
   onDelete: (id: string) => void
 }
 
-export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete }: ChatSidebarProps) {
+export function ChatSidebar({ conversations, activeId, isOpen = true, onSelect, onNew, onDelete }: ChatSidebarProps) {
   return (
-    <div className="w-64 border-r border-border flex flex-col h-full bg-[#1B1B1E] shrink-0">
+    <div className={`w-64 border-r border-border flex flex-col h-full bg-[#1B1B1E] shrink-0 hidden md:flex ${
+      isOpen ? 'max-md:flex max-md:absolute max-md:z-20 max-md:h-full' : ''
+    }`}>
       <div className="p-3">
         <button
           onClick={onNew}
