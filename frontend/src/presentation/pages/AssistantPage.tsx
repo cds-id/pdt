@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Send, ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Bot, Copy, Check, Loader2, CheckCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAppSelector } from '../../application/hooks/useAppSelector'
 import {
@@ -8,17 +8,37 @@ import {
 } from '../../infrastructure/services/chat.service'
 import { API_CONSTANTS } from '../../infrastructure/constants/api.constants'
 import { ChatSidebar } from '../components/chat/ChatSidebar'
-import { ChatMessage } from '../components/chat/ChatMessage'
-import { ThinkingIndicator } from '../components/chat/ThinkingIndicator'
-import { ToolStatus } from '../components/chat/ToolStatus'
-import { Chat } from '../../components/chat/chat'
-import { ChatMessages } from '../../components/chat/chat-messages'
 import {
-  ChatToolbar,
-  ChatToolbarTextarea,
-  ChatToolbarAddon,
-  ChatToolbarButton,
-} from '../../components/chat/chat-toolbar'
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from '../../components/ai-elements/conversation'
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+  MessageActions,
+  MessageAction,
+} from '../../components/ai-elements/message'
+import {
+  PromptInput,
+  PromptInputTextarea,
+  PromptInputFooter,
+  PromptInputSubmit,
+} from '../../components/ai-elements/prompt-input'
+import {
+  Reasoning,
+  ReasoningTrigger,
+  ReasoningContent,
+} from '../../components/ai-elements/reasoning'
+import {
+  ChainOfThought,
+  ChainOfThoughtHeader,
+  ChainOfThoughtContent,
+  ChainOfThoughtStep,
+} from '../../components/ai-elements/chain-of-thought'
+import { Suggestions, Suggestion } from '../../components/ai-elements/suggestion'
 import type { IWSResponse } from '../../domain/chat/interfaces/chat.interface'
 
 interface DisplayMessage {
@@ -33,6 +53,44 @@ interface ToolStatusItem {
   status: 'executing' | 'completed'
 }
 
+const toolLabels: Record<string, string> = {
+  search_commits: 'Searching commits',
+  get_commit_detail: 'Getting commit details',
+  get_commit_changes: 'Fetching code changes',
+  analyze_card_changes: 'Analyzing card changes',
+  list_repos: 'Listing repositories',
+  get_repo_stats: 'Getting repo statistics',
+  get_sprints: 'Fetching sprints',
+  get_cards: 'Fetching Jira cards',
+  get_card_detail: 'Getting card details',
+  search_cards: 'Searching cards',
+  link_commit_to_card: 'Linking commit to card',
+  generate_daily_report: 'Generating daily report',
+  generate_monthly_report: 'Generating monthly report',
+  list_reports: 'Listing reports',
+  get_report: 'Getting report',
+  preview_template: 'Previewing template',
+  search_comments: 'Searching comments',
+  get_card_comments: 'Fetching card comments',
+  find_person_statements: 'Finding statements',
+  get_comment_timeline: 'Building timeline',
+  detect_quality_issues: 'Detecting quality issues',
+  check_requirement_coverage: 'Checking requirement coverage',
+}
+
+const STARTER_SUGGESTIONS = [
+  'Show my commits from today',
+  'Summarize my Jira cards',
+  'Generate a daily report',
+  'What did I work on this week?',
+]
+
+const FOLLOWUP_SUGGESTIONS = [
+  'Tell me more',
+  'Show related commits',
+  'Generate a report',
+]
+
 export function AssistantPage() {
   const token = useAppSelector((state) => state.auth.token)
   const { data: conversations = [], refetch } = useListConversationsQuery()
@@ -44,10 +102,17 @@ export function AssistantPage() {
   const [isThinking, setIsThinking] = useState(false)
   const [thinkingMessage, setThinkingMessage] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
-  const [inputValue, setInputValue] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
   const streamBufferRef = useRef('')
   const navigate = useNavigate()
+
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const handleCopy = useCallback((content: string, id: string) => {
+    navigator.clipboard.writeText(content)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }, [])
 
   // Connect WebSocket
   useEffect(() => {
@@ -171,12 +236,14 @@ export function AssistantPage() {
     )
   }, [activeConversationId])
 
-  const handleSubmit = useCallback(() => {
-    const trimmed = inputValue.trim()
-    if (!trimmed || isStreaming) return
-    handleSend(trimmed)
-    setInputValue('')
-  }, [inputValue, isStreaming, handleSend])
+  const handlePromptSubmit = useCallback(
+    (message: { text: string; files: unknown[] }) => {
+      const trimmed = message.text.trim()
+      if (!trimmed || isStreaming) return
+      handleSend(trimmed)
+    },
+    [isStreaming, handleSend]
+  )
 
   const handleNewConversation = () => {
     setActiveConversationId(undefined)
@@ -218,6 +285,9 @@ export function AssistantPage() {
     }
   }
 
+  const lastMessage = messages[messages.length - 1]
+  const showFollowups = !isStreaming && !isThinking && messages.length > 0 && lastMessage?.role === 'assistant' && !lastMessage?.isStreaming
+
   return (
     <div className="h-screen flex flex-col bg-[#1B1B1E]">
       {/* Top Bar */}
@@ -242,47 +312,109 @@ export function AssistantPage() {
           onNew={handleNewConversation}
           onDelete={handleDeleteConversation}
         />
-        <Chat className="flex-1 bg-[#242428]">
-          <ChatMessages>
-            <div className="flex flex-col max-w-3xl mx-auto w-full px-4">
-              {messages.length === 0 && (
-                <div className="flex items-center justify-center h-full min-h-[200px] text-muted-foreground text-sm">
-                  Start a conversation...
-                </div>
+        <div className="flex-1 flex flex-col bg-[#242428]">
+          <Conversation className="flex-1">
+            <ConversationContent className="max-w-3xl mx-auto w-full">
+              {messages.length === 0 ? (
+                <ConversationEmptyState>
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-3">
+                      <Bot className="size-8 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-1 text-center">
+                      <h3 className="font-medium text-sm">PDT Assistant</h3>
+                      <p className="text-muted-foreground text-sm">Ask about your commits, Jira cards, or reports</p>
+                    </div>
+                    <Suggestions className="mt-4">
+                      {STARTER_SUGGESTIONS.map((s) => (
+                        <Suggestion key={s} suggestion={s} onClick={handleSend} />
+                      ))}
+                    </Suggestions>
+                  </div>
+                </ConversationEmptyState>
+              ) : (
+                <>
+                  {messages.map((msg) => (
+                    <Message key={msg.id} from={msg.role}>
+                      <MessageContent>
+                        {msg.role === 'assistant' ? (
+                          <MessageResponse isAnimating={msg.isStreaming}>
+                            {msg.content}
+                          </MessageResponse>
+                        ) : (
+                          msg.content
+                        )}
+                      </MessageContent>
+                      {msg.role === 'assistant' && !msg.isStreaming && (
+                        <MessageActions>
+                          <MessageAction
+                            tooltip="Copy"
+                            onClick={() => handleCopy(msg.content, msg.id)}
+                          >
+                            {copiedId === msg.id ? (
+                              <Check className="size-3.5" />
+                            ) : (
+                              <Copy className="size-3.5" />
+                            )}
+                          </MessageAction>
+                        </MessageActions>
+                      )}
+                    </Message>
+                  ))}
+
+                  {isThinking && (
+                    <Reasoning isStreaming={isThinking}>
+                      <ReasoningTrigger />
+                      <ReasoningContent>{thinkingMessage}</ReasoningContent>
+                    </Reasoning>
+                  )}
+
+                  {toolStatuses.length > 0 && (
+                    <ChainOfThought defaultOpen>
+                      <ChainOfThoughtHeader>Tool execution</ChainOfThoughtHeader>
+                      <ChainOfThoughtContent>
+                        {toolStatuses.map((ts) => (
+                          <ChainOfThoughtStep
+                            key={ts.tool}
+                            icon={ts.status === 'executing' ? Loader2 : CheckCircle}
+                            label={toolLabels[ts.tool] || ts.tool}
+                            status={ts.status === 'executing' ? 'active' : 'complete'}
+                          />
+                        ))}
+                      </ChainOfThoughtContent>
+                    </ChainOfThought>
+                  )}
+
+                  {showFollowups && (
+                    <Suggestions>
+                      {FOLLOWUP_SUGGESTIONS.map((s) => (
+                        <Suggestion key={s} suggestion={s} onClick={handleSend} />
+                      ))}
+                    </Suggestions>
+                  )}
+                </>
               )}
-              {messages.map((msg) => (
-                <ChatMessage
-                  key={msg.id}
-                  role={msg.role}
-                  content={msg.content}
-                  isStreaming={msg.isStreaming}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+
+          <div className="p-3 pt-0 bg-[#1B1B1E] border-t border-border">
+            <PromptInput
+              onSubmit={handlePromptSubmit}
+            >
+              <PromptInputTextarea
+                placeholder="Ask about your commits, Jira cards, or reports..."
+              />
+              <PromptInputFooter>
+                <div />
+                <PromptInputSubmit
+                  status={isStreaming ? 'streaming' : undefined}
+                  className="bg-pdt-accent text-pdt-primary hover:bg-pdt-accent-hover"
                 />
-              ))}
-              {isThinking && <ThinkingIndicator message={thinkingMessage} />}
-              {toolStatuses.map((ts) => (
-                <ToolStatus key={ts.tool} toolName={ts.tool} status={ts.status} />
-              ))}
-            </div>
-          </ChatMessages>
-          <ChatToolbar>
-            <ChatToolbarTextarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onSubmit={handleSubmit}
-              placeholder="Ask about your commits, Jira cards, or reports..."
-              disabled={isStreaming}
-            />
-            <ChatToolbarAddon align="inline-end">
-              <ChatToolbarButton
-                onClick={handleSubmit}
-                disabled={isStreaming || !inputValue.trim()}
-                className="bg-pdt-accent text-pdt-primary hover:bg-pdt-accent-hover"
-              >
-                <Send />
-              </ChatToolbarButton>
-            </ChatToolbarAddon>
-          </ChatToolbar>
-        </Chat>
+              </PromptInputFooter>
+            </PromptInput>
+          </div>
+        </div>
       </div>
     </div>
   )
