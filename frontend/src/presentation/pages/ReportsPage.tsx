@@ -311,12 +311,24 @@ export function ReportsPage() {
                         </p>
                         <p className="text-xs text-pdt-neutral/60">{report.date}</p>
                       </div>
-                      <button
-                        onClick={() => handleDelete(String(report.id))}
-                        className="text-pdt-neutral/60 transition-colors hover:text-red-400"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {report.file_url && (
+                          <a
+                            href={report.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-pdt-accent hover:text-pdt-accent/80"
+                          >
+                            <Download className="size-4" />
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleDelete(String(report.id))}
+                          className="text-pdt-neutral/60 transition-colors hover:text-red-400"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
