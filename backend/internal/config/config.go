@@ -29,12 +29,16 @@ type Config struct {
 	R2SecretAccessKey   string
 	R2BucketName        string
 	R2PublicDomain      string
+	MiniMaxAPIKey       string
+	MiniMaxGroupID      string
+	AIContextWindow     int
 }
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	expiryHours, _ := strconv.Atoi(getEnv("JWT_EXPIRY_HOURS", "72"))
+	aiContextWindow, _ := strconv.Atoi(getEnv("AI_CONTEXT_WINDOW", "20"))
 
 	cfg := &Config{
 		ServerPort:     getEnv("SERVER_PORT", "8080"),
@@ -72,6 +76,10 @@ func Load() (*Config, error) {
 	cfg.R2SecretAccessKey = getEnv("R2_SECRET_ACCESS_KEY", "")
 	cfg.R2BucketName = getEnv("R2_BUCKET_NAME", "")
 	cfg.R2PublicDomain = getEnv("R2_PUBLIC_DOMAIN", "")
+
+	cfg.MiniMaxAPIKey = getEnv("MINIMAX_API_KEY", "")
+	cfg.MiniMaxGroupID = getEnv("MINIMAX_GROUP_ID", "")
+	cfg.AIContextWindow = aiContextWindow
 
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")
