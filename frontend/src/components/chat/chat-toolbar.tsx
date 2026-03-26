@@ -65,7 +65,7 @@ export function ChatToolbar({
 }: ChatToolbarProps) {
   return (
     <div
-      className={cn("sticky bottom-0 p-2 pt-0 bg-background", className)}
+      className={cn("sticky bottom-0 p-3 pt-0 bg-[#1B1B1E] border-t border-border", className)}
       {...props}
     >
       <div
