@@ -42,7 +42,7 @@ func SyncUserJira(db *gorm.DB, enc *crypto.Encryptor, userID uint) error {
 	for _, boardID := range boards {
 		sprints, err := client.FetchSprints(boardID)
 		if err != nil {
-			log.Printf("[worker] jira sync user=%d board=%d sprint fetch error: %v", userID, boardID, err)
+			log.Printf("[jira-sync] user=%d board=%d sprint fetch error: %v", userID, boardID, err)
 			continue
 		}
 
@@ -60,10 +60,11 @@ func SyncUserJira(db *gorm.DB, enc *crypto.Encryptor, userID uint) error {
 			db.Where("jira_sprint_id = ?", sprint.JiraSprintID).
 				Assign(sprint).FirstOrCreate(&sprint)
 
-			if s.State == "active" || s.State == "closed" {
+			state := models.SprintState(s.State)
+			if state == models.SprintActive || state == models.SprintClosed {
 				cards, err := client.FetchSprintIssues(s.ID)
 				if err != nil {
-					log.Printf("[worker] jira sync user=%d sprint=%d issue fetch error: %v", userID, s.ID, err)
+					log.Printf("[jira-sync] user=%d sprint=%d issue fetch error: %v", userID, s.ID, err)
 					continue
 				}
 
@@ -109,9 +110,9 @@ func SyncAllUsersJira(db *gorm.DB, enc *crypto.Encryptor) {
 
 	for _, user := range users {
 		if err := SyncUserJira(db, enc, user.ID); err != nil {
-			log.Printf("[worker] jira sync failed for user %d: %v", user.ID, err)
+			log.Printf("[jira-sync] user=%d sync failed: %v", user.ID, err)
 		} else {
-			log.Printf("[worker] jira sync completed for user %d", user.ID)
+			log.Printf("[jira-sync] user=%d sync completed", user.ID)
 		}
 	}
 }

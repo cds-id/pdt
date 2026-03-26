@@ -72,49 +72,82 @@ type boardResponse struct {
 		ID   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"values"`
+	StartAt    int  `json:"startAt"`
+	MaxResults int  `json:"maxResults"`
+	Total      int  `json:"total"`
+	IsLast     bool `json:"isLast"`
 }
 
 type sprintResponse struct {
-	Values []SprintInfo `json:"values"`
+	Values     []SprintInfo `json:"values"`
+	StartAt    int          `json:"startAt"`
+	MaxResults int          `json:"maxResults"`
+	Total      int          `json:"total"`
+	IsLast     bool         `json:"isLast"`
 }
-
 
 func (c *Client) baseURL() string {
 	return fmt.Sprintf("https://%s/rest", c.Workspace)
 }
 
 func (c *Client) FetchBoards() ([]int, error) {
-	url := fmt.Sprintf("%s/agile/1.0/board", c.baseURL())
-	body, err := c.doRequest(url)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp boardResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("failed to parse boards: %w", err)
-	}
-
 	var ids []int
-	for _, b := range resp.Values {
-		ids = append(ids, b.ID)
+	startAt := 0
+	maxResults := 50
+
+	for {
+		url := fmt.Sprintf("%s/agile/1.0/board?startAt=%d&maxResults=%d",
+			c.baseURL(), startAt, maxResults)
+		body, err := c.doRequest(url)
+		if err != nil {
+			return nil, err
+		}
+
+		var resp boardResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("failed to parse boards: %w", err)
+		}
+
+		for _, b := range resp.Values {
+			ids = append(ids, b.ID)
+		}
+
+		if len(resp.Values) == 0 || resp.IsLast || startAt+len(resp.Values) >= resp.Total {
+			break
+		}
+		startAt += len(resp.Values)
 	}
+
 	return ids, nil
 }
 
 func (c *Client) FetchSprints(boardID int) ([]SprintInfo, error) {
-	url := fmt.Sprintf("%s/agile/1.0/board/%d/sprint", c.baseURL(), boardID)
-	body, err := c.doRequest(url)
-	if err != nil {
-		return nil, err
+	var allSprints []SprintInfo
+	startAt := 0
+	maxResults := 50
+
+	for {
+		url := fmt.Sprintf("%s/agile/1.0/board/%d/sprint?startAt=%d&maxResults=%d",
+			c.baseURL(), boardID, startAt, maxResults)
+		body, err := c.doRequest(url)
+		if err != nil {
+			return nil, err
+		}
+
+		var resp sprintResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("failed to parse sprints: %w", err)
+		}
+
+		allSprints = append(allSprints, resp.Values...)
+
+		if len(resp.Values) == 0 || resp.IsLast || startAt+len(resp.Values) >= resp.Total {
+			break
+		}
+		startAt += len(resp.Values)
 	}
 
-	var resp sprintResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("failed to parse sprints: %w", err)
-	}
-
-	return resp.Values, nil
+	return allSprints, nil
 }
 
 func (c *Client) FetchSprintIssues(sprintID int) ([]CardInfo, error) {
@@ -162,6 +195,9 @@ func (c *Client) FetchSprintIssues(sprintID int) ([]CardInfo, error) {
 			})
 		}
 
+		if len(resp.Issues) == 0 {
+			break
+		}
 		startAt += len(resp.Issues)
 		if startAt >= resp.Total {
 			break
