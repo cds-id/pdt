@@ -19,11 +19,11 @@ interface ChatMessageProps {
 
 export function ChatMessage({ role, content, isStreaming, timestamp }: ChatMessageProps) {
   return (
-    <ChatEvent className="py-2 hover:bg-muted/30 rounded-lg">
+    <ChatEvent className="py-2">
       <ChatEventAddon>
         <ChatEventAvatar
           fallback={role === 'assistant' ? <Bot className="size-4" /> : <User className="size-4" />}
-          className={role === 'assistant' ? 'bg-pdt-accent/20 text-pdt-accent' : 'bg-pdt-primary-light text-pdt-neutral'}
+          className={role === 'assistant' ? 'bg-pdt-accent/20 text-pdt-accent' : 'bg-[#2d2d32] text-pdt-neutral'}
         />
       </ChatEventAddon>
       <ChatEventBody>
@@ -36,19 +36,21 @@ export function ChatMessage({ role, content, isStreaming, timestamp }: ChatMessa
           )}
         </ChatEventTitle>
         <ChatEventContent>
-          <div className="prose prose-invert prose-sm max-w-none text-foreground
-            prose-p:my-1 prose-p:text-foreground prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-li:text-foreground
-            prose-headings:text-foreground prose-headings:mt-3 prose-headings:mb-1
-            prose-code:text-pdt-accent prose-code:bg-pdt-primary-light prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-            prose-pre:bg-pdt-primary-light prose-pre:border prose-pre:border-border
-            prose-strong:text-foreground
-            prose-a:text-pdt-accent
-            prose-td:text-foreground prose-th:text-foreground">
-            <ReactMarkdown>{content}</ReactMarkdown>
+          <div className="rounded-lg border border-border bg-[#2d2d32] p-4">
+            <div className="prose prose-invert prose-sm max-w-none text-foreground
+              prose-p:my-1 prose-p:text-foreground prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-li:text-foreground
+              prose-headings:text-foreground prose-headings:mt-3 prose-headings:mb-1
+              prose-code:text-pdt-accent prose-code:bg-[#1B1B1E] prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+              prose-pre:bg-[#1B1B1E] prose-pre:border prose-pre:border-border
+              prose-strong:text-foreground
+              prose-a:text-pdt-accent
+              prose-td:text-foreground prose-th:text-foreground">
+              <ReactMarkdown>{content}</ReactMarkdown>
+            </div>
+            {isStreaming && (
+              <span className="inline-block w-2 h-4 bg-pdt-accent animate-pulse ml-0.5 mt-1" />
+            )}
           </div>
-          {isStreaming && (
-            <span className="inline-block w-2 h-4 bg-pdt-accent animate-pulse ml-0.5" />
-          )}
         </ChatEventContent>
       </ChatEventBody>
     </ChatEvent>
