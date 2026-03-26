@@ -77,6 +77,7 @@ func (c *Client) ChatStream(req ChatRequest) (<-chan StreamEvent, error) {
 
 func (c *Client) readSSE(body io.Reader, ch chan<- StreamEvent) {
 	scanner := bufio.NewScanner(body)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
 	toolCallMap := make(map[int]*ToolCall)
 
 	for scanner.Scan() {
@@ -106,7 +107,7 @@ func (c *Client) readSSE(body io.Reader, ch chan<- StreamEvent) {
 		}
 
 		for _, tc := range choice.Delta.ToolCalls {
-			idx := 0
+			idx := tc.Index
 			if existing, ok := toolCallMap[idx]; ok {
 				existing.Function.Arguments += tc.Function.Arguments
 			} else {

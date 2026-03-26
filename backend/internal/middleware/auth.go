@@ -10,21 +10,17 @@ import (
 
 func JWTAuth(secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		header := c.GetHeader("Authorization")
-		if header == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+		tokenString := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+		if tokenString == "" {
+			tokenString = c.Query("token")
+		}
+		if tokenString == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
 			c.Abort()
 			return
 		}
 
-		parts := strings.SplitN(header, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
-			c.Abort()
-			return
-		}
-
-		token, err := jwt.Parse(parts[1], func(t *jwt.Token) (interface{}, error) {
+		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrSignatureInvalid
 			}

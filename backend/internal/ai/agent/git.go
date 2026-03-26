@@ -16,6 +16,13 @@ type GitAgent struct {
 	UserID uint
 }
 
+func shortSHA(sha string) string {
+	if len(sha) > 8 {
+		return sha[:8]
+	}
+	return sha
+}
+
 func (a *GitAgent) Name() string { return "git" }
 
 func (a *GitAgent) SystemPrompt() string {
@@ -149,7 +156,7 @@ func (a *GitAgent) searchCommits(args json.RawMessage) (any, error) {
 			repoName = c.Repository.Owner + "/" + c.Repository.Name
 		}
 		results = append(results, result{
-			SHA:     c.SHA[:8],
+			SHA:     shortSHA(c.SHA),
 			Message: c.Message,
 			Author:  c.Author,
 			Date:    c.Date.Format("2006-01-02 15:04"),

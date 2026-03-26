@@ -282,7 +282,7 @@ export function ReportsPage() {
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   className="bg-pdt-primary-light border border-pdt-accent/20 rounded px-3 py-2 text-sm text-pdt-neutral"
                 >
-                  {[2024, 2025, 2026].map((y) => (
+                  {Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
                     <option key={y} value={y}>{y}</option>
                   ))}
                 </select>

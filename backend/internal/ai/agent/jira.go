@@ -238,7 +238,7 @@ func (a *JiraAgent) getCardDetail(args json.RawMessage) (any, error) {
 	var linkedCommits []commitInfo
 	for _, c := range commits {
 		linkedCommits = append(linkedCommits, commitInfo{
-			SHA:     c.SHA[:8],
+			SHA:     shortSHA(c.SHA),
 			Message: c.Message,
 			Date:    c.Date.Format("2006-01-02 15:04"),
 		})
@@ -306,7 +306,7 @@ func (a *JiraAgent) linkCommitToCard(args json.RawMessage) (any, error) {
 
 	return map[string]string{
 		"status":   "linked",
-		"sha":      commit.SHA[:8],
+		"sha":      shortSHA(commit.SHA),
 		"card_key": params.CardKey,
 	}, nil
 }

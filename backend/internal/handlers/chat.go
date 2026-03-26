@@ -86,6 +86,9 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 	}
 	defer conn.Close()
 
+	// Create writer immediately after upgrade so the ping goroutine can use its mutex.
+	writer := &wsStreamWriter{conn: conn}
+
 	// Ping/pong keepalive
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	conn.SetPongHandler(func(string) error {
@@ -98,7 +101,12 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 
 	go func() {
 		for range pingTicker.C {
-			conn.WriteMessage(websocket.PingMessage, nil)
+			writer.mu.Lock()
+			err := conn.WriteMessage(websocket.PingMessage, nil)
+			writer.mu.Unlock()
+			if err != nil {
+				return
+			}
 		}
 	}()
 
@@ -134,8 +142,6 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 		if msg.Type != "message" {
 			continue
 		}
-
-		writer := &wsStreamWriter{conn: conn}
 
 		// Get or create conversation
 		var conv models.Conversation
