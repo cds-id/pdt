@@ -47,6 +47,19 @@ Be direct, specific, and include card keys. The user needs this to defend their 
 func (a *BriefingAgent) Tools() []minimax.Tool {
 	return []minimax.Tool{
 		{
+			Name:        "full_report",
+			Description: "Generate a complete morning briefing report with status, blockers, audit, and comment analysis — all in one call. Use this as the default tool for any briefing/report request.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"sprint_name": {"type": "string", "description": "Sprint name (e.g., 'BNS Sprint 13')"},
+					"sprint_id": {"type": "integer", "description": "Sprint ID"},
+					"assignee": {"type": "string", "description": "Assignee name"},
+					"days_back": {"type": "integer", "description": "How many days back to look (default 7)"}
+				}
+			}`),
+		},
+		{
 			Name:        "generate_briefing",
 			Description: "Generate a morning briefing/standup report for the user showing done, in progress, and blockers",
 			InputSchema: json.RawMessage(`{
@@ -103,6 +116,8 @@ func (a *BriefingAgent) Tools() []minimax.Tool {
 
 func (a *BriefingAgent) ExecuteTool(ctx context.Context, name string, args json.RawMessage) (any, error) {
 	switch name {
+	case "full_report":
+		return a.fullReport(args)
 	case "generate_briefing":
 		return a.generateBriefing(args)
 	case "audit_sprint_cards":
@@ -144,6 +159,45 @@ func (a *BriefingAgent) getAssignee(assignee string) string {
 		return user.JiraUsername
 	}
 	return ""
+}
+
+func (a *BriefingAgent) fullReport(args json.RawMessage) (any, error) {
+	var params struct {
+		SprintID   int    `json:"sprint_id"`
+		SprintName string `json:"sprint_name"`
+		Assignee   string `json:"assignee"`
+		DaysBack   int    `json:"days_back"`
+	}
+	json.Unmarshal(args, &params)
+	if params.DaysBack == 0 {
+		params.DaysBack = 7
+	}
+
+	// Re-marshal for sub-tools
+	subArgs, _ := json.Marshal(params)
+
+	briefing, _ := a.generateBriefing(subArgs)
+	audit, _ := a.auditSprintCards(subArgs)
+	blockers, _ := a.findBlockers(subArgs)
+
+	// Search comments from non-assignee in the time window
+	assignee := a.getAssignee(params.Assignee)
+	since := time.Now().AddDate(0, 0, -params.DaysBack).Format("2006-01-02")
+	commentArgs, _ := json.Marshal(map[string]any{
+		"since": since,
+		"limit": 30,
+	})
+	comments, _ := a.searchComments(commentArgs)
+
+	return map[string]any{
+		"briefing":        briefing,
+		"audit":           audit,
+		"blockers":        blockers,
+		"recent_comments": comments,
+		"assignee":        assignee,
+		"date":            time.Now().Format("2006-01-02"),
+		"days_back":       params.DaysBack,
+	}, nil
 }
 
 func (a *BriefingAgent) generateBriefing(args json.RawMessage) (any, error) {
