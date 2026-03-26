@@ -162,10 +162,19 @@ func (a *BriefingAgent) resolveSprintID(sprintID int, sprintName string) []uint 
 			ids = append(ids, sprint.ID)
 		}
 	} else {
+		// Try active sprints first
 		var sprints []models.Sprint
 		a.DB.Where("user_id = ? AND state = ?", a.UserID, models.SprintActive).Find(&sprints)
 		for _, s := range sprints {
 			ids = append(ids, s.ID)
+		}
+		// If no active sprints, use the most recent sprints (active or closed)
+		if len(ids) == 0 {
+			a.DB.Where("user_id = ? AND state IN ?", a.UserID, []string{string(models.SprintActive), string(models.SprintClosed)}).
+				Order("COALESCE(start_date, created_at) DESC").Limit(3).Find(&sprints)
+			for _, s := range sprints {
+				ids = append(ids, s.ID)
+			}
 		}
 	}
 	return ids
@@ -311,7 +320,8 @@ func (a *BriefingAgent) generateBriefing(args json.RawMessage) (any, error) {
 		}
 
 		// Determine completion date from changelog
-		isDone := c.Status == "Done" || c.Status == "READY TO TEST" || c.Status == "IN REVIEW"
+		status := strings.ToLower(c.Status)
+		isDone := status == "done" || status == "ready to test" || status == "in review"
 		if isDone && c.DetailsJSON != "" {
 			var details struct {
 				Changelog []struct {
@@ -359,7 +369,7 @@ func (a *BriefingAgent) generateBriefing(args json.RawMessage) (any, error) {
 				done = append(done, entry)
 			}
 			// Otherwise skip old done cards
-		case c.Status == "In Progress":
+		case status == "in progress":
 			inProgress = append(inProgress, entry)
 		default:
 			todo = append(todo, entry)
