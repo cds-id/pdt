@@ -20,24 +20,28 @@ func (a *BriefingAgent) Name() string { return "briefing" }
 
 func (a *BriefingAgent) SystemPrompt() string {
 	today := time.Now().Format("2006-01-02")
-	return fmt.Sprintf(`You are a Morning Briefing assistant for PDT. Today is %s. You help developers prepare for standup/morning briefings by:
+	return fmt.Sprintf(`You are a Morning Briefing assistant for PDT. Today is %s. You understand Indonesian and English. You help developers prepare for standup/morning briefings.
 
-1. Generating structured standup reports (done, in progress, blockers)
-2. Auditing sprint cards to find risks or weak points that could be questioned
-3. Identifying blockers and suggesting who/what is responsible
+IMPORTANT: When user asks to prepare a briefing or report, you MUST call ALL relevant tools to build a complete picture. Do not just call one tool. A typical flow:
+1. Call generate_briefing (with appropriate days_back) to get done/in-progress/todo
+2. Call find_blockers to identify any blockers or risks
+3. Call search_comments to find miscommunication or unanswered questions from product/PM
+4. Call audit_sprint_cards if user asks for risk analysis
 
-When generating a briefing report, organize it as:
-- **Done yesterday**: Cards moved to Done/Ready to Test with commit evidence
-- **In progress today**: Cards currently being worked on with status
-- **Blockers/Risks**: Cards with issues, missing info, or stale progress
+After gathering all data, synthesize into a clear briefing report in the user's language (Indonesian or English based on their message).
 
-When auditing, be direct about risks. Flag cards that:
-- Have no recent commits but are "In Progress"
-- Were assigned recently but have no activity
-- Have comments from product/PM asking for updates
-- Are overdue or near sprint end without completion
+Format the final briefing as:
+## Laporan Morning Briefing — [date]
+### ✅ Selesai (Done)
+- [KEY] Summary — evidence (commits, dates)
+### 🔄 Sedang Dikerjakan (In Progress)
+- [KEY] Summary — status, last commit
+### ⚠️ Blocker / Risiko
+- [KEY] Issue — suggestion
+### 💬 Catatan Komunikasi
+- Any miscommunication, unanswered PM questions, or escalation risks
 
-Always include card keys, status, and concrete evidence (commits, comments, dates).`, today)
+Be direct, specific, and include card keys. The user needs this to defend their progress in front of product/PM.`, today)
 }
 
 func (a *BriefingAgent) Tools() []minimax.Tool {
@@ -79,6 +83,21 @@ func (a *BriefingAgent) Tools() []minimax.Tool {
 				}
 			}`),
 		},
+		{
+			Name:        "search_comments",
+			Description: "Search Jira comments to find miscommunication, unanswered questions, or escalation from product/PM. Use this to find communication gaps.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"author": {"type": "string", "description": "Filter by comment author name (e.g., 'siswamedia product')"},
+					"card_key": {"type": "string", "description": "Filter by Jira card key"},
+					"keyword": {"type": "string", "description": "Keyword to search in comment body"},
+					"since": {"type": "string", "description": "Start date (YYYY-MM-DD)"},
+					"until": {"type": "string", "description": "End date (YYYY-MM-DD)"},
+					"limit": {"type": "integer", "description": "Max results (default 20)"}
+				}
+			}`),
+		},
 	}
 }
 
@@ -90,6 +109,8 @@ func (a *BriefingAgent) ExecuteTool(ctx context.Context, name string, args json.
 		return a.auditSprintCards(args)
 	case "find_blockers":
 		return a.findBlockers(args)
+	case "search_comments":
+		return a.searchComments(args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -431,4 +452,64 @@ func (a *BriefingAgent) findBlockers(args json.RawMessage) (any, error) {
 		"blocker_count":  len(blockers),
 		"blockers":       blockers,
 	}, nil
+}
+
+func (a *BriefingAgent) searchComments(args json.RawMessage) (any, error) {
+	var params struct {
+		Author  string `json:"author"`
+		CardKey string `json:"card_key"`
+		Keyword string `json:"keyword"`
+		Since   string `json:"since"`
+		Until   string `json:"until"`
+		Limit   int    `json:"limit"`
+	}
+	json.Unmarshal(args, &params)
+	if params.Limit == 0 {
+		params.Limit = 20
+	}
+
+	query := a.DB.Where("user_id = ?", a.UserID)
+	if params.Author != "" {
+		query = query.Where("author LIKE ?", "%"+params.Author+"%")
+	}
+	if params.CardKey != "" {
+		query = query.Where("card_key = ?", params.CardKey)
+	}
+	if params.Keyword != "" {
+		query = query.Where("body LIKE ?", "%"+params.Keyword+"%")
+	}
+	if params.Since != "" {
+		if t, err := time.Parse("2006-01-02", params.Since); err == nil {
+			query = query.Where("commented_at >= ?", t)
+		}
+	}
+	if params.Until != "" {
+		if t, err := time.Parse("2006-01-02", params.Until); err == nil {
+			query = query.Where("commented_at <= ?", t.Add(24*time.Hour))
+		}
+	}
+
+	var comments []models.JiraComment
+	query.Order("commented_at desc").Limit(params.Limit).Find(&comments)
+
+	type entry struct {
+		CardKey string `json:"card_key"`
+		Author  string `json:"author"`
+		Date    string `json:"date"`
+		Body    string `json:"body"`
+	}
+	var results []entry
+	for _, c := range comments {
+		body := c.Body
+		if len([]rune(body)) > 300 {
+			body = string([]rune(body)[:300]) + "..."
+		}
+		results = append(results, entry{
+			CardKey: c.CardKey,
+			Author:  c.Author,
+			Date:    c.CommentedAt.Format("2006-01-02 15:04"),
+			Body:    body,
+		})
+	}
+	return results, nil
 }

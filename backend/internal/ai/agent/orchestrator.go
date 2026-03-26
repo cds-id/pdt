@@ -34,6 +34,9 @@ Available agents:
 - "proof": Handles finding evidence in Jira comments, detecting quality issues in cards, and checking requirement coverage. Use this when users ask about what someone said, want proof of decisions, or want to find quality problems.
 - "briefing": Handles morning briefing preparation, sprint auditing for risks, and blocker analysis. Use this when users ask to prepare for standup, audit their cards, find blockers, or identify risky tickets that could be questioned.
 
+The user may write in Indonesian or English. Route based on intent, not language.
+Keywords that suggest "briefing" agent: morning briefing, standup, persiapkan report, audit tiket, blocker, risiko, laporan pagi, briefing pagi.
+
 If the user's message is a simple greeting or general question not related to any agent, respond directly without routing.
 
 For all other messages, use the route_to_agent tool to delegate to the appropriate agent.`

@@ -235,17 +235,37 @@ func (a *JiraAgent) getCardDetail(args json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("card not found: %s", params.Key)
 	}
 
-	// Also fetch linked commits
-	var commits []models.Commit
-	a.DB.Joins("JOIN repositories ON repositories.id = commits.repo_id").
-		Where("repositories.user_id = ? AND commits.jira_card_key = ?", a.UserID, params.Key).
-		Find(&commits)
+	result := a.buildCardContext(card)
+	return result, nil
+}
 
+// buildCardContext returns full context for a card including description, commits, comments, parent, and subtasks
+func (a *JiraAgent) buildCardContext(card models.JiraCard) map[string]any {
 	type commitInfo struct {
 		SHA     string `json:"sha"`
 		Message string `json:"message"`
 		Date    string `json:"date"`
 	}
+	type commentInfo struct {
+		Author string `json:"author"`
+		Date   string `json:"date"`
+		Body   string `json:"body"`
+	}
+	type childCard struct {
+		Key         string        `json:"key"`
+		Summary     string        `json:"summary"`
+		Status      string        `json:"status"`
+		Description string        `json:"description,omitempty"`
+		Commits     []commitInfo  `json:"commits,omitempty"`
+		Comments    []commentInfo `json:"comments,omitempty"`
+	}
+
+	// Commits
+	var commits []models.Commit
+	a.DB.Joins("JOIN repositories ON repositories.id = commits.repo_id").
+		Where("repositories.user_id = ? AND commits.jira_card_key = ?", a.UserID, card.Key).
+		Order("commits.date desc").Limit(10).Find(&commits)
+
 	var linkedCommits []commitInfo
 	for _, c := range commits {
 		linkedCommits = append(linkedCommits, commitInfo{
@@ -255,19 +275,133 @@ func (a *JiraAgent) getCardDetail(args json.RawMessage) (any, error) {
 		})
 	}
 
+	// Comments
+	var jiraComments []models.JiraComment
+	a.DB.Where("user_id = ? AND card_key = ?", a.UserID, card.Key).
+		Order("commented_at desc").Limit(10).Find(&jiraComments)
+
+	var cardComments []commentInfo
+	for _, c := range jiraComments {
+		body := c.Body
+		if len([]rune(body)) > 300 {
+			body = string([]rune(body)[:300]) + "..."
+		}
+		cardComments = append(cardComments, commentInfo{
+			Author: c.Author,
+			Date:   c.CommentedAt.Format("2006-01-02 15:04"),
+			Body:   body,
+		})
+	}
+
 	result := map[string]any{
 		"key":      card.Key,
 		"summary":  card.Summary,
 		"status":   card.Status,
 		"assignee": card.Assignee,
 		"commits":  linkedCommits,
+		"comments": cardComments,
+	}
+
+	// Parse DetailsJSON for description, parent, subtasks
+	if card.DetailsJSON != "" {
+		var details map[string]any
+		if json.Unmarshal([]byte(card.DetailsJSON), &details) == nil {
+			if desc, ok := details["description"].(string); ok {
+				result["description"] = desc
+			}
+
+			// Parent card with full context
+			if parent, ok := details["parent"].(map[string]any); ok {
+				parentKey, _ := parent["key"].(string)
+				if parentKey != "" {
+					var parentCard models.JiraCard
+					if a.DB.Where("user_id = ? AND card_key = ?", a.UserID, parentKey).First(&parentCard).Error == nil {
+						result["parent"] = a.buildCardSummary(parentCard)
+					} else {
+						result["parent"] = parent
+					}
+				}
+			}
+
+			// Subtasks with commits and comments
+			if subtasks, ok := details["subtasks"].([]any); ok {
+				var children []childCard
+				for _, st := range subtasks {
+					stMap, ok := st.(map[string]any)
+					if !ok {
+						continue
+					}
+					stKey, _ := stMap["key"].(string)
+					stSummary, _ := stMap["summary"].(string)
+					stStatus, _ := stMap["status"].(string)
+
+					child := childCard{Key: stKey, Summary: stSummary, Status: stStatus}
+
+					// Get subtask commits
+					var stCommits []models.Commit
+					a.DB.Joins("JOIN repositories ON repositories.id = commits.repo_id").
+						Where("repositories.user_id = ? AND commits.jira_card_key = ?", a.UserID, stKey).
+						Order("commits.date desc").Limit(5).Find(&stCommits)
+					for _, c := range stCommits {
+						child.Commits = append(child.Commits, commitInfo{
+							SHA: shortSHA(c.SHA), Message: c.Message, Date: c.Date.Format("2006-01-02 15:04"),
+						})
+					}
+
+					// Get subtask comments
+					var stComments []models.JiraComment
+					a.DB.Where("user_id = ? AND card_key = ?", a.UserID, stKey).
+						Order("commented_at desc").Limit(5).Find(&stComments)
+					for _, c := range stComments {
+						body := c.Body
+						if len([]rune(body)) > 200 {
+							body = string([]rune(body)[:200]) + "..."
+						}
+						child.Comments = append(child.Comments, commentInfo{
+							Author: c.Author, Date: c.CommentedAt.Format("2006-01-02 15:04"), Body: body,
+						})
+					}
+
+					// Get subtask description
+					var stCard models.JiraCard
+					if a.DB.Where("user_id = ? AND card_key = ?", a.UserID, stKey).First(&stCard).Error == nil {
+						if stCard.DetailsJSON != "" {
+							var stDetails map[string]any
+							if json.Unmarshal([]byte(stCard.DetailsJSON), &stDetails) == nil {
+								if desc, ok := stDetails["description"].(string); ok {
+									child.Description = desc
+								}
+							}
+						}
+					}
+
+					children = append(children, child)
+				}
+				result["subtasks"] = children
+			}
+		}
+	}
+
+	return result
+}
+
+// buildCardSummary returns a lighter context for parent cards
+func (a *JiraAgent) buildCardSummary(card models.JiraCard) map[string]any {
+	result := map[string]any{
+		"key":      card.Key,
+		"summary":  card.Summary,
+		"status":   card.Status,
+		"assignee": card.Assignee,
 	}
 	if card.DetailsJSON != "" {
-		var details any
-		json.Unmarshal([]byte(card.DetailsJSON), &details)
-		result["details"] = details
+		var details map[string]any
+		if json.Unmarshal([]byte(card.DetailsJSON), &details) == nil {
+			if desc, ok := details["description"].(string); ok {
+				result["description"] = desc
+			}
+		}
 	}
-	return result, nil
+	return result
 }
 
 func (a *JiraAgent) searchCards(args json.RawMessage) (any, error) {
