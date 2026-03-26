@@ -10,6 +10,8 @@ import {
   StatusBadge,
   EmptyState
 } from '@/presentation/components/common'
+import { MessageResponse } from '@/components/ai-elements/message'
+import { jiraToMarkdown } from '@/lib/jira-markup'
 
 export function JiraCardDetailPage() {
   const { key } = useParams<{ key: string }>()
@@ -100,7 +102,9 @@ export function JiraCardDetailPage() {
       {/* Description */}
       {description && (
         <DataCard title="Description">
-          <div className="whitespace-pre-wrap text-sm text-pdt-neutral-100">{description}</div>
+          <div className="text-sm overflow-hidden">
+            <MessageResponse>{jiraToMarkdown(description)}</MessageResponse>
+          </div>
         </DataCard>
       )}
 
@@ -204,8 +208,8 @@ export function JiraCardDetailPage() {
                     {new Date(comment.commented_at).toLocaleString()}
                   </span>
                 </div>
-                <div className="whitespace-pre-wrap text-sm text-pdt-neutral/80 pl-5">
-                  {comment.body}
+                <div className="text-sm pl-5 overflow-hidden">
+                  <MessageResponse>{jiraToMarkdown(comment.body)}</MessageResponse>
                 </div>
               </div>
             ))}
