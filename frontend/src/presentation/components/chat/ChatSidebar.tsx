@@ -11,11 +11,11 @@ interface ChatSidebarProps {
 
 export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete }: ChatSidebarProps) {
   return (
-    <div className="w-64 border-r border-pdt-neutral-700 flex flex-col h-full">
+    <div className="w-64 border-r border-border flex flex-col h-full bg-background">
       <div className="p-3">
         <button
           onClick={onNew}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-pdt-neutral-600 text-sm text-pdt-neutral-300 hover:bg-pdt-neutral-800"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <Plus className="w-4 h-4" />
           New Conversation
@@ -25,10 +25,10 @@ export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete
         {conversations.map((conv) => (
           <div
             key={conv.id}
-            className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer mb-1 text-sm ${
+            className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer mb-1 text-sm transition-colors ${
               activeId === conv.id
                 ? 'bg-pdt-accent/20 text-pdt-accent'
-                : 'text-pdt-neutral-400 hover:bg-pdt-neutral-800'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
             onClick={() => onSelect(conv.id)}
           >
@@ -39,7 +39,7 @@ export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete
                 e.stopPropagation()
                 onDelete(conv.id)
               }}
-              className="opacity-0 group-hover:opacity-100 text-pdt-neutral-500 hover:text-red-400"
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-pdt-danger transition-colors"
             >
               <Trash2 className="w-3 h-3" />
             </button>

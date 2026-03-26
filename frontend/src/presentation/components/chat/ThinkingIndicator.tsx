@@ -15,7 +15,7 @@ export function ThinkingIndicator({ message }: ThinkingIndicatorProps) {
       </ChatEventAddon>
       <ChatEventBody>
         <ChatEventContent>
-          <div className="flex items-center gap-3 text-sm text-pdt-neutral-400">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <div className="flex gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-pdt-accent animate-bounce" style={{ animationDelay: '0ms' }} />
               <span className="w-1.5 h-1.5 rounded-full bg-pdt-accent animate-bounce" style={{ animationDelay: '150ms' }} />

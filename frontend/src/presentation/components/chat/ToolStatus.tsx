@@ -46,7 +46,7 @@ export function ToolStatus({ toolName, status }: ToolStatusProps) {
         </div>
       </ChatEventAddon>
       <ChatEventBody>
-        <ChatEventContent className="text-xs text-pdt-neutral-400">
+        <ChatEventContent className="text-xs text-muted-foreground">
           {label}...
         </ChatEventContent>
       </ChatEventBody>

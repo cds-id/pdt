@@ -220,7 +220,7 @@ export function AssistantPage() {
   return (
     <div className="min-w-0 flex flex-col h-[calc(100vh-4rem)]">
       <PageHeader title="AI Assistant" description="Chat with your development data" />
-      <div className="flex flex-1 overflow-hidden border border-pdt-neutral-700 rounded-lg mx-4 mb-4">
+      <div className="flex flex-1 overflow-hidden border border-border rounded-lg mx-4 mb-4">
         <ChatSidebar
           conversations={conversations}
           activeId={activeConversationId}
@@ -232,7 +232,7 @@ export function AssistantPage() {
           <ChatMessages>
             <div className="flex flex-col">
               {messages.length === 0 && (
-                <div className="flex items-center justify-center h-full min-h-[200px] text-pdt-neutral-500 text-sm">
+                <div className="flex items-center justify-center h-full min-h-[200px] text-muted-foreground text-sm">
                   Start a conversation...
                 </div>
               )}

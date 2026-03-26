@@ -20,16 +20,16 @@ interface ChatMessageProps {
 
 export function ChatMessage({ role, content, isStreaming, timestamp }: ChatMessageProps) {
   return (
-    <ChatEvent className="py-2 hover:bg-pdt-neutral-800/30 rounded-lg">
+    <ChatEvent className="py-2 hover:bg-muted/30 rounded-lg">
       <ChatEventAddon>
         <ChatEventAvatar
           fallback={role === 'assistant' ? <Bot className="size-4" /> : <User className="size-4" />}
-          className={role === 'assistant' ? 'bg-pdt-accent/20 text-pdt-accent' : 'bg-pdt-neutral-700 text-pdt-neutral-300'}
+          className={role === 'assistant' ? 'bg-pdt-accent/20 text-pdt-accent' : 'bg-pdt-primary-light text-pdt-neutral'}
         />
       </ChatEventAddon>
       <ChatEventBody>
         <ChatEventTitle>
-          <span className="font-medium text-pdt-neutral-200">
+          <span className="font-medium text-foreground">
             {role === 'assistant' ? 'PDT Assistant' : 'You'}
           </span>
           {timestamp && (
@@ -37,13 +37,14 @@ export function ChatMessage({ role, content, isStreaming, timestamp }: ChatMessa
           )}
         </ChatEventTitle>
         <ChatEventContent>
-          <div className="prose prose-invert prose-sm max-w-none
-            prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5
-            prose-headings:text-pdt-neutral-100 prose-headings:mt-3 prose-headings:mb-1
-            prose-code:text-pdt-accent prose-code:bg-pdt-neutral-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-            prose-pre:bg-pdt-neutral-800 prose-pre:border prose-pre:border-pdt-neutral-700
-            prose-strong:text-pdt-neutral-100
-            prose-a:text-pdt-accent">
+          <div className="prose prose-invert prose-sm max-w-none text-foreground
+            prose-p:my-1 prose-p:text-foreground prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-li:text-foreground
+            prose-headings:text-foreground prose-headings:mt-3 prose-headings:mb-1
+            prose-code:text-pdt-accent prose-code:bg-pdt-primary-light prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+            prose-pre:bg-pdt-primary-light prose-pre:border prose-pre:border-border
+            prose-strong:text-foreground
+            prose-a:text-pdt-accent
+            prose-td:text-foreground prose-th:text-foreground">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
           </div>
           {isStreaming && (
