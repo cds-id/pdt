@@ -177,6 +177,74 @@ func (m *Manager) RemoveClient(numberID uint) {
 	}
 }
 
+// GetGroups returns joined WhatsApp groups for a number.
+func (m *Manager) GetGroups(ctx context.Context, numberID uint) ([]GroupInfo, error) {
+	client, ok := m.GetClient(numberID)
+	if !ok {
+		return nil, fmt.Errorf("number %d not connected", numberID)
+	}
+
+	groups, err := client.GetJoinedGroups(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get groups: %w", err)
+	}
+
+	var result []GroupInfo
+	for _, g := range groups {
+		result = append(result, GroupInfo{
+			JID:  g.JID.String(),
+			Name: g.Name,
+			Topic: g.Topic,
+			ParticipantCount: len(g.Participants),
+		})
+	}
+	return result, nil
+}
+
+// GetContacts returns cached contacts for a number.
+func (m *Manager) GetContacts(ctx context.Context, numberID uint) ([]ContactInfo, error) {
+	client, ok := m.GetClient(numberID)
+	if !ok {
+		return nil, fmt.Errorf("number %d not connected", numberID)
+	}
+
+	store := client.Store
+	contacts, err := store.Contacts.GetAllContacts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get contacts: %w", err)
+	}
+
+	var result []ContactInfo
+	for jid, contact := range contacts {
+		name := contact.PushName
+		if contact.FullName != "" {
+			name = contact.FullName
+		}
+		if name == "" {
+			name = contact.BusinessName
+		}
+		result = append(result, ContactInfo{
+			JID:      jid.String(),
+			Name:     name,
+			PushName: contact.PushName,
+		})
+	}
+	return result, nil
+}
+
+type GroupInfo struct {
+	JID              string `json:"jid"`
+	Name             string `json:"name"`
+	Topic            string `json:"topic,omitempty"`
+	ParticipantCount int    `json:"participant_count"`
+}
+
+type ContactInfo struct {
+	JID      string `json:"jid"`
+	Name     string `json:"name"`
+	PushName string `json:"push_name,omitempty"`
+}
+
 func (m *Manager) SendMessage(ctx context.Context, numberID uint, jid string, text string) error {
 	client, ok := m.GetClient(numberID)
 	if !ok {

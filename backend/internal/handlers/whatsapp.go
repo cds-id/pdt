@@ -155,6 +155,56 @@ func (h *WhatsAppHandler) DisconnectNumber(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "number disconnected"})
 }
 
+// GetGroups GET /wa/numbers/:id/groups
+func (h *WhatsAppHandler) GetGroups(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	id := c.Param("id")
+
+	var number models.WaNumber
+	if err := h.DB.Where("id = ? AND user_id = ?", id, userID).First(&number).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "number not found"})
+		return
+	}
+
+	if h.Manager == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "WhatsApp manager not available"})
+		return
+	}
+
+	groups, err := h.Manager.GetGroups(c.Request.Context(), number.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, groups)
+}
+
+// GetContacts GET /wa/numbers/:id/contacts
+func (h *WhatsAppHandler) GetContacts(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	id := c.Param("id")
+
+	var number models.WaNumber
+	if err := h.DB.Where("id = ? AND user_id = ?", id, userID).First(&number).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "number not found"})
+		return
+	}
+
+	if h.Manager == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "WhatsApp manager not available"})
+		return
+	}
+
+	contacts, err := h.Manager.GetContacts(c.Request.Context(), number.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, contacts)
+}
+
 // ─── QR Pairing ───────────────────────────────────────────────────────────────
 
 // HandlePairing GET /wa/numbers/:id/pair  (WebSocket)

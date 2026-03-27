@@ -215,6 +215,8 @@ func main() {
 					waNumbers.PATCH("/:id", waHandler.UpdateNumber)
 					waNumbers.DELETE("/:id", waHandler.DeleteNumber)
 					waNumbers.POST("/:id/disconnect", waHandler.DisconnectNumber)
+					waNumbers.GET("/:id/groups", waHandler.GetGroups)
+					waNumbers.GET("/:id/contacts", waHandler.GetContacts)
 					waNumbers.GET("/:id/listeners", waHandler.ListListeners)
 					waNumbers.POST("/:id/listeners", waHandler.AddListener)
 				}
