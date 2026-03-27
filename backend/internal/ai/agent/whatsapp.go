@@ -151,13 +151,14 @@ func (a *WhatsAppAgent) Tools() []minimax.Tool {
 		},
 		{
 			Name:        "send_message",
-			Description: "Create an outbox entry proposing to send a WhatsApp message to a target JID. This does NOT send immediately — it creates a pending entry for user approval. ALWAYS explain the reason in 'context'.",
+			Description: "Send a WhatsApp message. By default creates a pending outbox entry for user approval. Set auto_approve=true when the user has EXPLICITLY asked to send (e.g., 'kirim pesan ke X', 'send message to Y') — this approves immediately and the message is sent within seconds.",
 			InputSchema: json.RawMessage(`{
 				"type": "object",
 				"properties": {
 					"target_jid": {"type": "string", "description": "Target WhatsApp JID (e.g., '628123456789@s.whatsapp.net' or group JID)"},
 					"content": {"type": "string", "description": "Message content to send"},
-					"context": {"type": "string", "description": "Why you are proposing this message — reason and background"}
+					"context": {"type": "string", "description": "Why you are sending this message — reason and background"},
+					"auto_approve": {"type": "boolean", "description": "Set true if user explicitly asked to send. Default false (pending approval)."}
 				},
 				"required": ["target_jid", "content", "context"]
 			}`),
@@ -505,9 +506,10 @@ func (a *WhatsAppAgent) summarizeChat(args json.RawMessage) (any, error) {
 // sendMessage creates a WaOutbox pending entry for approval.
 func (a *WhatsAppAgent) sendMessage(args json.RawMessage) (any, error) {
 	var params struct {
-		TargetJID string `json:"target_jid"`
-		Content   string `json:"content"`
-		Context   string `json:"context"`
+		TargetJID   string `json:"target_jid"`
+		Content     string `json:"content"`
+		Context     string `json:"context"`
+		AutoApprove bool   `json:"auto_approve"`
 	}
 	json.Unmarshal(args, &params)
 
@@ -521,25 +523,51 @@ func (a *WhatsAppAgent) sendMessage(args json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("no WA number found for user")
 	}
 
+	// Look up target name from listeners
+	targetName := params.TargetJID
+	var listener models.WaListener
+	if err := a.DB.Where("jid = ? AND wa_number_id = ?", params.TargetJID, waNumber.ID).First(&listener).Error; err == nil {
+		targetName = listener.Name
+	}
+
+	status := "pending"
+	var approvedAt *time.Time
+	if params.AutoApprove {
+		status = "approved"
+		now := time.Now()
+		approvedAt = &now
+	}
+
 	outbox := models.WaOutbox{
 		WaNumberID:  waNumber.ID,
 		TargetJID:   params.TargetJID,
+		TargetName:  targetName,
 		Content:     params.Content,
-		Status:      "pending",
+		Status:      status,
 		RequestedBy: "agent",
 		Context:     params.Context,
+		ApprovedAt:  approvedAt,
 	}
 	if err := a.DB.Create(&outbox).Error; err != nil {
 		return nil, fmt.Errorf("failed to create outbox entry: %w", err)
 	}
 
+	if params.AutoApprove {
+		return map[string]any{
+			"outbox_id":  outbox.ID,
+			"target":     targetName,
+			"content":    params.Content,
+			"status":     "approved",
+			"note":       "Message approved and will be sent within seconds.",
+		}, nil
+	}
+
 	return map[string]any{
-		"outbox_id":   outbox.ID,
-		"target_jid":  params.TargetJID,
-		"content":     params.Content,
-		"context":     params.Context,
-		"status":      "pending",
-		"note":        "Message queued for approval. The user must approve it in the outbox before it is sent.",
+		"outbox_id":  outbox.ID,
+		"target":     targetName,
+		"content":    params.Content,
+		"status":     "pending",
+		"note":       "Message queued for approval. The user must approve it in the outbox or confirm here.",
 	}, nil
 }
 
