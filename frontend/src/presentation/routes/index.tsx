@@ -14,6 +14,7 @@ import { JiraCardDetailPage } from '../pages/JiraCardDetailPage'
 import { ReportsPage } from '../pages/ReportsPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { AssistantPage } from '../pages/AssistantPage'
+import { OutboxPage } from '../pages/OutboxPage'
 
 export const router = createBrowserRouter([
   {
@@ -37,7 +38,8 @@ export const router = createBrowserRouter([
       { path: 'dashboard/jira', element: <JiraPage /> },
       { path: 'dashboard/jira/cards/:key', element: <JiraCardDetailPage /> },
       { path: 'dashboard/reports', element: <ReportsPage /> },
-      { path: 'dashboard/settings', element: <SettingsPage /> }
+      { path: 'dashboard/settings', element: <SettingsPage /> },
+      { path: 'dashboard/outbox', element: <OutboxPage /> }
     ]
   },
   {

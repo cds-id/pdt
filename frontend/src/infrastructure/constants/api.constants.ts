@@ -74,6 +74,19 @@ export const API_CONSTANTS = {
   CHAT: {
     WS: '/ws/chat',
   },
+
+  // WhatsApp Endpoints
+  WA: {
+    NUMBERS: '/wa/numbers',
+    NUMBER: (id: number) => `/wa/numbers/${id}`,
+    LISTENERS: (numberId: number) => `/wa/numbers/${numberId}/listeners`,
+    LISTENER: (id: number) => `/wa/listeners/${id}`,
+    MESSAGES: (listenerId: number) => `/wa/listeners/${listenerId}/messages`,
+    SEARCH_MESSAGES: '/wa/messages/search',
+    OUTBOX: '/wa/outbox',
+    OUTBOX_ITEM: (id: number) => `/wa/outbox/${id}`,
+    PAIR: (numberId: number) => `/wa/pair/${numberId}`,
+  },
 }
 
 // Helper to build full URL

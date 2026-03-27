@@ -14,6 +14,7 @@ import {
   StatusBadge
 } from '@/presentation/components/common'
 import { cn } from '@/lib/utils'
+import { NumberManager } from '@/presentation/components/whatsapp/NumberManager'
 
 export function SettingsPage() {
   const { data: profile, isLoading } = useGetProfileQuery()
@@ -223,6 +224,9 @@ export function SettingsPage() {
           )}
         </div>
       </form>
+
+      {/* WhatsApp */}
+      <NumberManager />
     </div>
   )
 }

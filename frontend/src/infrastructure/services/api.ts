@@ -13,7 +13,8 @@ export const api = createApi({
     'Jira',
     'Report',
     'ReportTemplate',
-    'Conversation'
+    'Conversation',
+    'WhatsApp'
   ],
   baseQuery: fetchBaseQuery({
     baseUrl: `${API_CONSTANTS.BASE_URL}${API_CONSTANTS.API_PREFIX}`,
