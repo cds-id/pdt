@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"go.mau.fi/whatsmeow/proto/waE2E"
@@ -107,6 +108,10 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 	}
 
 	if result := h.DB.Create(&msg); result.Error != nil {
+		if strings.Contains(result.Error.Error(), "Duplicate entry") {
+			// WhatsApp delivered the same message twice — ignore
+			return
+		}
 		log.Printf("[wa-handler] save message error: %v", result.Error)
 		return
 	}
