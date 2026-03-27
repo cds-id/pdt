@@ -33,9 +33,11 @@ Available agents:
 - "report": Handles report generation (daily/monthly), listing reports, and report templates.
 - "proof": Handles finding evidence in Jira comments, detecting quality issues in cards, and checking requirement coverage. Use this when users ask about what someone said, want proof of decisions, or want to find quality problems.
 - "briefing": Handles morning briefing preparation, sprint auditing for risks, and blocker analysis. Use this when users ask to prepare for standup, audit their cards, find blockers, or identify risky tickets that could be questioned.
+- "whatsapp": Handles questions about WhatsApp messages, chat summaries, listener activity, sending messages, and WhatsApp analytics. Use this when users ask about WhatsApp chats, want to search or summarize conversations, send messages, or get a WhatsApp briefing.
 
 The user may write in Indonesian or English. Route based on intent, not language.
 Keywords that suggest "briefing" agent: morning briefing, standup, persiapkan report, audit tiket, blocker, risiko, laporan pagi, briefing pagi.
+Keywords that suggest "whatsapp" agent: whatsapp, wa, chat summary, pesan, kirim pesan, ringkasan chat, listener, group chat.
 
 If the user's message is a simple greeting or general question not related to any agent, respond directly without routing.
 
@@ -49,7 +51,7 @@ var routerTool = minimax.Tool{
 		"properties": {
 			"agent_name": {
 				"type": "string",
-				"enum": ["git", "jira", "report", "proof", "briefing"],
+				"enum": ["git", "jira", "report", "proof", "briefing", "whatsapp"],
 				"description": "The specialist agent to route to"
 			},
 			"reason": {

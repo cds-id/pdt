@@ -16,6 +16,8 @@ import (
 	"github.com/cds-id/pdt/backend/internal/middleware"
 	"github.com/cds-id/pdt/backend/internal/services/report"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
+	waService "github.com/cds-id/pdt/backend/internal/services/whatsapp"
+	wvService "github.com/cds-id/pdt/backend/internal/services/weaviate"
 	"github.com/cds-id/pdt/backend/internal/worker"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -50,6 +52,29 @@ func main() {
 	if cfg.R2AccountID != "" && cfg.R2AccessKeyID != "" {
 		r2Client = storage.NewR2Client(cfg.R2AccountID, cfg.R2AccessKeyID, cfg.R2SecretAccessKey, cfg.R2BucketName, cfg.R2PublicDomain)
 		log.Printf("R2 storage configured: bucket=%s, domain=%s", cfg.R2BucketName, cfg.R2PublicDomain)
+	}
+
+	// Weaviate client (optional)
+	var weaviateClient *wvService.Client
+	var embeddingWorker *wvService.EmbeddingWorker
+	if cfg.GeminiAPIKey != "" {
+		weaviateClient = wvService.NewClient(cfg.WeaviateURL, cfg.GeminiAPIKey)
+		if weaviateClient.IsAvailable() {
+			embeddingWorker = wvService.NewEmbeddingWorker(weaviateClient, db)
+			embeddingWorker.Start(ctx)
+			log.Printf("Weaviate connected: %s", cfg.WeaviateURL)
+		}
+	}
+
+	// WhatsApp manager
+	var waManager *waService.Manager
+	waManager, err = waService.NewManager(ctx, db, r2Client, embeddingWorker)
+	if err != nil {
+		log.Printf("WhatsApp manager init failed: %v", err)
+	} else {
+		waManager.Start(ctx)
+		sender := waService.NewSenderWorker(db, waManager)
+		sender.Start(ctx)
 	}
 
 	// Worker scheduler
@@ -88,6 +113,13 @@ func main() {
 		R2:              r2Client,
 		ReportGenerator: reportGen,
 		ContextWindow:   cfg.AIContextWindow,
+		WaManager:       waManager,
+		WeaviateClient:  weaviateClient,
+	}
+
+	waHandler := &handlers.WhatsAppHandler{
+		DB:      db,
+		Manager: waManager,
 	}
 
 	// Router
@@ -173,6 +205,37 @@ func main() {
 				protected.GET("/conversations/:id", chatHandler.GetConversation)
 				protected.DELETE("/conversations/:id", chatHandler.DeleteConversation)
 			}
+
+			wa := protected.Group("/wa")
+			{
+				waNumbers := wa.Group("/numbers")
+				{
+					waNumbers.GET("", waHandler.ListNumbers)
+					waNumbers.POST("", waHandler.AddNumber)
+					waNumbers.PATCH("/:id", waHandler.UpdateNumber)
+					waNumbers.DELETE("/:id", waHandler.DeleteNumber)
+					waNumbers.GET("/:id/listeners", waHandler.ListListeners)
+					waNumbers.POST("/:id/listeners", waHandler.AddListener)
+				}
+
+				waListeners := wa.Group("/listeners")
+				{
+					waListeners.PATCH("/:id", waHandler.UpdateListener)
+					waListeners.DELETE("/:id", waHandler.DeleteListener)
+					waListeners.GET("/:id/messages", waHandler.ListMessages)
+				}
+
+				wa.GET("/messages/search", waHandler.SearchMessages)
+
+				waOutbox := wa.Group("/outbox")
+				{
+					waOutbox.GET("", waHandler.ListOutbox)
+					waOutbox.PATCH("/:id", waHandler.UpdateOutbox)
+					waOutbox.DELETE("/:id", waHandler.DeleteOutbox)
+				}
+
+				wa.GET("/pair/:id", waHandler.HandlePairing)
+			}
 		}
 	}
 
@@ -194,6 +257,10 @@ func main() {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	if waManager != nil {
+		waManager.Shutdown()
+	}
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("shutdown failed: %v", err)

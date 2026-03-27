@@ -17,6 +17,22 @@ services:
       timeout: 5s
       retries: 5
 
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+      - "50051:50051"
+    environment:
+      QUERY_DEFAULTS_LIMIT: "20"
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "text2vec-palm"
+      ENABLE_MODULES: "text2vec-palm"
+      CLUSTER_HOSTNAME: "node1"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
   app:
     build: .
     restart: unless-stopped
@@ -41,9 +57,12 @@ services:
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
       R2_PUBLIC_DOMAIN: ${R2_PUBLIC_DOMAIN:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      WEAVIATE_URL: ${WEAVIATE_URL:-weaviate:8080}
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   db_data:
+  weaviate_data:
