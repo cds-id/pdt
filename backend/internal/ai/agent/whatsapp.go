@@ -124,6 +124,40 @@ func (a *WhatsAppAgent) Tools() []minimax.Tool {
 			}`),
 		},
 		{
+			Name:        "list_repositories",
+			Description: "List all registered Git repositories (GitHub/GitLab) for the user. Shows repo name, owner, provider, and URL.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {}
+			}`),
+		},
+		{
+			Name:        "list_commits",
+			Description: "List recent commits for a repository or all repositories. Can filter by date range and search by message keyword. Results can be sent via WhatsApp.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"repo_id": {"type": "integer", "description": "Optional: filter by repository ID"},
+					"days_back": {"type": "integer", "description": "Number of days to look back (default 7)"},
+					"keyword": {"type": "string", "description": "Optional: search commit messages by keyword"},
+					"limit": {"type": "integer", "description": "Max results (default 30)"}
+				}
+			}`),
+		},
+		{
+			Name:        "send_commits_report",
+			Description: "Generate a commits summary for a repository (or all repos) and send it via WhatsApp. Auto-approved for immediate sending.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"target_jid": {"type": "string", "description": "Target WhatsApp JID to send the report to"},
+					"repo_id": {"type": "integer", "description": "Optional: specific repository ID. 0 = all repos."},
+					"days_back": {"type": "integer", "description": "Number of days to look back (default 7)"}
+				},
+				"required": ["target_jid"]
+			}`),
+		},
+		{
 			Name:        "search_messages",
 			Description: "Search WhatsApp messages using keyword (MySQL LIKE) search. Use for finding specific words, phrases, or sender names.",
 			InputSchema: json.RawMessage(`{
@@ -252,6 +286,12 @@ func (a *WhatsAppAgent) ExecuteTool(ctx context.Context, name string, args json.
 		return a.listListeners(args)
 	case "list_contacts":
 		return a.listContacts(ctx, args)
+	case "list_repositories":
+		return a.listRepositories()
+	case "list_commits":
+		return a.listCommits(args)
+	case "send_commits_report":
+		return a.sendCommitsReport(args)
 	case "search_messages":
 		return a.searchMessages(args)
 	case "semantic_search":
@@ -390,6 +430,178 @@ func (a *WhatsAppAgent) listContacts(ctx context.Context, args json.RawMessage) 
 	}
 
 	return map[string]any{"contacts": allContacts, "count": len(allContacts)}, nil
+}
+
+func (a *WhatsAppAgent) listRepositories() (any, error) {
+	var repos []models.Repository
+	a.DB.Where("user_id = ?", a.UserID).Order("name asc").Find(&repos)
+
+	type repoInfo struct {
+		ID       uint   `json:"id"`
+		Name     string `json:"name"`
+		Owner    string `json:"owner"`
+		Provider string `json:"provider"`
+		URL      string `json:"url"`
+	}
+
+	var result []repoInfo
+	for _, r := range repos {
+		result = append(result, repoInfo{
+			ID:       r.ID,
+			Name:     r.Name,
+			Owner:    r.Owner,
+			Provider: string(r.Provider),
+			URL:      r.URL,
+		})
+	}
+
+	return map[string]any{"repositories": result, "count": len(result)}, nil
+}
+
+func (a *WhatsAppAgent) listCommits(args json.RawMessage) (any, error) {
+	var params struct {
+		RepoID   uint   `json:"repo_id"`
+		DaysBack int    `json:"days_back"`
+		Keyword  string `json:"keyword"`
+		Limit    int    `json:"limit"`
+	}
+	json.Unmarshal(args, &params)
+
+	if params.DaysBack <= 0 {
+		params.DaysBack = 7
+	}
+	if params.Limit <= 0 {
+		params.Limit = 30
+	}
+
+	since := time.Now().AddDate(0, 0, -params.DaysBack)
+
+	query := a.DB.Where("commits.user_id = ? AND commits.date >= ?", a.UserID, since).
+		Joins("JOIN repositories ON repositories.id = commits.repo_id")
+
+	if params.RepoID > 0 {
+		query = query.Where("commits.repo_id = ?", params.RepoID)
+	}
+	if params.Keyword != "" {
+		query = query.Where("commits.message LIKE ?", "%"+params.Keyword+"%")
+	}
+
+	var commits []models.Commit
+	query.Order("commits.date desc").Limit(params.Limit).Find(&commits)
+
+	// Group by repo
+	type commitInfo struct {
+		SHA     string `json:"sha"`
+		Message string `json:"message"`
+		Author  string `json:"author"`
+		Date    string `json:"date"`
+		RepoID  uint   `json:"repo_id"`
+	}
+
+	var result []commitInfo
+	for _, c := range commits {
+		result = append(result, commitInfo{
+			SHA:     c.SHA[:min(len(c.SHA), 7)],
+			Message: c.Message,
+			Author:  c.Author,
+			Date:    c.Date.Format("2006-01-02 15:04"),
+			RepoID:  c.RepoID,
+		})
+	}
+
+	return map[string]any{"commits": result, "count": len(result), "days_back": params.DaysBack}, nil
+}
+
+func (a *WhatsAppAgent) sendCommitsReport(args json.RawMessage) (any, error) {
+	var params struct {
+		TargetJID string `json:"target_jid"`
+		RepoID    uint   `json:"repo_id"`
+		DaysBack  int    `json:"days_back"`
+	}
+	json.Unmarshal(args, &params)
+
+	if params.TargetJID == "" {
+		return nil, fmt.Errorf("target_jid is required")
+	}
+	if params.DaysBack <= 0 {
+		params.DaysBack = 7
+	}
+
+	since := time.Now().AddDate(0, 0, -params.DaysBack)
+
+	query := a.DB.Where("commits.user_id = ? AND commits.date >= ?", a.UserID, since).
+		Joins("JOIN repositories ON repositories.id = commits.repo_id")
+
+	if params.RepoID > 0 {
+		query = query.Where("commits.repo_id = ?", params.RepoID)
+	}
+
+	var commits []models.Commit
+	query.Order("commits.date desc").Limit(50).Preload("Repository").Find(&commits)
+
+	// Group commits by repo
+	repoCommits := map[string][]models.Commit{}
+	for _, c := range commits {
+		repoName := fmt.Sprintf("%s/%s", c.Repository.Owner, c.Repository.Name)
+		repoCommits[repoName] = append(repoCommits[repoName], c)
+	}
+
+	// Build WhatsApp message
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("*📝 Commits Report*\n_%s — last %d days_\n", time.Now().Format("2006-01-02"), params.DaysBack))
+
+	totalCommits := 0
+	for repoName, rCommits := range repoCommits {
+		sb.WriteString(fmt.Sprintf("\n*%s* (%d commits):\n", repoName, len(rCommits)))
+		for _, c := range rCommits {
+			msg := c.Message
+			if len(msg) > 70 {
+				msg = msg[:70] + "..."
+			}
+			sb.WriteString(fmt.Sprintf("* `%s` %s _%s_\n", c.SHA[:7], msg, c.Date.Format("Jan 02")))
+			totalCommits++
+		}
+	}
+
+	if totalCommits == 0 {
+		sb.WriteString("\n_No commits found in this period._")
+	}
+
+	content := sb.String()
+
+	// Find WA number and target
+	var waNumber models.WaNumber
+	if err := a.DB.Where("user_id = ?", a.UserID).First(&waNumber).Error; err != nil {
+		return map[string]any{"error": "No WhatsApp number configured"}, nil
+	}
+
+	targetName := params.TargetJID
+	var listener models.WaListener
+	if err := a.DB.Where("jid = ? AND wa_number_id = ?", params.TargetJID, waNumber.ID).First(&listener).Error; err == nil {
+		targetName = listener.Name
+	}
+
+	now := time.Now()
+	outbox := models.WaOutbox{
+		WaNumberID:  waNumber.ID,
+		TargetJID:   params.TargetJID,
+		TargetName:  targetName,
+		Content:     content,
+		Status:      "approved",
+		RequestedBy: "agent",
+		Context:     fmt.Sprintf("Commits report (%d days) sent via WhatsApp as requested", params.DaysBack),
+		ApprovedAt:  &now,
+	}
+	a.DB.Create(&outbox)
+
+	return map[string]any{
+		"status":        "approved",
+		"outbox_id":     outbox.ID,
+		"target":        targetName,
+		"total_commits": totalCommits,
+		"repos":         len(repoCommits),
+		"message":       fmt.Sprintf("Commits report (%d commits across %d repos) will be sent to %s within seconds.", totalCommits, len(repoCommits), targetName),
+	}, nil
 }
 
 func (a *WhatsAppAgent) searchMessages(args json.RawMessage) (any, error) {
