@@ -40,9 +40,11 @@ func NewManager(ctx context.Context, db *gorm.DB, r2 *storage.R2Client, ew *wvCl
 
 	// Ensure parent directory exists
 	dir := filepath.Dir(whatsmeowDBPath)
+	log.Printf("[wa-manager] ensuring directory exists: %s", dir)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("create dir %s: %w", dir, err)
 	}
+	log.Printf("[wa-manager] directory ready: %s", dir)
 
 	dbURI := fmt.Sprintf("file:%s?_foreign_keys=on", whatsmeowDBPath)
 	log.Printf("[wa-manager] opening device store at %s", dbURI)
