@@ -13,6 +13,7 @@ import (
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
+	"go.mau.fi/whatsmeow/types"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"gorm.io/gorm"
 
@@ -87,21 +88,45 @@ func (m *Manager) Shutdown() {
 }
 
 func (m *Manager) connectNumber(ctx context.Context, numberID uint) {
-	devices, err := m.container.GetAllDevices(ctx)
-	if err != nil {
-		log.Printf("[wa-manager] get devices error: %v", err)
+	// Load device JID from our DB
+	var waNumber models.WaNumber
+	if err := m.DB.First(&waNumber, numberID).Error; err != nil {
+		log.Printf("[wa-manager] number %d not found in DB", numberID)
 		return
 	}
 
 	var device *store.Device
-	for _, d := range devices {
-		if d.ID != nil {
-			device = d
-			break
+
+	if waNumber.DeviceJID != "" {
+		// Try to find the specific device by JID
+		deviceJID, err := types.ParseJID(waNumber.DeviceJID)
+		if err == nil {
+			device, err = m.container.GetDevice(ctx, deviceJID)
+			if err != nil {
+				log.Printf("[wa-manager] get device by JID %s failed: %v", waNumber.DeviceJID, err)
+			}
 		}
 	}
+
 	if device == nil {
-		device = m.container.NewDevice()
+		// Fallback: try first available device
+		devices, err := m.container.GetAllDevices(ctx)
+		if err != nil {
+			log.Printf("[wa-manager] get devices error: %v", err)
+			return
+		}
+		for _, d := range devices {
+			if d.ID != nil {
+				device = d
+				break
+			}
+		}
+	}
+
+	if device == nil {
+		log.Printf("[wa-manager] number %d has no device, needs pairing", numberID)
+		m.DB.Model(&models.WaNumber{}).Where("id = ?", numberID).Update("status", "disconnected")
+		return
 	}
 
 	client := whatsmeow.NewClient(device, waLog.Noop)
@@ -110,13 +135,12 @@ func (m *Manager) connectNumber(ctx context.Context, numberID uint) {
 	client.AddEventHandler(handler.HandleEvent)
 
 	if client.Store.ID == nil {
-		log.Printf("[wa-manager] number %d needs pairing", numberID)
+		log.Printf("[wa-manager] number %d device has no ID, needs pairing", numberID)
 		m.DB.Model(&models.WaNumber{}).Where("id = ?", numberID).Update("status", "disconnected")
 		return
 	}
 
-	err = client.Connect()
-	if err != nil {
+	if err := client.Connect(); err != nil {
 		log.Printf("[wa-manager] connect error for number %d: %v", numberID, err)
 		m.reconnectWithBackoff(ctx, numberID, client)
 		return

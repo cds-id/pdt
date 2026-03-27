@@ -281,9 +281,14 @@ func (h *WhatsAppHandler) HandlePairing(c *gin.Context) {
 
 		case "success":
 			now := time.Now()
+			deviceJID := ""
+			if client.Store.ID != nil {
+				deviceJID = client.Store.ID.String()
+			}
 			h.DB.Model(&models.WaNumber{}).Where("id = ?", number.ID).Updates(map[string]interface{}{
-				"status":    "connected",
-				"paired_at": &now,
+				"status":     "connected",
+				"paired_at":  &now,
+				"device_jid": deviceJID,
 			})
 
 			// Wire up message handler for this number

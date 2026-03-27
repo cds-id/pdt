@@ -7,7 +7,7 @@ type WaNumber struct {
 	UserID      uint       `gorm:"index;not null" json:"user_id"`
 	PhoneNumber string     `gorm:"type:varchar(30);not null" json:"phone_number"`
 	DisplayName string     `gorm:"type:varchar(100)" json:"display_name"`
-	DeviceStore []byte     `gorm:"type:longblob" json:"-"`
+	DeviceJID   string     `gorm:"column:device_jid;type:varchar(200)" json:"-"`
 	Status      string     `gorm:"type:varchar(20);default:disconnected" json:"status"`
 	PairedAt    *time.Time `json:"paired_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
