@@ -16,6 +16,7 @@ export function QrPairingModal({ numberId, token, onClose, onSuccess }: QrPairin
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string>('')
   const wsRef = useRef<WebSocket | null>(null)
+  const successRef = useRef(false)
 
   useEffect(() => {
     const wsBase = API_CONSTANTS.BASE_URL.replace(/^http/, 'ws')
@@ -35,6 +36,7 @@ export function QrPairingModal({ numberId, token, onClose, onSuccess }: QrPairin
           setQrCode(data.code)
           setStatus('waiting')
         } else if (data.event === 'success') {
+          successRef.current = true
           setStatus('success')
           setTimeout(() => {
             onSuccess()
@@ -57,11 +59,9 @@ export function QrPairingModal({ numberId, token, onClose, onSuccess }: QrPairin
     }
 
     ws.onclose = (e) => {
-      if (status !== 'success') {
-        if (e.code !== 1000) {
-          setErrorMsg('Connection closed unexpectedly.')
-          setStatus('error')
-        }
+      if (!successRef.current && e.code !== 1000) {
+        setErrorMsg('Connection closed unexpectedly.')
+        setStatus('error')
       }
     }
 
