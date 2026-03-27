@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
@@ -29,6 +30,7 @@ type MessageHandler struct {
 	EmbeddingWorker *wvClient.EmbeddingWorker
 	NumberID        uint
 	client          mediaDownloader
+	waClient        *whatsmeow.Client
 }
 
 func NewMessageHandler(db *gorm.DB, r2 *storage.R2Client, ew *wvClient.EmbeddingWorker, numberID uint) *MessageHandler {
@@ -49,7 +51,17 @@ func (h *MessageHandler) HandleEvent(evt interface{}) {
 		h.handleReceipt(v)
 	case *events.Connected:
 		log.Printf("[wa-handler] number %d connected", h.NumberID)
-		h.DB.Model(&models.WaNumber{}).Where("id = ?", h.NumberID).Update("status", "connected")
+		updates := map[string]any{"status": "connected"}
+		// Auto-sync device JID if missing
+		if h.waClient != nil && h.waClient.Store.ID != nil {
+			var num models.WaNumber
+			h.DB.Select("device_jid").First(&num, h.NumberID)
+			if num.DeviceJID == "" {
+				updates["device_jid"] = h.waClient.Store.ID.String()
+				log.Printf("[wa-handler] synced device_jid for number %d: %s", h.NumberID, h.waClient.Store.ID.String())
+			}
+		}
+		h.DB.Model(&models.WaNumber{}).Where("id = ?", h.NumberID).Updates(updates)
 	case *events.Disconnected:
 		log.Printf("[wa-handler] number %d disconnected", h.NumberID)
 		h.DB.Model(&models.WaNumber{}).Where("id = ?", h.NumberID).Update("status", "disconnected")
@@ -176,6 +188,9 @@ func (h *MessageHandler) downloadAndStoreMedia(evt *events.Message, msgID uint) 
 // SetClient allows the manager to inject the whatsmeow client for media downloads.
 func (h *MessageHandler) SetClient(c mediaDownloader) {
 	h.client = c
+	if wc, ok := c.(*whatsmeow.Client); ok {
+		h.waClient = wc
+	}
 }
 
 // extractText pulls the text content from a message.

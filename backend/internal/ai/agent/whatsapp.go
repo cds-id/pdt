@@ -10,6 +10,7 @@ import (
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/models"
 	wvClient "github.com/cds-id/pdt/backend/internal/services/weaviate"
+	waService "github.com/cds-id/pdt/backend/internal/services/whatsapp"
 	"gorm.io/gorm"
 )
 
@@ -17,6 +18,13 @@ type WhatsAppAgent struct {
 	DB       *gorm.DB
 	UserID   uint
 	Weaviate *wvClient.Client
+	Manager  WaManager
+}
+
+// WaManager is the interface the WhatsApp agent needs from the manager.
+type WaManager interface {
+	GetGroups(ctx context.Context, numberID uint) ([]waService.GroupInfo, error)
+	GetContacts(ctx context.Context, numberID uint) ([]waService.ContactInfo, error)
 }
 
 func (a *WhatsAppAgent) Name() string { return "whatsapp" }
@@ -106,6 +114,16 @@ func (a *WhatsAppAgent) Tools() []minimax.Tool {
 			}`),
 		},
 		{
+			Name:        "list_contacts",
+			Description: "List WhatsApp contacts and groups available for sending messages. Use this to find the correct JID when the user mentions a contact by name.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"search": {"type": "string", "description": "Optional: filter contacts/groups by name"}
+				}
+			}`),
+		},
+		{
 			Name:        "search_messages",
 			Description: "Search WhatsApp messages using keyword (MySQL LIKE) search. Use for finding specific words, phrases, or sender names.",
 			InputSchema: json.RawMessage(`{
@@ -188,6 +206,32 @@ func (a *WhatsAppAgent) Tools() []minimax.Tool {
 			}`),
 		},
 		{
+			Name:        "send_briefing",
+			Description: "Generate a work briefing/summary (sprint cards, commits, blockers) and send it to a WhatsApp contact or group. Use when user asks to share their work summary, standup, or briefing via WhatsApp. The briefing covers active sprint cards, recent commits, and status.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"target_jid": {"type": "string", "description": "Target WhatsApp JID to send the briefing to"},
+					"days_back": {"type": "integer", "description": "Number of days to look back for commits (default 1)"},
+					"assignee": {"type": "string", "description": "Optional: filter by assignee name"}
+				},
+				"required": ["target_jid"]
+			}`),
+		},
+		{
+			Name:        "send_report",
+			Description: "Fetch a generated PDT report (daily/monthly) and send it to a WhatsApp contact or group. The report content is formatted for WhatsApp and auto-approved for sending. Use when user asks to share/send a report via WhatsApp.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"report_id": {"type": "integer", "description": "The report ID to send. Use 0 to send the latest report."},
+					"target_jid": {"type": "string", "description": "Target WhatsApp JID to send the report to"},
+					"report_date": {"type": "string", "description": "Optional: find report by date (YYYY-MM-DD) instead of ID"}
+				},
+				"required": ["target_jid"]
+			}`),
+		},
+		{
 			Name:        "full_chat_report",
 			Description: "Compound tool: combines list_listeners + summarize_chat + semantic_search to produce a comprehensive WhatsApp activity report. Use for broad overviews. Requires start_date and end_date.",
 			InputSchema: json.RawMessage(`{
@@ -206,6 +250,8 @@ func (a *WhatsAppAgent) ExecuteTool(ctx context.Context, name string, args json.
 	switch name {
 	case "list_listeners":
 		return a.listListeners(args)
+	case "list_contacts":
+		return a.listContacts(ctx, args)
 	case "search_messages":
 		return a.searchMessages(args)
 	case "semantic_search":
@@ -218,6 +264,10 @@ func (a *WhatsAppAgent) ExecuteTool(ctx context.Context, name string, args json.
 		return a.replyToMessage(args)
 	case "approve_outbox":
 		return a.approveOutbox(args)
+	case "send_briefing":
+		return a.sendBriefing(args)
+	case "send_report":
+		return a.sendReport(args)
 	case "full_chat_report":
 		return a.fullChatReport(ctx, args)
 	default:
@@ -275,6 +325,73 @@ func (a *WhatsAppAgent) listListeners(args json.RawMessage) (any, error) {
 }
 
 // searchMessages searches messages by keyword (MySQL LIKE) with optional filters.
+func (a *WhatsAppAgent) listContacts(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		Search string `json:"search"`
+	}
+	json.Unmarshal(args, &params)
+
+	// Get user's first connected number
+	var waNumber models.WaNumber
+	if err := a.DB.Where("user_id = ? AND status = ?", a.UserID, "connected").First(&waNumber).Error; err != nil {
+		return map[string]any{"error": "No connected WhatsApp number"}, nil
+	}
+
+	var allContacts []map[string]any
+
+	// Get groups
+	if a.Manager != nil {
+		groups, err := a.Manager.GetGroups(ctx, waNumber.ID)
+		if err == nil {
+			for _, g := range groups {
+				if params.Search == "" || strings.Contains(strings.ToLower(g.Name), strings.ToLower(params.Search)) {
+					allContacts = append(allContacts, map[string]any{
+						"jid":  g.JID,
+						"name": g.Name,
+						"type": "group",
+					})
+				}
+			}
+		}
+
+		contacts, err := a.Manager.GetContacts(ctx, waNumber.ID)
+		if err == nil {
+			for _, c := range contacts {
+				if c.Name == "" {
+					continue
+				}
+				if params.Search == "" || strings.Contains(strings.ToLower(c.Name), strings.ToLower(params.Search)) {
+					allContacts = append(allContacts, map[string]any{
+						"jid":  c.JID,
+						"name": c.Name,
+						"type": "personal",
+					})
+				}
+			}
+		}
+	}
+
+	// Also include registered listeners
+	var listeners []models.WaListener
+	a.DB.Where("wa_number_id = ?", waNumber.ID).Find(&listeners)
+	existingJIDs := map[string]bool{}
+	for _, c := range allContacts {
+		existingJIDs[c["jid"].(string)] = true
+	}
+	for _, l := range listeners {
+		if !existingJIDs[l.JID] {
+			allContacts = append(allContacts, map[string]any{
+				"jid":        l.JID,
+				"name":       l.Name,
+				"type":       l.Type,
+				"is_listener": true,
+			})
+		}
+	}
+
+	return map[string]any{"contacts": allContacts, "count": len(allContacts)}, nil
+}
+
 func (a *WhatsAppAgent) searchMessages(args json.RawMessage) (any, error) {
 	var params struct {
 		Query      string  `json:"query"`
@@ -657,6 +774,190 @@ func (a *WhatsAppAgent) approveOutbox(args json.RawMessage) (any, error) {
 		"status":    "approved",
 		"message":   fmt.Sprintf("Message to %s approved and will be sent shortly.", item.TargetName),
 		"outbox_id": item.ID,
+	}, nil
+}
+
+func (a *WhatsAppAgent) sendBriefing(args json.RawMessage) (any, error) {
+	var params struct {
+		TargetJID string `json:"target_jid"`
+		DaysBack  int    `json:"days_back"`
+		Assignee  string `json:"assignee"`
+	}
+	json.Unmarshal(args, &params)
+
+	if params.TargetJID == "" {
+		return nil, fmt.Errorf("target_jid is required")
+	}
+	if params.DaysBack <= 0 {
+		params.DaysBack = 1
+	}
+
+	since := time.Now().AddDate(0, 0, -params.DaysBack)
+
+	// Get active sprint cards
+	var cards []models.JiraCard
+	a.DB.Joins("JOIN sprints ON sprints.id = jira_cards.sprint_id").
+		Where("jira_cards.user_id = ? AND sprints.state = ?", a.UserID, "active").
+		Find(&cards)
+
+	// Get recent commits
+	var commits []models.Commit
+	a.DB.Where("user_id = ? AND committed_at >= ?", a.UserID, since).
+		Order("committed_at desc").Limit(20).Find(&commits)
+
+	// Build WhatsApp-formatted briefing
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("*📋 Work Briefing*\n_%s_\n\n", time.Now().Format("2006-01-02 15:04")))
+
+	// Cards by status
+	if len(cards) > 0 {
+		statusGroups := map[string][]models.JiraCard{}
+		for _, c := range cards {
+			status := strings.ToLower(c.Status)
+			if params.Assignee == "" || strings.EqualFold(c.Assignee, params.Assignee) {
+				statusGroups[status] = append(statusGroups[status], c)
+			}
+		}
+
+		sb.WriteString("*Active Sprint Cards:*\n")
+		for status, group := range statusGroups {
+			sb.WriteString(fmt.Sprintf("\n_%s_ (%d):\n", status, len(group)))
+			for _, c := range group {
+				assignee := ""
+				if c.Assignee != "" {
+					assignee = fmt.Sprintf(" [%s]", c.Assignee)
+				}
+				sb.WriteString(fmt.Sprintf("* %s — %s%s\n", c.Key, c.Summary, assignee))
+			}
+		}
+	} else {
+		sb.WriteString("_No active sprint cards found._\n")
+	}
+
+	// Recent commits
+	sb.WriteString(fmt.Sprintf("\n*Recent Commits (%d days):*\n", params.DaysBack))
+	if len(commits) > 0 {
+		for _, c := range commits {
+			msg := c.Message
+			if len(msg) > 80 {
+				msg = msg[:80] + "..."
+			}
+			sb.WriteString(fmt.Sprintf("* `%s` %s\n", c.SHA[:7], msg))
+		}
+	} else {
+		sb.WriteString("_No recent commits._\n")
+	}
+
+	content := sb.String()
+
+	// Find WA number and target name
+	var waNumber models.WaNumber
+	if err := a.DB.Where("user_id = ?", a.UserID).First(&waNumber).Error; err != nil {
+		return map[string]any{"error": "No WhatsApp number configured"}, nil
+	}
+
+	targetName := params.TargetJID
+	var listener models.WaListener
+	if err := a.DB.Where("jid = ? AND wa_number_id = ?", params.TargetJID, waNumber.ID).First(&listener).Error; err == nil {
+		targetName = listener.Name
+	}
+
+	// Auto-approve
+	now := time.Now()
+	outbox := models.WaOutbox{
+		WaNumberID:  waNumber.ID,
+		TargetJID:   params.TargetJID,
+		TargetName:  targetName,
+		Content:     content,
+		Status:      "approved",
+		RequestedBy: "agent",
+		Context:     "User requested work briefing sent via WhatsApp",
+		ApprovedAt:  &now,
+	}
+	a.DB.Create(&outbox)
+
+	return map[string]any{
+		"status":     "approved",
+		"outbox_id":  outbox.ID,
+		"target":     targetName,
+		"cards":      len(cards),
+		"commits":    len(commits),
+		"message":    fmt.Sprintf("Briefing with %d cards and %d commits will be sent to %s within seconds.", len(cards), len(commits), targetName),
+	}, nil
+}
+
+func (a *WhatsAppAgent) sendReport(args json.RawMessage) (any, error) {
+	var params struct {
+		ReportID   uint   `json:"report_id"`
+		TargetJID  string `json:"target_jid"`
+		ReportDate string `json:"report_date"`
+	}
+	json.Unmarshal(args, &params)
+
+	if params.TargetJID == "" {
+		return nil, fmt.Errorf("target_jid is required")
+	}
+
+	// Find the report
+	var report models.Report
+	if params.ReportID > 0 {
+		if err := a.DB.Where("id = ? AND user_id = ?", params.ReportID, a.UserID).First(&report).Error; err != nil {
+			return map[string]any{"error": "Report not found"}, nil
+		}
+	} else if params.ReportDate != "" {
+		if err := a.DB.Where("user_id = ? AND date = ?", a.UserID, params.ReportDate).Order("created_at desc").First(&report).Error; err != nil {
+			return map[string]any{"error": fmt.Sprintf("No report found for date %s", params.ReportDate)}, nil
+		}
+	} else {
+		// Latest report
+		if err := a.DB.Where("user_id = ?", a.UserID).Order("created_at desc").First(&report).Error; err != nil {
+			return map[string]any{"error": "No reports found"}, nil
+		}
+	}
+
+	// Format report content for WhatsApp
+	content := fmt.Sprintf("*%s*\n_%s_\n\n%s", report.Title, report.Date, report.Content)
+
+	// Truncate if too long for WhatsApp (max ~65536 chars)
+	if len(content) > 10000 {
+		content = content[:10000] + "\n\n_... (report truncated, full version available in PDT)_"
+	}
+
+	// Find WA number
+	var waNumber models.WaNumber
+	if err := a.DB.Where("user_id = ?", a.UserID).First(&waNumber).Error; err != nil {
+		return map[string]any{"error": "No WhatsApp number configured"}, nil
+	}
+
+	// Look up target name
+	targetName := params.TargetJID
+	var listener models.WaListener
+	if err := a.DB.Where("jid = ? AND wa_number_id = ?", params.TargetJID, waNumber.ID).First(&listener).Error; err == nil {
+		targetName = listener.Name
+	}
+
+	// Create and auto-approve
+	now := time.Now()
+	outbox := models.WaOutbox{
+		WaNumberID:  waNumber.ID,
+		TargetJID:   params.TargetJID,
+		TargetName:  targetName,
+		Content:     content,
+		Status:      "approved",
+		RequestedBy: "agent",
+		Context:     fmt.Sprintf("Sending report '%s' (%s) as requested by user", report.Title, report.Date),
+		ApprovedAt:  &now,
+	}
+	a.DB.Create(&outbox)
+
+	return map[string]any{
+		"status":      "approved",
+		"outbox_id":   outbox.ID,
+		"report_id":   report.ID,
+		"report_title": report.Title,
+		"report_date": report.Date,
+		"target":      targetName,
+		"message":     fmt.Sprintf("Report '%s' will be sent to %s within seconds.", report.Title, targetName),
 	}, nil
 }
 

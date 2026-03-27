@@ -130,7 +130,7 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 		&agent.ReportAgent{DB: h.DB, UserID: userID, Generator: h.ReportGenerator, R2: h.R2},
 		&agent.ProofAgent{DB: h.DB, UserID: userID},
 		&agent.BriefingAgent{DB: h.DB, UserID: userID},
-		&agent.WhatsAppAgent{DB: h.DB, UserID: userID, Weaviate: h.WeaviateClient},
+		&agent.WhatsAppAgent{DB: h.DB, UserID: userID, Weaviate: h.WeaviateClient, Manager: h.WaManager},
 	)
 
 	for {
