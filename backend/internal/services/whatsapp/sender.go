@@ -47,7 +47,12 @@ func (w *SenderWorker) processApproved(ctx context.Context) {
 		return
 	}
 
+	if len(outboxItems) > 0 {
+		log.Printf("[wa-sender] found %d approved messages to send", len(outboxItems))
+	}
+
 	for _, item := range outboxItems {
+		log.Printf("[wa-sender] sending outbox %d: number=%d target=%s content=%q", item.ID, item.WaNumberID, item.TargetJID, item.Content[:min(len(item.Content), 50)])
 		err := w.Manager.SendMessage(ctx, item.WaNumberID, item.TargetJID, item.Content)
 		if err != nil {
 			log.Printf("[wa-sender] send failed for outbox %d: %v", item.ID, err)
