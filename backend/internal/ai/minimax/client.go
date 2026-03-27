@@ -27,7 +27,7 @@ func NewClient(apiKey, groupID string) *Client {
 	)
 	return &Client{
 		sdk:   sdk,
-		Model:   "MiniMax-Text-01",
+		Model:   "MiniMax-M2.7",
 	}
 }
 
