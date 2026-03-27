@@ -43,17 +43,9 @@ export function OutboxPage() {
     { label: 'Rejected', value: 'rejected' }
   ]
 
-  const handleApprove = async (item: IWaOutbox) => {
-    try {
-      await updateOutbox({ id: item.id, status: 'approved' }).unwrap()
-    } catch (error) {
-      console.error('Failed to approve:', error)
-    }
-  }
-
   const handleSend = async (item: IWaOutbox) => {
     try {
-      await updateOutbox({ id: item.id, status: 'sent' }).unwrap()
+      await updateOutbox({ id: item.id, status: 'approved' }).unwrap()
     } catch (error) {
       console.error('Failed to send:', error)
     }
@@ -202,15 +194,6 @@ export function OutboxPage() {
                     >
                       <Send className="mr-1 size-3" />
                       Send
-                    </Button>
-                    <Button
-                      variant="pdtOutline"
-                      size="sm"
-                      onClick={() => handleApprove(item)}
-                      disabled={isUpdating}
-                    >
-                      <Check className="mr-1 size-3" />
-                      Approve
                     </Button>
                     <Button
                       variant="pdtOutline"
