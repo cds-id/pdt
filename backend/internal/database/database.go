@@ -37,5 +37,10 @@ func Migrate(db *gorm.DB) error {
 		&models.ChatMessage{},
 		&models.AIUsage{},
 		&models.JiraComment{},
+		&models.WaNumber{},
+		&models.WaListener{},
+		&models.WaMessage{},
+		&models.WaMedia{},
+		&models.WaOutbox{},
 	)
 }
