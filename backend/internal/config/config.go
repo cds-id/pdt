@@ -33,6 +33,9 @@ type Config struct {
 	MiniMaxAPIKey       string
 	MiniMaxGroupID      string
 	AIContextWindow     int
+	// WhatsApp & Weaviate
+	GeminiAPIKey string
+	WeaviateURL  string
 }
 
 func Load() (*Config, error) {
@@ -82,6 +85,8 @@ func Load() (*Config, error) {
 	cfg.MiniMaxAPIKey = getEnv("MINIMAX_API_KEY", "")
 	cfg.MiniMaxGroupID = getEnv("MINIMAX_GROUP_ID", "")
 	cfg.AIContextWindow = aiContextWindow
+	cfg.GeminiAPIKey = getEnv("GEMINI_API_KEY", "")
+	cfg.WeaviateURL = getEnv("WEAVIATE_URL", "http://localhost:8081")
 
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")
