@@ -46,7 +46,7 @@ func NewManager(ctx context.Context, db *gorm.DB, r2 *storage.R2Client, ew *wvCl
 	}
 	log.Printf("[wa-manager] directory ready: %s", dir)
 
-	dbURI := fmt.Sprintf("file:%s?_foreign_keys=on", whatsmeowDBPath)
+	dbURI := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)", whatsmeowDBPath)
 	log.Printf("[wa-manager] opening device store at %s", dbURI)
 
 	container, err := sqlstore.New(ctx, "sqlite", dbURI, waLog.Noop)
