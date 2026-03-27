@@ -46,6 +46,14 @@ export const whatsappApi = api.injectEndpoints({
       invalidatesTags: [{ type: 'WhatsApp' as const, id: 'NUMBERS' }]
     }),
 
+    // Groups & Contacts (for JID discovery)
+    getGroups: builder.query<{ jid: string; name: string; topic?: string; participant_count: number }[], number>({
+      query: (numberId) => `${API_CONSTANTS.WA.NUMBER(numberId)}/groups`
+    }),
+    getContacts: builder.query<{ jid: string; name: string; push_name?: string }[], number>({
+      query: (numberId) => `${API_CONSTANTS.WA.NUMBER(numberId)}/contacts`
+    }),
+
     // Listeners
     listListeners: builder.query<IWaListener[], number>({
       query: (numberId) => API_CONSTANTS.WA.LISTENERS(numberId),
@@ -146,6 +154,8 @@ export const {
   useUpdateNumberMutation,
   useDeleteNumberMutation,
   useDisconnectNumberMutation,
+  useGetGroupsQuery,
+  useGetContactsQuery,
   useListListenersQuery,
   useAddListenerMutation,
   useUpdateListenerMutation,
