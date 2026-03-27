@@ -6,6 +6,8 @@ import {
   FileText,
   Settings,
   Bot,
+  MessageSquare,
+  Send,
   type LucideIcon
 } from 'lucide-react'
 
@@ -37,6 +39,12 @@ export const dashboardNavigation: NavGroup[] = [
   {
     title: 'Reports',
     items: [{ title: 'Reports', href: '/dashboard/reports', icon: FileText }]
+  },
+  {
+    title: 'WhatsApp',
+    items: [
+      { title: 'Outbox', href: '/dashboard/outbox', icon: Send }
+    ]
   },
   {
     title: 'AI',

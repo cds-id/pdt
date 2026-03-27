@@ -26,7 +26,7 @@ export const whatsappApi = api.injectEndpoints({
     updateNumber: builder.mutation<IWaNumber, { id: number; display_name?: string }>({
       query: ({ id, ...body }) => ({
         url: API_CONSTANTS.WA.NUMBER(id),
-        method: 'PUT',
+        method: 'PATCH',
         body
       }),
       invalidatesTags: [{ type: 'WhatsApp' as const, id: 'NUMBERS' }]
@@ -80,7 +80,7 @@ export const whatsappApi = api.injectEndpoints({
     >({
       query: ({ id, numberId: _numberId, ...body }) => ({
         url: API_CONSTANTS.WA.LISTENER(id),
-        method: 'PUT',
+        method: 'PATCH',
         body
       }),
       invalidatesTags: (_result, _error, { numberId }) => [
@@ -133,7 +133,7 @@ export const whatsappApi = api.injectEndpoints({
     >({
       query: ({ id, ...body }) => ({
         url: API_CONSTANTS.WA.OUTBOX_ITEM(id),
-        method: 'PUT',
+        method: 'PATCH',
         body
       }),
       invalidatesTags: [{ type: 'WhatsApp' as const, id: 'OUTBOX' }]
