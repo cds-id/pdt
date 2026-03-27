@@ -1,0 +1,124 @@
+<h2>Section 2: Connection Management & Message Flow</h2>
+<p class="subtitle">How WhatsApp numbers connect, messages flow in, and outgoing messages get sent</p>
+
+<div class="mockup">
+  <div class="mockup-header">Pairing Flow</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.6; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+User clicks "Add Number" in Settings
+        │
+        ▼
+PDT creates <span style="color:#7dd3fc;">wa_numbers</span> row (status: pairing)
+        │
+        ▼
+whatsmeow generates QR code
+        │
+        ▼
+QR code streamed to frontend via <span style="color:#86efac;">WebSocket</span>
+        │
+        ▼
+User scans QR with WhatsApp on phone
+        │
+        ▼
+whatsmeow completes pairing → device_store saved
+        │
+        ▼
+Status → <span style="color:#86efac;">connected</span>, start listening
+</pre>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 16px;">
+  <div class="mockup-header">Incoming Message Flow</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.6; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+WhatsApp servers
+        │
+        ▼
+whatsmeow event handler receives message
+        │
+        ▼
+Check: is sender JID in <span style="color:#7dd3fc;">wa_listeners</span> (active)?
+        │
+   NO ──┘└── YES
+   │            │
+ drop        ┌──┴──────────────────────┐
+             │  Save to <span style="color:#7dd3fc;">wa_messages</span>    │
+             └──┬──────────────────────┘
+                │
+         ┌──────┼──────────┐
+         ▼      ▼          ▼
+     has_media?  Async:     │
+     YES → download  embed  │
+       │    from WA  text   │
+       ▼         │   into   │
+     Upload      │ <span style="color:#86efac;">Weaviate</span> │
+     to <span style="color:#86efac;">R2</span>      │          │
+       │         │          │
+       ▼         │          │
+     Save to     │          │
+   <span style="color:#7dd3fc;">wa_media</span>     │          │
+                 │          │
+              (all async, non-blocking)
+</pre>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 16px;">
+  <div class="mockup-header">Outgoing Message Flow (Agent → WhatsApp)</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.6; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+AI Agent decides to send a message
+        │
+        ▼
+Agent calls <span style="color:#fbbf24;">send_message</span> tool
+        │
+        ▼
+Creates <span style="color:#7dd3fc;">wa_outbox</span> row (status: <span style="color:#fbbf24;">pending</span>)
+        │
+        ▼
+Returns to user: "I'd like to send this message to [target].
+                  Please approve in the Outbox."
+        │
+        ▼
+User sees pending message in <span style="color:#86efac;">Outbox UI</span>
+        │
+   ┌────┼────────┐
+   ▼    ▼        ▼
+ Approve  Edit   Reject
+   │      │        │
+   │    edit text   │
+   │    then approve│
+   ▼      ▼        ▼
+status: <span style="color:#86efac;">approved</span>  status: <span style="color:#f87171;">rejected</span>
+   │
+   ▼
+Sender worker picks up approved messages
+   │
+   ▼
+Send via whatsmeow → status: <span style="color:#86efac;">sent</span>
+</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>Connection Manager Design</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Lifecycle</div>
+      <p>On server start → load all <code>wa_numbers</code> with status=connected → reconnect each. On shutdown → graceful disconnect all. On crash → auto-reconnect with backoff.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Multi-Number</div>
+      <p>Each number gets its own whatsmeow <code>Client</code> instance running in a goroutine. Connection Manager holds a <code>map[uint]<em>Client</em></code> keyed by wa_number ID.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Recovery</div>
+      <p>If a connection drops, exponential backoff retry (5s → 10s → 30s → 60s max). After 5 failures, mark status=disconnected and notify user via WebSocket.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Sender Worker</div>
+      <p>Background goroutine polls <code>wa_outbox</code> for approved messages every 5s. Sends via the appropriate whatsmeow client. Updates status to sent/failed.</p>
+    </div>
+  </div>
+</div>

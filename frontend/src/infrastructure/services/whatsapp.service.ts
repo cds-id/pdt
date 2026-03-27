@@ -38,6 +38,13 @@ export const whatsappApi = api.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'WhatsApp' as const, id: 'NUMBERS' }]
     }),
+    disconnectNumber: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `${API_CONSTANTS.WA.NUMBER(id)}/disconnect`,
+        method: 'POST'
+      }),
+      invalidatesTags: [{ type: 'WhatsApp' as const, id: 'NUMBERS' }]
+    }),
 
     // Listeners
     listListeners: builder.query<IWaListener[], number>({
@@ -138,6 +145,7 @@ export const {
   useAddNumberMutation,
   useUpdateNumberMutation,
   useDeleteNumberMutation,
+  useDisconnectNumberMutation,
   useListListenersQuery,
   useAddListenerMutation,
   useUpdateListenerMutation,

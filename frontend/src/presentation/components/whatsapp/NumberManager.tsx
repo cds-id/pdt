@@ -8,7 +8,8 @@ import { DataCard, StatusBadge, EmptyState } from '@/presentation/components/com
 import {
   useListNumbersQuery,
   useAddNumberMutation,
-  useDeleteNumberMutation
+  useDeleteNumberMutation,
+  useDisconnectNumberMutation
 } from '@/infrastructure/services/whatsapp.service'
 import { QrPairingModal } from './QrPairingModal'
 import { ListenerManager } from './ListenerManager'
@@ -19,6 +20,7 @@ export function NumberManager() {
   const { data: numbers = [], isLoading } = useListNumbersQuery()
   const [addNumber, { isLoading: isAdding }] = useAddNumberMutation()
   const [deleteNumber] = useDeleteNumberMutation()
+  const [disconnectNumber] = useDisconnectNumberMutation()
 
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ phone_number: '', display_name: '' })
@@ -137,13 +139,22 @@ export function NumberManager() {
                   </div>
                 </button>
                 <div className="ml-3 flex items-center gap-2">
-                  {number.status === 'disconnected' && (
+                  {number.status === 'connected' && (
+                    <Button
+                      variant="pdtOutline"
+                      size="sm"
+                      onClick={() => disconnectNumber(number.id)}
+                    >
+                      Disconnect
+                    </Button>
+                  )}
+                  {(number.status === 'disconnected' || number.status === 'pairing') && (
                     <Button
                       variant="pdtOutline"
                       size="sm"
                       onClick={() => setPairingNumberId(number.id)}
                     >
-                      Re-pair
+                      {number.status === 'pairing' ? 'Pair' : 'Re-pair'}
                     </Button>
                   )}
                   <button

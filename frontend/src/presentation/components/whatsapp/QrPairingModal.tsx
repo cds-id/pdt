@@ -19,7 +19,7 @@ export function QrPairingModal({ numberId, token, onClose, onSuccess }: QrPairin
 
   useEffect(() => {
     const wsBase = API_CONSTANTS.BASE_URL.replace(/^http/, 'ws')
-    const wsUrl = `${wsBase}${API_CONSTANTS.API_PREFIX}/ws/wa/pair/${numberId}?token=${encodeURIComponent(token)}`
+    const wsUrl = `${wsBase}${API_CONSTANTS.API_PREFIX}/wa/pair/${numberId}?token=${encodeURIComponent(token)}`
 
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
@@ -31,17 +31,17 @@ export function QrPairingModal({ numberId, token, onClose, onSuccess }: QrPairin
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-        if (data.type === 'qr') {
-          setQrCode(data.qr)
+        if (data.event === 'code') {
+          setQrCode(data.code)
           setStatus('waiting')
-        } else if (data.type === 'success') {
+        } else if (data.event === 'success') {
           setStatus('success')
           setTimeout(() => {
             onSuccess()
             onClose()
           }, 1500)
-        } else if (data.type === 'error') {
-          setErrorMsg(data.message || 'Pairing failed.')
+        } else if (data.event === 'error' || data.event === 'timeout') {
+          setErrorMsg(data.message || 'Pairing failed or timed out.')
           setStatus('error')
         }
       } catch {

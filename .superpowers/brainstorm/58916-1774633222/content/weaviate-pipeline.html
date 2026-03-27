@@ -1,0 +1,107 @@
+<h2>Section 5: Weaviate Integration & Embedding Pipeline</h2>
+<p class="subtitle">Vector search architecture for context-aware chat analytics</p>
+
+<div class="mockup">
+  <div class="mockup-header">Embedding Pipeline Flow</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.6; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+New message saved to <span style="color:#7dd3fc;">wa_messages</span>
+        │
+        ▼
+Push to <span style="color:#fbbf24;">embedding queue</span> (Go channel, buffered)
+        │
+        ▼
+Embedding Worker (goroutine)
+        │
+        ├─ Batch messages (up to 50 or 5s timeout)
+        │
+        ▼
+Call Weaviate's <span style="color:#86efac;">vectorizer module</span>
+(text2vec-transformers or text2vec-openai)
+        │
+        ▼
+Weaviate stores vector + metadata:
+  ┌────────────────────────────────────┐
+  │  <span style="color:#7dd3fc;">WaMessageEmbedding</span>                │
+  │                                    │
+  │  message_id  → FK to wa_messages   │
+  │  listener_id → for filtering       │
+  │  user_id     → for isolation       │
+  │  content     → original text       │
+  │  sender_name → who sent it         │
+  │  timestamp   → when sent           │
+  │                                    │
+  │  <span style="color:#86efac;">vector</span>     → auto-generated       │
+  └────────────────────────────────────┘
+        │
+    On failure → retry queue (3 attempts)
+    After 3 fails → log, skip (MySQL is source of truth)
+</pre>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 16px;">
+  <div class="mockup-header">Weaviate Docker Setup</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.6; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+<span style="color:#86efac;"># Added to existing docker-compose.yml</span>
+
+services:
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    ports:
+      - "8081:8080"    <span style="color:#999;"># avoid conflict with PDT on 8080</span>
+      - "50051:50051"  <span style="color:#999;"># gRPC</span>
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: true
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      DEFAULT_VECTORIZER_MODULE: text2vec-transformers
+      ENABLE_MODULES: text2vec-transformers
+      CLUSTER_HOSTNAME: node1
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+  t2v-transformers:
+    image: semitechnologies/transformers-inference:sentence-transformers-paraphrase-multilingual-MiniLM-L12-v2
+    environment:
+      ENABLE_CUDA: 0  <span style="color:#999;"># CPU mode, set 1 if GPU available</span>
+
+<span style="color:#999;"># Using multilingual model — supports Indonesian + English</span>
+</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>Search & Query Patterns</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Semantic Search</div>
+      <p>Agent's <code>semantic_search</code> tool sends natural language query to Weaviate <code>nearText</code>. Filters by user_id + optional listener_id + date range. Returns top-K messages ranked by similarity.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Summarization Context</div>
+      <p>For <code>summarize_chat</code>, agent first fetches messages from MySQL (time range), then optionally uses Weaviate to find related messages outside the range for context continuity.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Hybrid Search</div>
+      <p>Weaviate supports hybrid (keyword + vector) out of the box. Agent can use <code>search_messages</code> (MySQL keyword) for exact matches and <code>semantic_search</code> (Weaviate) for meaning-based — or combine results.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Backfill Strategy</div>
+      <p>On first setup or if Weaviate is rebuilt: background job reads all <code>wa_messages</code> from MySQL and re-embeds them in batches. Progress tracked in logs.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 16px;">
+  <h3>Resilience Design</h3>
+  <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.7;">
+    <ul style="margin: 0; padding-left: 20px; color: #ccc;">
+      <li><strong>MySQL is source of truth</strong> — Weaviate is a search index, not primary storage. If Weaviate goes down, messages keep flowing into MySQL. Vector search degrades gracefully (agent falls back to keyword search).</li>
+      <li><strong>Async embedding</strong> — message ingestion is never blocked by Weaviate latency. Buffered Go channel decouples the two.</li>
+      <li><strong>Idempotent upserts</strong> — embedding worker uses message_id as deterministic UUID in Weaviate, safe to retry.</li>
+      <li><strong>Health check</strong> — Weaviate client pings on startup. If unavailable, logs warning, disables vector features, retries periodically.</li>
+    </ul>
+  </div>
+</div>

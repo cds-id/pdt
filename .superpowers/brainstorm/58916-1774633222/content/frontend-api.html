@@ -1,0 +1,142 @@
+<h2>Section 4: Frontend & API Endpoints</h2>
+<p class="subtitle">New pages, components, and REST endpoints</p>
+
+<div class="section">
+  <h3>New Pages</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div class="mockup">
+      <div class="mockup-header">WhatsApp Settings (in Settings page)</div>
+      <div class="mockup-body" style="padding: 16px;">
+        <div class="mock-nav" style="margin-bottom: 12px;">Settings > WhatsApp Numbers</div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="color: #7dd3fc; font-weight: 600;">+62 812-XXXX-1234</div>
+            <div style="color: #999; font-size: 12px;">Personal Phone • Connected</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">Listeners</button>
+            <button class="mock-button" style="font-size: 11px; padding: 4px 8px; border-color: #f87171; color: #f87171;">Disconnect</button>
+          </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="color: #7dd3fc; font-weight: 600;">+62 821-XXXX-5678</div>
+            <div style="color: #999; font-size: 12px;">Work Phone • Connected</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">Listeners</button>
+            <button class="mock-button" style="font-size: 11px; padding: 4px 8px; border-color: #f87171; color: #f87171;">Disconnect</button>
+          </div>
+        </div>
+        <button class="mock-button" style="width: 100%;">+ Add Number (QR Pairing)</button>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">Listener Management (per number)</div>
+      <div class="mockup-body" style="padding: 16px;">
+        <div class="mock-nav" style="margin-bottom: 12px;">+62 812-XXXX-1234 > Listeners</div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="color: #86efac; font-weight: 600;">Engineering Chat</div>
+              <div style="color: #999; font-size: 12px;">Group • 1,247 messages • Active</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">Edit</button>
+              <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">Pause</button>
+            </div>
+          </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="color: #86efac; font-weight: 600;">Boss - John</div>
+              <div style="color: #999; font-size: 12px;">Personal • 89 messages • Active</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">Edit</button>
+              <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">Pause</button>
+            </div>
+          </div>
+        </div>
+        <button class="mock-button" style="width: 100%;">+ Add Listener</button>
+        <div style="color: #999; font-size: 11px; margin-top: 8px; text-align: center;">Add by entering group/contact JID or pick from recent chats</div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">Outbox (approval queue)</div>
+      <div class="mockup-body" style="padding: 16px;">
+        <div class="mock-nav" style="margin-bottom: 12px;">WhatsApp > Outbox</div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="color: #fbbf24; font-weight: 600;">→ Engineering Chat</span>
+            <span style="background: #fbbf2433; color: #fbbf24; font-size: 11px; padding: 2px 8px; border-radius: 4px;">Pending</span>
+          </div>
+          <div style="color: #ccc; font-size: 13px; margin-bottom: 6px;">"Hi team, the sprint review is moved to Thursday 3pm per Jira card PDT-45."</div>
+          <div style="color: #999; font-size: 11px; margin-bottom: 8px;">Agent reason: User asked me to notify the team about the schedule change found in Jira.</div>
+          <div style="display: flex; gap: 8px;">
+            <button class="mock-button" style="font-size: 11px; padding: 4px 12px; border-color: #86efac; color: #86efac;">✓ Send</button>
+            <button class="mock-button" style="font-size: 11px; padding: 4px 12px;">✎ Edit</button>
+            <button class="mock-button" style="font-size: 11px; padding: 4px 12px; border-color: #f87171; color: #f87171;">✕ Reject</button>
+          </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 12px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="color: #86efac; font-weight: 600;">→ Boss - John</span>
+            <span style="background: #86efac33; color: #86efac; font-size: 11px; padding: 2px 8px; border-radius: 4px;">Sent</span>
+          </div>
+          <div style="color: #ccc; font-size: 13px;">"Daily report has been generated and uploaded. Link: ..."</div>
+          <div style="color: #999; font-size: 11px;">Sent 2 hours ago</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">QR Pairing Modal</div>
+      <div class="mockup-body" style="padding: 16px; text-align: center;">
+        <div style="color: #ccc; margin-bottom: 12px;">Scan with WhatsApp</div>
+        <div style="width: 180px; height: 180px; background: white; margin: 0 auto 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #333; font-size: 12px;">
+          QR Code<br>(streamed via WS)
+        </div>
+        <div style="color: #999; font-size: 12px;">Open WhatsApp → Linked Devices → Link a Device</div>
+        <div style="color: #fbbf24; font-size: 11px; margin-top: 8px;">● Waiting for scan...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>REST API Endpoints</h3>
+  <div class="mockup">
+    <div class="mockup-header">New Endpoints (all under /api/ with JWT auth)</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 2; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+<span style="color:#86efac;">── Numbers ──────────────────────────────────────────</span>
+GET    /api/wa/numbers              List paired numbers
+POST   /api/wa/numbers              Start pairing (returns WS channel for QR)
+DELETE /api/wa/numbers/:id          Disconnect & remove number
+PATCH  /api/wa/numbers/:id          Update display name
+
+<span style="color:#86efac;">── Listeners ────────────────────────────────────────</span>
+GET    /api/wa/numbers/:id/listeners       List listeners for a number
+POST   /api/wa/numbers/:id/listeners       Add listener (JID + name + type)
+PATCH  /api/wa/listeners/:id               Update name, toggle active
+DELETE /api/wa/listeners/:id               Remove listener
+
+<span style="color:#86efac;">── Messages (read-only) ─────────────────────────────</span>
+GET    /api/wa/listeners/:id/messages      Paginated messages for a listener
+GET    /api/wa/messages/search             Search across all listeners
+
+<span style="color:#86efac;">── Outbox ───────────────────────────────────────────</span>
+GET    /api/wa/outbox                      List outbox (filterable by status)
+PATCH  /api/wa/outbox/:id                  Approve / reject / edit
+DELETE /api/wa/outbox/:id                  Delete pending message
+
+<span style="color:#86efac;">── Pairing WebSocket ────────────────────────────────</span>
+WS     /ws/wa/pair/:number_id              QR code stream during pairing
+</pre>
+    </div>
+  </div>
+</div>

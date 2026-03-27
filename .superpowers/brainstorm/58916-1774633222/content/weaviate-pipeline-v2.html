@@ -1,0 +1,85 @@
+<h2>Section 5 (Updated): Weaviate + Gemini Embeddings</h2>
+<p class="subtitle">Using Google Gemini as vectorizer instead of local transformers</p>
+
+<div class="mockup">
+  <div class="mockup-header">Updated Docker Setup</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.6; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+<span style="color:#86efac;"># docker-compose.yml — simpler, no transformer sidecar</span>
+
+services:
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    ports:
+      - "8081:8080"
+      - "50051:50051"
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: true
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      DEFAULT_VECTORIZER_MODULE: <span style="color:#fbbf24;">text2vec-palm</span>
+      ENABLE_MODULES: <span style="color:#fbbf24;">text2vec-palm</span>
+      CLUSTER_HOSTNAME: node1
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+<span style="color:#999;"># No transformer container needed!</span>
+<span style="color:#999;"># Gemini API key configured in Weaviate collection schema</span>
+<span style="color:#999;"># or passed via request headers</span>
+</pre>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 16px;">
+  <div class="mockup-header">Updated Embedding Flow</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.6; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+New message → <span style="color:#fbbf24;">embedding queue</span> (Go channel)
+        │
+        ▼
+Embedding Worker batches messages
+        │
+        ▼
+Upsert to Weaviate with <span style="color:#fbbf24;">X-Google-Api-Key</span> header
+        │
+        ▼
+Weaviate calls <span style="color:#86efac;">Gemini Embedding API</span> automatically
+(model: <span style="color:#86efac;">embedding-001</span> or <span style="color:#86efac;">text-embedding-004</span>)
+        │
+        ▼
+Vector stored in Weaviate
+        │
+   <span style="color:#999;">Rate limit: ~1500 RPM free tier</span>
+   <span style="color:#999;">Batching amortizes API calls</span>
+</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>What Changed</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #f87171;">
+      <div class="label">Removed</div>
+      <p>Local <code>t2v-transformers</code> container — no more CPU/GPU-heavy inference sidecar</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #86efac;">
+      <div class="label">Added</div>
+      <p><code>GEMINI_API_KEY</code> env var in PDT config. Passed to Weaviate via request headers on each batch upsert and query.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #86efac;">
+      <div class="label">Better Quality</div>
+      <p>Gemini embeddings are higher quality than local MiniLM, especially for multilingual (Indonesian + English) content.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #fbbf24;">
+      <div class="label">Rate Limiting</div>
+      <p>Embedding worker respects Gemini API rate limits. Batch upserts reduce API calls. Backfill job uses slower pacing to stay within quota.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 16px;">
+  <h3>Everything Else Unchanged</h3>
+  <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.7; color: #ccc;">
+    Resilience model stays the same: MySQL is source of truth, async embedding via Go channel, idempotent upserts, graceful degradation if Weaviate/Gemini is down, backfill support.
+  </div>
+</div>

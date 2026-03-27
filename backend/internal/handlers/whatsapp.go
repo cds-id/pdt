@@ -123,7 +123,9 @@ func (h *WhatsAppHandler) DeleteNumber(c *gin.Context) {
 	}
 
 	// Disconnect client if running
-	h.Manager.RemoveClient(number.ID)
+	if h.Manager != nil {
+		h.Manager.RemoveClient(number.ID)
+	}
 
 	if err := h.DB.Delete(&number).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete number"})
@@ -131,6 +133,26 @@ func (h *WhatsAppHandler) DeleteNumber(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "number deleted"})
+}
+
+// DisconnectNumber POST /wa/numbers/:id/disconnect
+func (h *WhatsAppHandler) DisconnectNumber(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	id := c.Param("id")
+
+	var number models.WaNumber
+	if err := h.DB.Where("id = ? AND user_id = ?", id, userID).First(&number).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "number not found"})
+		return
+	}
+
+	if h.Manager != nil {
+		h.Manager.RemoveClient(number.ID)
+	}
+
+	h.DB.Model(&number).Update("status", "disconnected")
+
+	c.JSON(http.StatusOK, gin.H{"message": "number disconnected"})
 }
 
 // ─── QR Pairing ───────────────────────────────────────────────────────────────
@@ -154,6 +176,11 @@ func (h *WhatsAppHandler) HandlePairing(c *gin.Context) {
 	}
 	defer conn.Close()
 
+	if h.Manager == nil {
+		conn.WriteJSON(gin.H{"event": "error", "message": "WhatsApp manager not initialized"})
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -174,11 +201,31 @@ func (h *WhatsAppHandler) HandlePairing(c *gin.Context) {
 		return
 	}
 
+	// Read from WebSocket in background to detect client disconnect
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}()
+
 	for item := range qrChan {
+		select {
+		case <-done:
+			log.Printf("[wa-pair] client disconnected during pairing")
+			client.Disconnect()
+			return
+		default:
+		}
+
 		switch item.Event {
 		case whatsmeow.QRChannelEventCode:
 			if err := conn.WriteJSON(gin.H{"event": "code", "code": item.Code}); err != nil {
 				log.Printf("[wa-pair] write QR error: %v", err)
+				client.Disconnect()
 				return
 			}
 
@@ -188,13 +235,24 @@ func (h *WhatsAppHandler) HandlePairing(c *gin.Context) {
 				"status":    "connected",
 				"paired_at": &now,
 			})
-			h.Manager.RegisterClient(number.ID, client)
 
+			// Wire up message handler for this number
+			handler := waService.NewMessageHandler(h.DB, nil, nil, number.ID)
+			handler.SetClient(client)
+			client.AddEventHandler(handler.HandleEvent)
+
+			h.Manager.RegisterClient(number.ID, client)
 			conn.WriteJSON(gin.H{"event": "success"})
 			return
 
 		case "timeout":
 			conn.WriteJSON(gin.H{"event": "timeout"})
+			client.Disconnect()
+			return
+
+		case whatsmeow.QRChannelEventError:
+			conn.WriteJSON(gin.H{"event": "error", "message": "QR pairing failed"})
+			client.Disconnect()
 			return
 
 		default:

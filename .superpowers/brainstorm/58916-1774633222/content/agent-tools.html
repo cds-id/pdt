@@ -1,0 +1,96 @@
+<h2>Section 3: WhatsApp Agent & AI Tools</h2>
+<p class="subtitle">New agent joining the orchestrator with 7 tools</p>
+
+<div class="mockup">
+  <div class="mockup-header">Agent Integration in Orchestrator</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.6; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+User message via WebSocket
+        │
+        ▼
+  <span style="color:#86efac;">Orchestrator</span> (router)
+        │
+  ┌─────┼──────┬──────┬──────┬──────┬──────────┐
+  ▼     ▼      ▼      ▼      ▼      ▼          ▼
+Briefing Git  Jira  Proof Report  <span style="color:#fbbf24;">WhatsApp</span>
+Agent   Agent Agent Agent Agent   <span style="color:#fbbf24;">Agent (new)</span>
+
+Routes to WhatsApp Agent when user asks about:
+  • chat messages, conversations, WhatsApp
+  • message summaries, listener activity
+  • sending messages, contacting someone
+  • searching chat content
+</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>WhatsApp Agent Tools (7)</h3>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #7dd3fc;">
+      <div class="label">1. list_listeners</div>
+      <p>List all registered listeners across all numbers. Returns name, type (group/personal), number, active status, message count.</p>
+      <code style="font-size: 11px; color: #999;">Params: wa_number_id? (optional filter)</code>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #7dd3fc;">
+      <div class="label">2. search_messages</div>
+      <p>Keyword search across messages. Filters by listener, sender, date range. Returns matching messages with context.</p>
+      <code style="font-size: 11px; color: #999;">Params: query, listener_id?, sender?, start_date?, end_date?, limit?</code>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #86efac;">
+      <div class="label">3. semantic_search</div>
+      <p>Vector similarity search via Weaviate. Finds messages by meaning, not just keywords. Great for "what did we discuss about X?"</p>
+      <code style="font-size: 11px; color: #999;">Params: query, listener_id?, start_date?, end_date?, limit?</code>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #86efac;">
+      <div class="label">4. summarize_chat</div>
+      <p>Generate AI summary for a listener or across all listeners in a time range. Key topics, action items, decisions.</p>
+      <code style="font-size: 11px; color: #999;">Params: listener_id? (null = all), start_date, end_date</code>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #fbbf24;">
+      <div class="label">5. send_message</div>
+      <p>Draft an outgoing message for approval. Creates wa_outbox entry. Agent provides content + context (why it wants to send).</p>
+      <code style="font-size: 11px; color: #999;">Params: target_jid, content, context</code>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #fbbf24;">
+      <div class="label">6. reply_to_message</div>
+      <p>Draft a reply to a specific message in a listener. Creates wa_outbox with reply context. Quoted reply in WhatsApp.</p>
+      <code style="font-size: 11px; color: #999;">Params: wa_message_id, content, context</code>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border-left: 3px solid #c084fc;">
+      <div class="label">7. full_chat_report</div>
+      <p>Compound tool — single call that runs: list_listeners + summarize_chat (all) + semantic_search (recent topics). Returns complete WhatsApp briefing.</p>
+      <code style="font-size: 11px; color: #999;">Params: start_date, end_date</code>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>Agent System Prompt Highlights</h3>
+  <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.7;">
+    <ul style="margin: 0; padding-left: 20px; color: #ccc;">
+      <li><strong>Anti-hallucination:</strong> Same rules as BriefingAgent — NEVER fabricate message content, only present tool results</li>
+      <li><strong>Self-awareness:</strong> Knows the current user's phone numbers, distinguishes user's own messages from others</li>
+      <li><strong>Send discipline:</strong> Must always explain WHY it wants to send a message (context field). Never sends without user approval.</li>
+      <li><strong>Summarization with vector context:</strong> For summaries, agent first does semantic_search to find relevant threads, then uses those as context for richer summaries</li>
+      <li><strong>Cross-agent potential:</strong> Orchestrator can route follow-ups to Jira/Git agents (e.g., "someone mentioned ticket PDT-123 in chat" → JiraAgent lookup)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 16px;">
+  <h3>Tool Color Legend</h3>
+  <div style="display: flex; gap: 20px; font-size: 13px;">
+    <span><span style="color: #7dd3fc;">■</span> Read (MySQL queries)</span>
+    <span><span style="color: #86efac;">■</span> AI-powered (Weaviate / LLM)</span>
+    <span><span style="color: #fbbf24;">■</span> Write (outbox creation)</span>
+    <span><span style="color: #c084fc;">■</span> Compound</span>
+  </div>
+</div>

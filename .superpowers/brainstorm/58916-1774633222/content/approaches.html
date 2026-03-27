@@ -1,0 +1,122 @@
+<h2>WhatsApp Analytics — Architecture Approaches</h2>
+<p class="subtitle">3 approaches for integrating WhatsApp messaging into PDT</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Monolith Extension (Recommended)</h3>
+      <p>Add WhatsApp directly into the existing PDT backend. whatsmeow connections run as managed goroutines alongside existing sync workers. New DB tables for numbers, listeners, messages, files. A new <strong>WhatsAppAgent</strong> joins the existing 5 agents in the orchestrator. Weaviate client lives in PDT as a service, called by the agent for context-aware queries.</p>
+
+      <div class="mockup" style="margin-top: 12px;">
+        <div class="mockup-header">Architecture: Monolith Extension</div>
+        <div class="mockup-body" style="font-family: monospace; font-size: 13px; line-height: 1.6; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+┌─────────────────────────────────────────────────┐
+│                  PDT Backend (Go)                │
+│                                                  │
+│  ┌──────────┐  ┌──────────┐  ┌───────────────┐  │
+│  │ Existing  │  │ WhatsApp │  │  WhatsApp     │  │
+│  │ Agents   │  │ Agent    │  │  Connection   │  │
+│  │ (5)      │  │ (new)    │  │  Manager      │  │
+│  └────┬─────┘  └────┬─────┘  │  (whatsmeow)  │  │
+│       │              │        └───────┬───────┘  │
+│       │         ┌────┴────┐           │          │
+│       │         │ Weaviate│      ┌────┴────┐     │
+│       │         │ Client  │      │ Message │     │
+│       │         └────┬────┘      │ Handler │     │
+│       │              │           └────┬────┘     │
+│  ┌────┴──────────────┴────────────────┴────┐     │
+│  │              MySQL + R2                  │     │
+│  └──────────────────────────────────────────┘     │
+└───────────────────┬─────────────────────────────┘
+                    │
+            ┌───────┴───────┐
+            │   Weaviate    │
+            │  (Docker)     │
+            └───────────────┘
+</pre>
+        </div>
+      </div>
+
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>Simplest — reuses existing patterns (services, agents, DB, R2)</li>
+          <li>Shared auth, config, and WebSocket infrastructure</li>
+          <li>Single deployment unit</li>
+          <li>WhatsApp agent can cross-reference Jira/Git data natively</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>whatsmeow connections add memory/CPU to main process</li>
+          <li>If WA connection crashes, could affect main server</li>
+          <li>Harder to scale WA connections independently</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Sidecar Process</h3>
+      <p>WhatsApp connections run in a separate Go binary (sidecar) that handles all whatsmeow sessions and message ingestion. Sidecar writes messages to the shared MySQL + R2 and pushes embeddings to Weaviate. PDT backend reads from DB/Weaviate — the WhatsApp Agent queries data but doesn't manage connections.</p>
+
+      <div class="mockup" style="margin-top: 12px;">
+        <div class="mockup-header">Architecture: Sidecar Process</div>
+        <div class="mockup-body" style="font-family: monospace; font-size: 13px; line-height: 1.6; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+┌──────────────────────┐    ┌──────────────────────┐
+│   PDT Backend (Go)   │    │  WA Sidecar (Go)     │
+│                      │    │                      │
+│  ┌────────────────┐  │    │  ┌────────────────┐  │
+│  │ Existing + WA  │  │    │  │ Connection Mgr │  │
+│  │ Agents (6)     │  │    │  │ (whatsmeow)    │  │
+│  └───────┬────────┘  │    │  └───────┬────────┘  │
+│          │           │    │          │           │
+│  ┌───────┴────────┐  │    │  ┌───────┴────────┐  │
+│  │ Weaviate Client│  │    │  │ Msg Processor  │  │
+│  └───────┬────────┘  │    │  └───────┬────────┘  │
+└──────────┼───────────┘    └──────────┼───────────┘
+           │                           │
+    ┌──────┴───────────────────────────┴──────┐
+    │          MySQL + R2 + Weaviate           │
+    └─────────────────────────────────────────┘
+</pre>
+        </div>
+      </div>
+
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>Process isolation — WA crash doesn't kill PDT</li>
+          <li>Can scale/restart WA independently</li>
+          <li>Clean separation of concerns</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>Two binaries to build, deploy, and monitor</li>
+          <li>Sending messages requires IPC (HTTP/gRPC) between PDT → sidecar</li>
+          <li>More operational complexity for a single-user app</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Microservice Split</h3>
+      <p>Full microservice: dedicated WhatsApp service with its own API, separate from PDT. Communicates via REST/gRPC. Owns its own message storage. PDT queries it for analytics data.</p>
+
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>Maximum isolation and independence</li>
+          <li>Could be reused by other projects</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>Overkill for a personal tool — significant overhead</li>
+          <li>Data duplication or complex cross-service queries</li>
+          <li>Loses the benefit of agent cross-referencing Jira/Git</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+</div>

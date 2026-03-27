@@ -1,0 +1,75 @@
+<h2>Section 1: Data Model</h2>
+<p class="subtitle">New MySQL tables for WhatsApp analytics</p>
+
+<div class="mockup">
+  <div class="mockup-header">Entity Relationship — New Tables</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.5; padding: 16px;">
+<pre style="margin:0; white-space:pre; color:#ccc;">
+users (existing)
+  │
+  ├──< <span style="color:#7dd3fc;">wa_numbers</span>
+  │      id, user_id, phone_number, display_name,
+  │      device_store (whatsmeow session blob),
+  │      status (connected/disconnected/pairing),
+  │      paired_at, created_at, updated_at
+  │
+  │      ├──< <span style="color:#7dd3fc;">wa_listeners</span>
+  │      │      id, wa_number_id, jid (WhatsApp JID),
+  │      │      name (user-given label, e.g. "Engineering Chat"),
+  │      │      type (group/personal),
+  │      │      is_active (bool),
+  │      │      created_at, updated_at
+  │      │
+  │      │      ├──< <span style="color:#7dd3fc;">wa_messages</span>
+  │      │      │      id, wa_listener_id, message_id (WA msg ID),
+  │      │      │      sender_jid, sender_name, content (text),
+  │      │      │      message_type (text/image/document/audio/video),
+  │      │      │      has_media (bool),
+  │      │      │      timestamp, created_at
+  │      │      │
+  │      │      │      ├──< <span style="color:#7dd3fc;">wa_media</span>
+  │      │      │             id, wa_message_id, file_name,
+  │      │      │             mime_type, file_size, r2_key,
+  │      │      │             file_url, created_at
+  │      │      │
+  │      ├──< <span style="color:#7dd3fc;">wa_outbox</span>
+  │             id, wa_number_id, target_jid, target_name,
+  │             content, status (pending/approved/sent/rejected),
+  │             requested_by (agent/user), context (why agent wants to send),
+  │             approved_at, sent_at, created_at
+
+  <span style="color:#86efac;">Weaviate (external)</span>
+  ─────────────────────
+  Collection: <span style="color:#7dd3fc;">WaMessageEmbedding</span>
+    - message_id (cross-ref to wa_messages.id)
+    - listener_id
+    - user_id
+    - content (text, vectorized)
+    - sender_name
+    - timestamp
+    → vector index for semantic search
+</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>Key Design Decisions</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Session Storage</div>
+      <p>whatsmeow device store saved as blob in <code>wa_numbers.device_store</code> — survives server restarts without file-based storage</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Outbox Pattern</div>
+      <p><code>wa_outbox</code> holds agent-drafted messages with approval status. Agent sets <code>pending</code>, user approves/rejects from UI, sender worker picks up <code>approved</code> items</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Media Handling</div>
+      <p>Media files uploaded to R2, metadata in <code>wa_media</code>. Same pattern as existing report file uploads</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+      <div class="label">Weaviate Sync</div>
+      <p>On message insert → async embed + push to Weaviate. If Weaviate is down, messages still saved in MySQL — embeddings catch up later</p>
+    </div>
+  </div>
+</div>
