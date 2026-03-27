@@ -99,7 +99,9 @@ func (c *Client) ensureSchema(ctx context.Context) error {
 		Vectorizer: "text2vec-palm",
 		ModuleConfig: map[string]interface{}{
 			"text2vec-palm": map[string]interface{}{
-				"modelId": "text-embedding-004",
+				"projectId":   "google",
+				"apiEndpoint": "generativelanguage.googleapis.com",
+				"modelId":     "text-embedding-004",
 			},
 		},
 		Properties: []*models.Property{
