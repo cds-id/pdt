@@ -245,19 +245,22 @@ type ContactInfo struct {
 	PushName string `json:"push_name,omitempty"`
 }
 
-func (m *Manager) SendMessage(ctx context.Context, numberID uint, jid string, text string) error {
+func (m *Manager) SendMessage(ctx context.Context, numberID uint, jid string, text string) (string, error) {
 	client, ok := m.GetClient(numberID)
 	if !ok {
-		return fmt.Errorf("number %d not connected", numberID)
+		return "", fmt.Errorf("number %d not connected", numberID)
 	}
 
 	targetJID, err := parseJID(jid)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = client.SendMessage(ctx, targetJID, &waE2E.Message{
+	resp, err := client.SendMessage(ctx, targetJID, &waE2E.Message{
 		Conversation: &text,
 	})
-	return err
+	if err != nil {
+		return "", err
+	}
+	return resp.ID, nil
 }

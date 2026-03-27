@@ -18,7 +18,7 @@ type WaNumber struct {
 type WaListener struct {
 	ID         uint      `gorm:"primarykey" json:"id"`
 	WaNumberID uint      `gorm:"index;not null" json:"wa_number_id"`
-	JID        string    `gorm:"type:varchar(100);not null" json:"jid"`
+	JID        string    `gorm:"column:jid;type:varchar(100);not null" json:"jid"`
 	Name       string    `gorm:"type:varchar(200);not null" json:"name"`
 	Type       string    `gorm:"type:varchar(20);not null" json:"type"`
 	IsActive   bool      `gorm:"default:true" json:"is_active"`
@@ -30,8 +30,8 @@ type WaListener struct {
 type WaMessage struct {
 	ID           uint       `gorm:"primarykey" json:"id"`
 	WaListenerID uint       `gorm:"index;not null" json:"wa_listener_id"`
-	MessageID    string     `gorm:"type:varchar(100);uniqueIndex;not null" json:"message_id"`
-	SenderJID    string     `gorm:"type:varchar(100);not null" json:"sender_jid"`
+	MessageID    string     `gorm:"column:message_id;type:varchar(100);uniqueIndex;not null" json:"message_id"`
+	SenderJID    string     `gorm:"column:sender_jid;type:varchar(100);not null" json:"sender_jid"`
 	SenderName   string     `gorm:"type:varchar(200)" json:"sender_name"`
 	Content      string     `gorm:"type:longtext" json:"content"`
 	MessageType  string     `gorm:"type:varchar(20);default:text" json:"message_type"`
@@ -47,8 +47,8 @@ type WaMedia struct {
 	FileName    string    `gorm:"type:varchar(255)" json:"file_name"`
 	MimeType    string    `gorm:"type:varchar(100)" json:"mime_type"`
 	FileSize    int64     `json:"file_size"`
-	R2Key       string    `gorm:"type:varchar(500)" json:"r2_key"`
-	FileURL     string    `gorm:"type:varchar(500)" json:"file_url"`
+	R2Key       string    `gorm:"column:r2_key;type:varchar(500)" json:"r2_key"`
+	FileURL     string    `gorm:"column:file_url;type:varchar(500)" json:"file_url"`
 	CreatedAt   time.Time `json:"created_at"`
 	WaMessage   WaMessage `gorm:"foreignKey:WaMessageID" json:"-"`
 }
@@ -56,14 +56,17 @@ type WaMedia struct {
 type WaOutbox struct {
 	ID          uint       `gorm:"primarykey" json:"id"`
 	WaNumberID  uint       `gorm:"index;not null" json:"wa_number_id"`
-	TargetJID   string     `gorm:"type:varchar(100);not null" json:"target_jid"`
+	TargetJID   string     `gorm:"column:target_jid;type:varchar(100);not null" json:"target_jid"`
 	TargetName  string     `gorm:"type:varchar(200)" json:"target_name"`
 	Content     string     `gorm:"type:text;not null" json:"content"`
 	Status      string     `gorm:"type:varchar(20);default:pending;index" json:"status"`
 	RequestedBy string     `gorm:"type:varchar(20);default:agent" json:"requested_by"`
 	Context     string     `gorm:"type:text" json:"context"`
+	WaMessageID string     `gorm:"column:wa_message_id;type:varchar(100)" json:"wa_message_id,omitempty"`
 	ApprovedAt  *time.Time `json:"approved_at,omitempty"`
 	SentAt      *time.Time `json:"sent_at,omitempty"`
+	DeliveredAt *time.Time `json:"delivered_at,omitempty"`
+	ReadAt      *time.Time `json:"read_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	WaNumber    WaNumber   `gorm:"foreignKey:WaNumberID" json:"-"`
 }

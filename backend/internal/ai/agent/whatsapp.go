@@ -81,6 +81,9 @@ WORKFLOW:
 - Use search_messages for keyword search, semantic_search for concept/topic search.
 - Use summarize_chat or full_chat_report for conversation overviews.
 - Use send_message or reply_to_message ONLY when the user explicitly asks to send something.
+- After creating an outbox entry, show the user the message content and ask for confirmation.
+- When the user confirms (e.g., "yes", "send it", "ok", "kirim"), use approve_outbox to approve it.
+- The sender worker will send the approved message within seconds.
 
 FORMAT (respond in user's language):
 - For message lists: show sender, timestamp, and truncated content.
@@ -173,6 +176,17 @@ func (a *WhatsAppAgent) Tools() []minimax.Tool {
 			}`),
 		},
 		{
+			Name:        "approve_outbox",
+			Description: "Approve a pending outbox message so it gets sent via WhatsApp. Use this ONLY after showing the user the message content and getting their explicit confirmation (e.g., 'yes send it', 'ok', 'kirim'). NEVER approve without user confirmation.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"outbox_id": {"type": "integer", "description": "The ID of the outbox entry to approve"}
+				},
+				"required": ["outbox_id"]
+			}`),
+		},
+		{
 			Name:        "full_chat_report",
 			Description: "Compound tool: combines list_listeners + summarize_chat + semantic_search to produce a comprehensive WhatsApp activity report. Use for broad overviews. Requires start_date and end_date.",
 			InputSchema: json.RawMessage(`{
@@ -201,6 +215,8 @@ func (a *WhatsAppAgent) ExecuteTool(ctx context.Context, name string, args json.
 		return a.sendMessage(args)
 	case "reply_to_message":
 		return a.replyToMessage(args)
+	case "approve_outbox":
+		return a.approveOutbox(args)
 	case "full_chat_report":
 		return a.fullChatReport(ctx, args)
 	default:
@@ -583,6 +599,39 @@ func (a *WhatsAppAgent) replyToMessage(args json.RawMessage) (any, error) {
 }
 
 // fullChatReport is a compound tool combining list_listeners + summarize_chat + semantic_search.
+func (a *WhatsAppAgent) approveOutbox(args json.RawMessage) (any, error) {
+	var params struct {
+		OutboxID uint `json:"outbox_id"`
+	}
+	json.Unmarshal(args, &params)
+
+	if params.OutboxID == 0 {
+		return nil, fmt.Errorf("outbox_id is required")
+	}
+
+	// Verify ownership and status
+	var item models.WaOutbox
+	err := a.DB.
+		Joins("JOIN wa_numbers ON wa_numbers.id = wa_outboxes.wa_number_id").
+		Where("wa_outboxes.id = ? AND wa_numbers.user_id = ? AND wa_outboxes.status = ?", params.OutboxID, a.UserID, "pending").
+		First(&item).Error
+	if err != nil {
+		return map[string]any{"error": "Outbox item not found or not pending"}, nil
+	}
+
+	now := time.Now()
+	a.DB.Model(&item).Updates(map[string]any{
+		"status":      "approved",
+		"approved_at": now,
+	})
+
+	return map[string]any{
+		"status":    "approved",
+		"message":   fmt.Sprintf("Message to %s approved and will be sent shortly.", item.TargetName),
+		"outbox_id": item.ID,
+	}, nil
+}
+
 func (a *WhatsAppAgent) fullChatReport(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
 		StartDate string `json:"start_date"`

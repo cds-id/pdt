@@ -44,12 +44,32 @@ func (h *MessageHandler) HandleEvent(evt interface{}) {
 	switch v := evt.(type) {
 	case *events.Message:
 		h.handleMessage(v)
+	case *events.Receipt:
+		h.handleReceipt(v)
 	case *events.Connected:
 		log.Printf("[wa-handler] number %d connected", h.NumberID)
 		h.DB.Model(&models.WaNumber{}).Where("id = ?", h.NumberID).Update("status", "connected")
 	case *events.Disconnected:
 		log.Printf("[wa-handler] number %d disconnected", h.NumberID)
 		h.DB.Model(&models.WaNumber{}).Where("id = ?", h.NumberID).Update("status", "disconnected")
+	}
+}
+
+func (h *MessageHandler) handleReceipt(evt *events.Receipt) {
+	now := time.Now()
+	for _, msgID := range evt.MessageIDs {
+		switch evt.Type {
+		case events.ReceiptTypeDelivered:
+			h.DB.Model(&models.WaOutbox{}).
+				Where("wa_message_id = ?", msgID).
+				Update("delivered_at", now)
+			log.Printf("[wa-handler] message %s delivered", msgID)
+		case events.ReceiptTypeRead:
+			h.DB.Model(&models.WaOutbox{}).
+				Where("wa_message_id = ?", msgID).
+				Update("read_at", now)
+			log.Printf("[wa-handler] message %s read", msgID)
+		}
 	}
 }
 
