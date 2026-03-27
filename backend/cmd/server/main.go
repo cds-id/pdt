@@ -68,7 +68,7 @@ func main() {
 
 	// WhatsApp manager
 	var waManager *waService.Manager
-	waManager, err = waService.NewManager(ctx, db, r2Client, embeddingWorker)
+	waManager, err = waService.NewManager(ctx, db, r2Client, embeddingWorker, cfg.WhatsmeowDBPath)
 	if err != nil {
 		log.Printf("WhatsApp manager init failed: %v", err)
 	} else {

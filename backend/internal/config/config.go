@@ -34,8 +34,9 @@ type Config struct {
 	MiniMaxGroupID      string
 	AIContextWindow     int
 	// WhatsApp & Weaviate
-	GeminiAPIKey string
-	WeaviateURL  string
+	GeminiAPIKey    string
+	WeaviateURL     string
+	WhatsmeowDBPath string
 }
 
 func Load() (*Config, error) {
@@ -87,6 +88,7 @@ func Load() (*Config, error) {
 	cfg.AIContextWindow = aiContextWindow
 	cfg.GeminiAPIKey = getEnv("GEMINI_API_KEY", "")
 	cfg.WeaviateURL = getEnv("WEAVIATE_URL", "http://localhost:8081")
+	cfg.WhatsmeowDBPath = getEnv("WHATSMEOW_DB_PATH", "data/whatsmeow.db")
 
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")

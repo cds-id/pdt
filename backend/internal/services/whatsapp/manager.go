@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -31,10 +33,23 @@ type Manager struct {
 	container       *sqlstore.Container
 }
 
-func NewManager(ctx context.Context, db *gorm.DB, r2 *storage.R2Client, ew *wvClient.EmbeddingWorker) (*Manager, error) {
-	container, err := sqlstore.New(ctx, "sqlite3", "file:whatsmeow.db?_foreign_keys=on", waLog.Noop)
+func NewManager(ctx context.Context, db *gorm.DB, r2 *storage.R2Client, ew *wvClient.EmbeddingWorker, whatsmeowDBPath string) (*Manager, error) {
+	if whatsmeowDBPath == "" {
+		whatsmeowDBPath = "data/whatsmeow.db"
+	}
+
+	// Ensure parent directory exists
+	dir := filepath.Dir(whatsmeowDBPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, fmt.Errorf("create dir %s: %w", dir, err)
+	}
+
+	dbURI := fmt.Sprintf("file:%s?_foreign_keys=on", whatsmeowDBPath)
+	log.Printf("[wa-manager] opening device store at %s", dbURI)
+
+	container, err := sqlstore.New(ctx, "sqlite3", dbURI, waLog.Noop)
 	if err != nil {
-		return nil, fmt.Errorf("create sqlstore: %w", err)
+		return nil, fmt.Errorf("create sqlstore at %s: %w", dbURI, err)
 	}
 
 	return &Manager{
