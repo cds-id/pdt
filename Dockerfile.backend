@@ -14,7 +14,9 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=build /server .
+RUN mkdir -p /app/data
 
+VOLUME /app/data
 ENV SERVER_PORT=80
 EXPOSE 80
 
