@@ -230,13 +230,12 @@ func (a *WhatsAppAgent) Tools() []minimax.Tool {
 		},
 		{
 			Name:        "approve_outbox",
-			Description: "Approve a pending outbox message so it gets sent via WhatsApp. Use this ONLY after showing the user the message content and getting their explicit confirmation (e.g., 'yes send it', 'ok', 'kirim'). NEVER approve without user confirmation.",
+			Description: "Approve a pending outbox message so it gets sent via WhatsApp. If outbox_id is omitted, approves the most recent pending message. Use after user confirms sending.",
 			InputSchema: json.RawMessage(`{
 				"type": "object",
 				"properties": {
-					"outbox_id": {"type": "integer", "description": "The ID of the outbox entry to approve"}
-				},
-				"required": ["outbox_id"]
+					"outbox_id": {"type": "integer", "description": "Optional: specific outbox ID. If omitted, approves the latest pending message."}
+				}
 			}`),
 		},
 		{
@@ -962,18 +961,27 @@ func (a *WhatsAppAgent) approveOutbox(args json.RawMessage) (any, error) {
 	}
 	json.Unmarshal(args, &params)
 
-	if params.OutboxID == 0 {
-		return nil, fmt.Errorf("outbox_id is required")
-	}
-
-	// Verify ownership and status
 	var item models.WaOutbox
-	err := a.DB.
-		Joins("JOIN wa_numbers ON wa_numbers.id = wa_outboxes.wa_number_id").
-		Where("wa_outboxes.id = ? AND wa_numbers.user_id = ? AND wa_outboxes.status = ?", params.OutboxID, a.UserID, "pending").
-		First(&item).Error
-	if err != nil {
-		return map[string]any{"error": "Outbox item not found or not pending"}, nil
+
+	if params.OutboxID > 0 {
+		// Approve specific outbox item
+		err := a.DB.
+			Joins("JOIN wa_numbers ON wa_numbers.id = wa_outboxes.wa_number_id").
+			Where("wa_outboxes.id = ? AND wa_numbers.user_id = ? AND wa_outboxes.status = ?", params.OutboxID, a.UserID, "pending").
+			First(&item).Error
+		if err != nil {
+			return map[string]any{"error": "Outbox item not found or not pending"}, nil
+		}
+	} else {
+		// No ID given — approve the most recent pending outbox item
+		err := a.DB.
+			Joins("JOIN wa_numbers ON wa_numbers.id = wa_outboxes.wa_number_id").
+			Where("wa_numbers.user_id = ? AND wa_outboxes.status = ?", a.UserID, "pending").
+			Order("wa_outboxes.created_at desc").
+			First(&item).Error
+		if err != nil {
+			return map[string]any{"error": "No pending outbox items found"}, nil
+		}
 	}
 
 	now := time.Now()
