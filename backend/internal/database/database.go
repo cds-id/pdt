@@ -43,6 +43,8 @@ func Migrate(db *gorm.DB) error {
 		&models.WaMessage{},
 		&models.WaMedia{},
 		&models.WaOutbox{},
+		&models.TelegramConfig{},
+		&models.TelegramWhitelist{},
 	); err != nil {
 		return err
 	}

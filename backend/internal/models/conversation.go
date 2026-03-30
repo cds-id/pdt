@@ -10,8 +10,9 @@ import (
 type Conversation struct {
 	ID        string    `gorm:"type:varchar(36);primarykey" json:"id"`
 	UserID    uint      `gorm:"index;not null" json:"user_id"`
-	Title     string    `gorm:"type:varchar(255)" json:"title"`
-	CreatedAt time.Time `json:"created_at"`
+	Title          string    `gorm:"type:varchar(255)" json:"title"`
+	TelegramChatID int64     `gorm:"index" json:"telegram_chat_id,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	User      User      `gorm:"foreignKey:UserID" json:"-"`
 	Messages  []ChatMessage `gorm:"foreignKey:ConversationID" json:"messages,omitempty"`
