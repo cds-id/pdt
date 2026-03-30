@@ -109,12 +109,27 @@ func (o *Orchestrator) HandleMessage(ctx context.Context, messages []minimax.Mes
 	log.Printf("[orchestrator] tool call: name=%s args=%s", tc.Function.Name, tc.Function.Arguments)
 
 	var routing struct {
-		AgentName string `json:"agent_name"`
-		Reason    string `json:"reason"`
+		AgentName  string `json:"agent_name"`
+		Reason     string `json:"reason"`
+		Properties string `json:"properties"` // MiniMax sometimes nests args here
 	}
 	if err := json.Unmarshal([]byte(tc.Function.Arguments), &routing); err != nil {
 		log.Printf("[orchestrator] parse routing failed: %v, raw=%s", err, tc.Function.Arguments)
 		return nil, fmt.Errorf("parse routing: %w", err)
+	}
+
+	// MiniMax wraps args as: {"properties": "{\"agent_name\":...}"}
+	// Unwrap the nested JSON string if present
+	if routing.AgentName == "" && routing.Properties != "" {
+		var nested struct {
+			AgentName string `json:"agent_name"`
+			Reason    string `json:"reason"`
+		}
+		if json.Unmarshal([]byte(routing.Properties), &nested) == nil && nested.AgentName != "" {
+			routing.AgentName = nested.AgentName
+			routing.Reason = nested.Reason
+			log.Printf("[orchestrator] unwrapped nested properties: agent=%s", routing.AgentName)
+		}
 	}
 
 	if routing.AgentName == "" {
@@ -154,7 +169,7 @@ func detectAgentByKeyword(msg string) string {
 		}
 	}
 
-	reportKeywords := []string{"report", "laporan", "generate report", "daily report", "monthly report", "template"}
+	reportKeywords := []string{"report", "laporan", "generate report", "daily report", "monthly report", "template", "laporan harian", "buat laporan", "generate daily"}
 	for _, kw := range reportKeywords {
 		if strings.Contains(lower, kw) {
 			return "report"
