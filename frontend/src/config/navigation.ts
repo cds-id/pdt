@@ -6,6 +6,7 @@ import {
   FileText,
   Settings,
   Bot,
+  Brain,
   MessageSquare,
   Send,
   type LucideIcon
@@ -48,7 +49,10 @@ export const dashboardNavigation: NavGroup[] = [
   },
   {
     title: 'AI',
-    items: [{ title: 'AI Assistant', href: '/assistant', icon: Bot }]
+    items: [
+      { title: 'AI Assistant', href: '/assistant', icon: Bot },
+      { title: 'AI Usage', href: '/dashboard/ai-usage', icon: Brain }
+    ]
   },
   {
     title: 'System',
