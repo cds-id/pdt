@@ -13,6 +13,7 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 	"gorm.io/gorm"
 
+	"github.com/cds-id/pdt/backend/internal/ai/mistral"
 	"github.com/cds-id/pdt/backend/internal/models"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
 	wvClient "github.com/cds-id/pdt/backend/internal/services/weaviate"
@@ -28,16 +29,18 @@ type MessageHandler struct {
 	DB              *gorm.DB
 	R2              *storage.R2Client
 	EmbeddingWorker *wvClient.EmbeddingWorker
+	VisionClient    *mistral.VisionClient
 	NumberID        uint
 	client          mediaDownloader
 	waClient        *whatsmeow.Client
 }
 
-func NewMessageHandler(db *gorm.DB, r2 *storage.R2Client, ew *wvClient.EmbeddingWorker, numberID uint) *MessageHandler {
+func NewMessageHandler(db *gorm.DB, r2 *storage.R2Client, ew *wvClient.EmbeddingWorker, vc *mistral.VisionClient, numberID uint) *MessageHandler {
 	return &MessageHandler{
 		DB:              db,
 		R2:              r2,
 		EmbeddingWorker: ew,
+		VisionClient:    vc,
 		NumberID:        numberID,
 	}
 }
@@ -188,7 +191,92 @@ func (h *MessageHandler) downloadAndStoreMedia(evt *events.Message, msgID uint) 
 	}
 	if err := h.DB.Create(&media).Error; err != nil {
 		log.Printf("[wa-handler] save media record error: %v", err)
+		return
 	}
+
+	// Use Mistral vision to describe images and update message content
+	if h.VisionClient != nil && strings.HasPrefix(mimeType, "image/") {
+		// Check daily rate limit (20/day)
+		var todayCount int64
+		todayStart := time.Now().Truncate(24 * time.Hour)
+		h.DB.Model(&models.AIUsage{}).
+			Where("provider = ? AND feature = ? AND created_at >= ?", "mistral", "wa_vision", todayStart).
+			Count(&todayCount)
+		if todayCount >= 20 {
+			log.Printf("[wa-handler] vision rate limit reached (%d/20 today), skipping message %d", todayCount, msgID)
+			return
+		}
+
+		h.describeImageAndUpdate(ctx, url, mimeType, msgID)
+	}
+}
+
+// describeImageAndUpdate calls Mistral vision API to describe an image
+// and updates the WaMessage content with the description.
+func (h *MessageHandler) describeImageAndUpdate(ctx context.Context, imageURL, mimeType string, msgID uint) {
+	result, err := h.VisionClient.DescribeImage(ctx, imageURL, mimeType)
+	if err != nil {
+		log.Printf("[wa-handler] vision describe error for message %d: %v", msgID, err)
+		return
+	}
+
+	// Resolve user ID from number for usage tracking
+	var waNumber models.WaNumber
+	if err := h.DB.Select("user_id").First(&waNumber, h.NumberID).Error; err == nil {
+		h.DB.Create(&models.AIUsage{
+			UserID:           waNumber.UserID,
+			Provider:         "mistral",
+			Model:            mistral.VisionModel,
+			Feature:          "wa_vision",
+			PromptTokens:     result.PromptTokens,
+			CompletionTokens: result.CompletionTokens,
+		})
+	}
+
+	// Read existing content to preserve any caption
+	var msg models.WaMessage
+	if err := h.DB.Select("content").First(&msg, msgID).Error; err != nil {
+		log.Printf("[wa-handler] read message %d error: %v", msgID, err)
+		return
+	}
+
+	// Build content: keep caption if present, append vision description
+	description := result.Description
+	var content string
+	if msg.Content != "" && msg.Content != "[image]" && msg.Content != "[sticker]" {
+		content = msg.Content + "\n\n[Image description: " + description + "]"
+	} else {
+		content = "[Image description: " + description + "]"
+	}
+
+	if err := h.DB.Model(&models.WaMessage{}).Where("id = ?", msgID).Update("content", content).Error; err != nil {
+		log.Printf("[wa-handler] update message content error for %d: %v", msgID, err)
+		return
+	}
+
+	// Enqueue embedding now that we have meaningful content
+	if h.EmbeddingWorker != nil {
+		var fullMsg models.WaMessage
+		if err := h.DB.First(&fullMsg, msgID).Error; err == nil {
+			h.EmbeddingWorker.Enqueue(wvClient.EmbedRequest{
+				MessageID:  fullMsg.ID,
+				ListenerID: fullMsg.WaListenerID,
+				UserID:     0,
+				Content:    content,
+				SenderName: fullMsg.SenderName,
+				Timestamp:  fullMsg.Timestamp,
+			})
+		}
+	}
+
+	log.Printf("[wa-handler] vision described message %d: %s", msgID, truncate(description, 80))
+}
+
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
 
 // SetClient allows the manager to inject the whatsmeow client for media downloads.
