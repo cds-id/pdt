@@ -33,6 +33,7 @@ type Config struct {
 	MiniMaxAPIKey       string
 	MiniMaxGroupID      string
 	AIContextWindow     int
+	MistralAPIKey   string
 	// WhatsApp & Weaviate
 	GeminiAPIKey    string
 	WeaviateURL     string
@@ -86,6 +87,7 @@ func Load() (*Config, error) {
 	cfg.MiniMaxAPIKey = getEnv("MINIMAX_API_KEY", "")
 	cfg.MiniMaxGroupID = getEnv("MINIMAX_GROUP_ID", "")
 	cfg.AIContextWindow = aiContextWindow
+	cfg.MistralAPIKey = getEnv("MISTRAL_API_KEY", "")
 	cfg.GeminiAPIKey = getEnv("GEMINI_API_KEY", "")
 	cfg.WeaviateURL = getEnv("WEAVIATE_URL", "http://localhost:8081")
 	cfg.WhatsmeowDBPath = getEnv("WHATSMEOW_DB_PATH", "data/whatsmeow.db")
