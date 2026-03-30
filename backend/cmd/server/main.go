@@ -16,6 +16,7 @@ import (
 	"github.com/cds-id/pdt/backend/internal/middleware"
 	"github.com/cds-id/pdt/backend/internal/services/report"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
+	tgService "github.com/cds-id/pdt/backend/internal/services/telegram"
 	waService "github.com/cds-id/pdt/backend/internal/services/whatsapp"
 	wvService "github.com/cds-id/pdt/backend/internal/services/weaviate"
 	"github.com/cds-id/pdt/backend/internal/worker"
@@ -122,6 +123,28 @@ func main() {
 	waHandler := &handlers.WhatsAppHandler{
 		DB:      db,
 		Manager: waManager,
+	}
+
+	// Telegram bot (optional)
+	var tgBot *tgService.Bot
+	if cfg.TelegramBotToken != "" && miniMaxClient != nil {
+		tgBot, err = tgService.NewBot(
+			cfg.TelegramBotToken,
+			db,
+			miniMaxClient,
+			encryptor,
+			r2Client,
+			reportGen,
+			cfg.AIContextWindow,
+			waManager,
+			weaviateClient,
+		)
+		if err != nil {
+			log.Printf("Telegram bot init failed: %v", err)
+		} else {
+			tgBot.SeedWhitelist(cfg.TelegramWhitelist)
+			tgBot.Start(ctx)
+		}
 	}
 
 	// Router
@@ -272,6 +295,10 @@ func main() {
 
 	if waManager != nil {
 		waManager.Shutdown()
+	}
+
+	if tgBot != nil {
+		tgBot.Stop()
 	}
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
