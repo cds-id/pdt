@@ -42,6 +42,8 @@ export const API_CONSTANTS = {
 
   // Jira Endpoints
   JIRA: {
+    WORKSPACES: '/jira/workspaces',
+    WORKSPACE: (id: number) => `/jira/workspaces/${id}`,
     SPRINTS: '/jira/sprints',
     SPRINT: (id: string) => `/jira/sprints/${id}`,
     ACTIVE_SPRINT: '/jira/active-sprint',

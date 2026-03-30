@@ -1,9 +1,20 @@
 import { api } from './api'
 import { API_CONSTANTS } from '../constants/api.constants'
 
+export interface JiraWorkspace {
+  id: number
+  workspace: string
+  name: string
+  project_keys: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface JiraSprint {
   id: number
   jira_sprint_id: string
+  workspace_id?: number
   name: string
   state: 'active' | 'closed' | 'future'
   start_date?: string
@@ -15,6 +26,7 @@ export interface JiraSprint {
 export interface JiraCard {
   id: number
   key: string
+  workspace_id?: number
   summary: string
   status: string
   assignee?: string
@@ -35,6 +47,36 @@ export interface JiraComment {
 
 export const jiraApi = api.injectEndpoints({
   endpoints: (builder) => ({
+    // Workspace CRUD
+    listWorkspaces: builder.query<JiraWorkspace[], void>({
+      query: () => API_CONSTANTS.JIRA.WORKSPACES,
+      providesTags: [{ type: 'Jira' as const, id: 'WORKSPACES' }]
+    }),
+    addWorkspace: builder.mutation<JiraWorkspace, { workspace: string; name?: string; project_keys?: string }>({
+      query: (body) => ({
+        url: API_CONSTANTS.JIRA.WORKSPACES,
+        method: 'POST',
+        body
+      }),
+      invalidatesTags: [{ type: 'Jira' as const, id: 'WORKSPACES' }]
+    }),
+    updateWorkspace: builder.mutation<JiraWorkspace, { id: number } & Partial<JiraWorkspace>>({
+      query: ({ id, ...body }) => ({
+        url: API_CONSTANTS.JIRA.WORKSPACE(id),
+        method: 'PATCH',
+        body
+      }),
+      invalidatesTags: [{ type: 'Jira' as const, id: 'WORKSPACES' }]
+    }),
+    deleteWorkspace: builder.mutation<void, number>({
+      query: (id) => ({
+        url: API_CONSTANTS.JIRA.WORKSPACE(id),
+        method: 'DELETE'
+      }),
+      invalidatesTags: [{ type: 'Jira' as const, id: 'WORKSPACES' }]
+    }),
+
+    // Sprint / Card / Comment
     listSprints: builder.query<JiraSprint[], void>({
       query: () => API_CONSTANTS.JIRA.SPRINTS,
       providesTags: [{ type: 'Jira' as const, id: 'SPRINTS' }]
@@ -73,6 +115,10 @@ export const jiraApi = api.injectEndpoints({
 })
 
 export const {
+  useListWorkspacesQuery,
+  useAddWorkspaceMutation,
+  useUpdateWorkspaceMutation,
+  useDeleteWorkspaceMutation,
   useListSprintsQuery,
   useGetSprintQuery,
   useGetActiveSprintQuery,
