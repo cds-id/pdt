@@ -233,13 +233,29 @@ func (c *Client) buildParams(req ChatRequest, model string) anthropic.MessageNew
 	// Convert tools
 	var tools []anthropic.ToolUnionParam
 	for _, t := range req.Tools {
+		// Parse the full JSON schema to extract properties and required separately
+		var schema struct {
+			Properties json.RawMessage `json:"properties"`
+			Required   []string        `json:"required"`
+		}
+		json.Unmarshal(t.InputSchema, &schema)
+
+		// Build the proper InputSchema with separated fields
+		inputSchema := anthropic.ToolInputSchemaParam{}
+		if schema.Properties != nil {
+			var props interface{}
+			json.Unmarshal(schema.Properties, &props)
+			inputSchema.Properties = props
+		}
+		if len(schema.Required) > 0 {
+			inputSchema.Required = schema.Required
+		}
+
 		tools = append(tools, anthropic.ToolUnionParam{
 			OfTool: &anthropic.ToolParam{
 				Name:        t.Name,
 				Description: anthropic.String(t.Description),
-				InputSchema: anthropic.ToolInputSchemaParam{
-					Properties: t.InputSchema,
-				},
+				InputSchema: inputSchema,
 			},
 		})
 	}
