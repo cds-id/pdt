@@ -104,9 +104,15 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 		return
 	}
 
-	text := extractText(evt.Message)
+	rawText := extractText(evt.Message)
 	msgType := detectMediaType(evt.Message)
 	hasMedia := hasMediaContent(evt.Message)
+
+	// Label media messages that have no text/caption
+	text := rawText
+	if text == "" && hasMedia {
+		text = "[" + msgType + "]"
+	}
 
 	msg := models.WaMessage{
 		WaListenerID: listener.ID,
@@ -128,8 +134,8 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 		return
 	}
 
-	// Enqueue embedding for text messages
-	if text != "" {
+	// Enqueue embedding only for messages with actual text content
+	if rawText != "" {
 		h.EmbeddingWorker.Enqueue(wvClient.EmbedRequest{
 			MessageID:  msg.ID,
 			ListenerID: listener.ID,
