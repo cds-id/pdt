@@ -47,6 +47,9 @@ type AIUsage struct {
 	ID               uint      `gorm:"primarykey" json:"id"`
 	UserID           uint      `gorm:"index;not null" json:"user_id"`
 	ConversationID   string    `gorm:"type:varchar(36);index" json:"conversation_id"`
+	Provider         string    `gorm:"type:varchar(30);index;default:minimax" json:"provider"`
+	Model            string    `gorm:"type:varchar(60)" json:"model"`
+	Feature          string    `gorm:"type:varchar(40);index" json:"feature"`
 	PromptTokens     int       `json:"prompt_tokens"`
 	CompletionTokens int       `json:"completion_tokens"`
 	CreatedAt        time.Time `json:"created_at"`
