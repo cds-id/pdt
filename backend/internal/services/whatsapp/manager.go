@@ -3,7 +3,9 @@ package whatsapp
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -17,6 +19,7 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"gorm.io/gorm"
 
+	"github.com/cds-id/pdt/backend/internal/ai/mistral"
 	"github.com/cds-id/pdt/backend/internal/models"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
 	wvClient "github.com/cds-id/pdt/backend/internal/services/weaviate"
@@ -29,12 +32,13 @@ type Manager struct {
 	DB              *gorm.DB
 	R2              *storage.R2Client
 	EmbeddingWorker *wvClient.EmbeddingWorker
+	VisionClient    *mistral.VisionClient
 	clients         map[uint]*whatsmeow.Client
 	mu              sync.RWMutex
 	container       *sqlstore.Container
 }
 
-func NewManager(ctx context.Context, db *gorm.DB, r2 *storage.R2Client, ew *wvClient.EmbeddingWorker, whatsmeowDBPath string) (*Manager, error) {
+func NewManager(ctx context.Context, db *gorm.DB, r2 *storage.R2Client, ew *wvClient.EmbeddingWorker, whatsmeowDBPath string, mistralAPIKey string) (*Manager, error) {
 	if whatsmeowDBPath == "" {
 		whatsmeowDBPath = "data/whatsmeow.db"
 	}
@@ -55,10 +59,17 @@ func NewManager(ctx context.Context, db *gorm.DB, r2 *storage.R2Client, ew *wvCl
 		return nil, fmt.Errorf("create sqlstore at %s: %w", dbURI, err)
 	}
 
+	var visionClient *mistral.VisionClient
+	if mistralAPIKey != "" {
+		visionClient = mistral.NewVisionClient(mistralAPIKey)
+		log.Printf("[wa-manager] Mistral vision client configured")
+	}
+
 	return &Manager{
 		DB:              db,
 		R2:              r2,
 		EmbeddingWorker: ew,
+		VisionClient:    visionClient,
 		clients:         make(map[uint]*whatsmeow.Client),
 		container:       container,
 	}, nil
@@ -130,7 +141,7 @@ func (m *Manager) connectNumber(ctx context.Context, numberID uint) {
 	}
 
 	client := whatsmeow.NewClient(device, waLog.Noop)
-	handler := NewMessageHandler(m.DB, m.R2, m.EmbeddingWorker, numberID)
+	handler := NewMessageHandler(m.DB, m.R2, m.EmbeddingWorker, m.VisionClient, numberID)
 	handler.SetClient(client)
 	client.AddEventHandler(handler.HandleEvent)
 
@@ -270,6 +281,10 @@ type ContactInfo struct {
 }
 
 func (m *Manager) SendMessage(ctx context.Context, numberID uint, jid string, text string) (string, error) {
+	return m.SendMediaMessage(ctx, numberID, jid, text, "")
+}
+
+func (m *Manager) SendMediaMessage(ctx context.Context, numberID uint, jid string, text string, mediaURL string) (string, error) {
 	client, ok := m.GetClient(numberID)
 	if !ok {
 		return "", fmt.Errorf("number %d not connected", numberID)
@@ -280,9 +295,58 @@ func (m *Manager) SendMessage(ctx context.Context, numberID uint, jid string, te
 		return "", err
 	}
 
+	// If mediaURL is provided, send as image message
+	if mediaURL != "" {
+		return m.sendImageMessage(ctx, client, targetJID, text, mediaURL)
+	}
+
 	resp, err := client.SendMessage(ctx, targetJID, &waE2E.Message{
 		Conversation: &text,
 	})
+	if err != nil {
+		return "", err
+	}
+	return resp.ID, nil
+}
+
+func (m *Manager) sendImageMessage(ctx context.Context, client *whatsmeow.Client, targetJID types.JID, caption string, imageURL string) (string, error) {
+	// Download the image from the URL
+	httpResp, err := http.Get(imageURL)
+	if err != nil {
+		return "", fmt.Errorf("download image: %w", err)
+	}
+	defer httpResp.Body.Close()
+
+	imageData, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read image data: %w", err)
+	}
+
+	mimeType := httpResp.Header.Get("Content-Type")
+	if mimeType == "" {
+		mimeType = "image/jpeg"
+	}
+
+	// Upload to WhatsApp servers
+	uploaded, err := client.Upload(ctx, imageData, whatsmeow.MediaImage)
+	if err != nil {
+		return "", fmt.Errorf("upload image to whatsapp: %w", err)
+	}
+
+	msg := &waE2E.Message{
+		ImageMessage: &waE2E.ImageMessage{
+			Caption:       &caption,
+			Mimetype:      &mimeType,
+			URL:           &uploaded.URL,
+			DirectPath:    &uploaded.DirectPath,
+			MediaKey:      uploaded.MediaKey,
+			FileEncSHA256: uploaded.FileEncSHA256,
+			FileSHA256:    uploaded.FileSHA256,
+			FileLength:    &uploaded.FileLength,
+		},
+	}
+
+	resp, err := client.SendMessage(ctx, targetJID, msg)
 	if err != nil {
 		return "", err
 	}
