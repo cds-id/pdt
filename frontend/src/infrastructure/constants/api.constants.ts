@@ -30,6 +30,7 @@ export const API_CONSTANTS = {
   // Sync Endpoints
   SYNC: {
     COMMITS: '/sync/commits',
+    JIRA: '/sync/jira',
     STATUS: '/sync/status'
   },
 

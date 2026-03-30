@@ -147,6 +147,30 @@ func syncWorkspace(db *gorm.DB, user models.User, token string, ws models.JiraWo
 	return nil
 }
 
+// SyncUserJiraWorkspace syncs a single workspace for a user.
+func SyncUserJiraWorkspace(db *gorm.DB, enc *crypto.Encryptor, userID uint, workspaceID uint) error {
+	var user models.User
+	if err := db.First(&user, userID).Error; err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	if user.JiraToken == "" || user.JiraEmail == "" {
+		return fmt.Errorf("jira credentials not configured")
+	}
+
+	token, err := enc.Decrypt(user.JiraToken)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt jira token: %w", err)
+	}
+
+	var ws models.JiraWorkspaceConfig
+	if err := db.Where("id = ? AND user_id = ?", workspaceID, userID).First(&ws).Error; err != nil {
+		return fmt.Errorf("workspace not found")
+	}
+
+	return syncWorkspace(db, user, token, ws)
+}
+
 func SyncAllUsersJira(db *gorm.DB, enc *crypto.Encryptor) {
 	// Find users that have at least one active workspace
 	var userIDs []uint

@@ -21,6 +21,15 @@ export const syncApi = api.injectEndpoints({
         method: 'POST'
       })
     }),
+    triggerJiraSync: builder.mutation<{ status: string }, number | void>({
+      query: (workspaceId) => ({
+        url: workspaceId
+          ? `${API_CONSTANTS.SYNC.JIRA}?workspace_id=${workspaceId}`
+          : API_CONSTANTS.SYNC.JIRA,
+        method: 'POST'
+      }),
+      invalidatesTags: [{ type: 'Jira' as const, id: 'SPRINTS' }, { type: 'Jira' as const, id: 'CARDS' }]
+    }),
     getSyncStatus: builder.query<SyncStatus, void>({
       query: () => API_CONSTANTS.SYNC.STATUS,
       providesTags: [{ type: 'Sync' as const, id: 'STATUS' }]
@@ -28,4 +37,4 @@ export const syncApi = api.injectEndpoints({
   })
 })
 
-export const { useTriggerSyncMutation, useGetSyncStatusQuery } = syncApi
+export const { useTriggerSyncMutation, useTriggerJiraSyncMutation, useGetSyncStatusQuery } = syncApi

@@ -164,6 +164,7 @@ func main() {
 			}
 
 			protected.POST("/sync/commits", syncHandler.SyncCommits)
+			protected.POST("/sync/jira", syncHandler.SyncJira)
 			protected.GET("/sync/status", syncHandler.SyncStatus)
 
 			commits := protected.Group("/commits")

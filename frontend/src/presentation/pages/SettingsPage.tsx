@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Save, Plus, Trash2, Pencil } from 'lucide-react'
+import { Save, Plus, Trash2, Pencil, RefreshCw } from 'lucide-react'
 
 import {
   useGetProfileQuery,
@@ -12,6 +12,7 @@ import {
   useUpdateWorkspaceMutation,
   useDeleteWorkspaceMutation
 } from '@/infrastructure/services/jira.service'
+import { useTriggerJiraSyncMutation } from '@/infrastructure/services/sync.service'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -32,6 +33,8 @@ export function SettingsPage() {
   const [addWorkspace] = useAddWorkspaceMutation()
   const [updateWorkspace] = useUpdateWorkspaceMutation()
   const [deleteWorkspace] = useDeleteWorkspaceMutation()
+  const [syncJira, { isLoading: isSyncingJira }] = useTriggerJiraSyncMutation()
+  const [syncingWsId, setSyncingWsId] = useState<number | null>(null)
 
   const [formData, setFormData] = useState({
     github_token: '',
@@ -322,6 +325,27 @@ export function SettingsPage() {
                       >
                         {ws.is_active ? 'Active' : 'Inactive'}
                       </StatusBadge>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={isSyncingJira && syncingWsId === ws.id}
+                        onClick={async () => {
+                          setSyncingWsId(ws.id)
+                          try {
+                            await syncJira(ws.id).unwrap()
+                          } finally {
+                            setSyncingWsId(null)
+                          }
+                        }}
+                      >
+                        <RefreshCw
+                          className={cn(
+                            'size-3',
+                            isSyncingJira && syncingWsId === ws.id && 'animate-spin'
+                          )}
+                        />
+                      </Button>
                       <Button
                         type="button"
                         size="sm"
