@@ -180,6 +180,11 @@ func (h *Handler) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 	}
 	log.Printf("[telegram] orchestrator done, response length: %d", len(result.FullResponse))
 
+	// Flush buffered content to Telegram
+	if err := writer.WriteDone(); err != nil {
+		log.Printf("[telegram] WriteDone error: %v", err)
+	}
+
 	// Save assistant response
 	if result.FullResponse != "" {
 		assistantMsg := models.ChatMessage{
