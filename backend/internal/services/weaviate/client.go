@@ -3,7 +3,6 @@ package weaviate
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -71,8 +70,14 @@ func NewClient(url, geminiAPIKey string) *Client {
 	c.available = true
 
 	if err := c.ensureSchema(context.Background()); err != nil {
-		log.Printf("[weaviate] schema setup failed: %v", err)
+		log.Printf("[weaviate] WA message schema setup failed: %v", err)
 		c.available = false
+	}
+	if err := c.ensureJiraSchema(context.Background()); err != nil {
+		log.Printf("[weaviate] Jira schema setup failed: %v", err)
+	}
+	if err := c.ensureCommitSchema(context.Background()); err != nil {
+		log.Printf("[weaviate] Commit schema setup failed: %v", err)
 	}
 
 	return c
@@ -317,21 +322,9 @@ func buildWhereFilter(userID int, listenerID *int, startDate, endDate *time.Time
 
 // parseGraphQLResponse parses the raw GraphQL data map into SearchResult slice.
 func parseGraphQLResponse(data map[string]models.JSONObject) ([]SearchResult, error) {
-	b, err := json.Marshal(data)
-	if err != nil {
-		return nil, fmt.Errorf("marshal graphql data: %w", err)
-	}
-
-	var parsed struct {
-		Get map[string][]map[string]interface{} `json:"Get"`
-	}
-	if err := json.Unmarshal(b, &parsed); err != nil {
-		return nil, fmt.Errorf("unmarshal graphql data: %w", err)
-	}
-
-	objects, ok := parsed.Get[collectionName]
-	if !ok {
-		return nil, nil
+	objects, err := marshalAndParse(data, collectionName)
+	if err != nil || objects == nil {
+		return nil, err
 	}
 
 	results := make([]SearchResult, 0, len(objects))

@@ -9,6 +9,7 @@ import (
 	"github.com/cds-id/pdt/backend/internal/crypto"
 	"github.com/cds-id/pdt/backend/internal/models"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
+	wvClient "github.com/cds-id/pdt/backend/internal/services/weaviate"
 	"gorm.io/gorm"
 )
 
@@ -22,6 +23,7 @@ type Scheduler struct {
 	ReportAutoTime        string
 	ReportMonthlyAutoTime string
 	R2                    *storage.R2Client
+	Weaviate              *wvClient.Client
 	commitRunning         atomic.Bool
 	jiraRunning           atomic.Bool
 	reportRunning         atomic.Bool
@@ -30,7 +32,7 @@ type Scheduler struct {
 	monthlyRunning        atomic.Bool
 }
 
-func NewScheduler(db *gorm.DB, enc *crypto.Encryptor, commitInterval, jiraInterval time.Duration, reportAutoGen bool, reportAutoTime string, reportMonthlyAutoTime string, r2 *storage.R2Client) *Scheduler {
+func NewScheduler(db *gorm.DB, enc *crypto.Encryptor, commitInterval, jiraInterval time.Duration, reportAutoGen bool, reportAutoTime string, reportMonthlyAutoTime string, r2 *storage.R2Client, wv *wvClient.Client) *Scheduler {
 	return &Scheduler{
 		DB:                    db,
 		Encryptor:             enc,
@@ -41,6 +43,7 @@ func NewScheduler(db *gorm.DB, enc *crypto.Encryptor, commitInterval, jiraInterv
 		ReportAutoTime:        reportAutoTime,
 		ReportMonthlyAutoTime: reportMonthlyAutoTime,
 		R2:                    r2,
+		Weaviate:              wv,
 	}
 }
 
@@ -89,7 +92,7 @@ func (s *Scheduler) runCommitSync() {
 
 	for _, uid := range userIDs {
 		s.Status.SetCommitSyncing(uid)
-		results, err := SyncUserCommits(s.DB, s.Encryptor, uid)
+		results, err := SyncUserCommits(s.DB, s.Encryptor, uid, s.Weaviate)
 		if err != nil {
 			s.Status.SetCommitDone(uid, nextSync, err)
 			log.Printf("[worker] commit sync failed for user %d: %v", uid, err)
@@ -141,7 +144,7 @@ func (s *Scheduler) runJiraSync() {
 
 	for _, user := range users {
 		s.Status.SetJiraSyncing(user.ID)
-		err := SyncUserJira(s.DB, s.Encryptor, user.ID)
+		err := SyncUserJira(s.DB, s.Encryptor, user.ID, s.Weaviate)
 		if err != nil {
 			s.Status.SetJiraDone(user.ID, nextSync, err)
 			log.Printf("[worker] jira sync failed for user %d: %v", user.ID, err)

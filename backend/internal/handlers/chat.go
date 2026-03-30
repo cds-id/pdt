@@ -125,8 +125,8 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 	// Build orchestrator with user-scoped agents
 	orchestrator := agent.NewOrchestrator(
 		h.MiniMaxClient,
-		&agent.GitAgent{DB: h.DB, UserID: userID, Encryptor: h.Encryptor},
-		&agent.JiraAgent{DB: h.DB, UserID: userID},
+		&agent.GitAgent{DB: h.DB, UserID: userID, Encryptor: h.Encryptor, Weaviate: h.WeaviateClient},
+		&agent.JiraAgent{DB: h.DB, UserID: userID, Weaviate: h.WeaviateClient},
 		&agent.ReportAgent{DB: h.DB, UserID: userID, Generator: h.ReportGenerator, R2: h.R2},
 		&agent.ProofAgent{DB: h.DB, UserID: userID},
 		&agent.BriefingAgent{DB: h.DB, UserID: userID},

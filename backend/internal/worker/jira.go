@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,11 +11,12 @@ import (
 	"github.com/cds-id/pdt/backend/internal/helpers"
 	"github.com/cds-id/pdt/backend/internal/models"
 	"github.com/cds-id/pdt/backend/internal/services/jira"
+	wvClient "github.com/cds-id/pdt/backend/internal/services/weaviate"
 	"gorm.io/gorm"
 )
 
 // SyncUserJira syncs all active workspaces for a user.
-func SyncUserJira(db *gorm.DB, enc *crypto.Encryptor, userID uint) error {
+func SyncUserJira(db *gorm.DB, enc *crypto.Encryptor, userID uint, wv ...*wvClient.Client) error {
 	var user models.User
 	if err := db.First(&user, userID).Error; err != nil {
 		return fmt.Errorf("user not found: %w", err)
@@ -38,9 +40,14 @@ func SyncUserJira(db *gorm.DB, enc *crypto.Encryptor, userID uint) error {
 		return nil
 	}
 
+	var wvC *wvClient.Client
+	if len(wv) > 0 {
+		wvC = wv[0]
+	}
+
 	for _, ws := range workspaces {
 		log.Printf("[jira-sync] user=%d workspace=%s starting sync", userID, ws.Workspace)
-		if err := syncWorkspace(db, user, token, ws); err != nil {
+		if err := syncWorkspace(db, user, token, ws, wvC); err != nil {
 			log.Printf("[jira-sync] user=%d workspace=%s sync failed: %v", userID, ws.Workspace, err)
 		} else {
 			log.Printf("[jira-sync] user=%d workspace=%s sync completed", userID, ws.Workspace)
@@ -50,7 +57,7 @@ func SyncUserJira(db *gorm.DB, enc *crypto.Encryptor, userID uint) error {
 	return nil
 }
 
-func syncWorkspace(db *gorm.DB, user models.User, token string, ws models.JiraWorkspaceConfig) error {
+func syncWorkspace(db *gorm.DB, user models.User, token string, ws models.JiraWorkspaceConfig, wvC *wvClient.Client) error {
 	client := jira.New(ws.Workspace, user.JiraEmail, token)
 	userID := user.ID
 	wsID := ws.ID
@@ -115,6 +122,17 @@ func syncWorkspace(db *gorm.DB, user models.User, token string, ws models.JiraWo
 					db.Where("user_id = ? AND card_key = ?", userID, card.Key).
 						Assign(jiraCard).FirstOrCreate(&jiraCard)
 
+					// Embed card in Weaviate
+					if wvC != nil {
+						embedContent := card.Summary
+						if detail != nil && detail.Description != "" {
+							embedContent = card.Summary + "\n" + detail.Description
+						}
+						if err := wvC.UpsertJiraCard(context.Background(), card.Key, int(userID), int(wsID), embedContent, card.Status, card.Assignee); err != nil {
+							log.Printf("[jira-sync] embed card %s error: %v", card.Key, err)
+						}
+					}
+
 					comments, err := client.FetchIssueComments(card.Key)
 					if err != nil {
 						log.Printf("[jira-sync] user=%d ws=%s card=%s fetch comments error: %v", userID, ws.Workspace, card.Key, err)
@@ -132,6 +150,13 @@ func syncWorkspace(db *gorm.DB, user models.User, token string, ws models.JiraWo
 							}
 							db.Where("comment_id = ?", comment.ID).
 								Assign(jiraComment).FirstOrCreate(&jiraComment)
+
+							// Embed comment in Weaviate
+							if wvC != nil {
+								if err := wvC.UpsertJiraComment(context.Background(), comment.ID, card.Key, int(userID), int(wsID), comment.Body, comment.Author); err != nil {
+									log.Printf("[jira-sync] embed comment %s error: %v", comment.ID, err)
+								}
+							}
 						}
 					}
 
@@ -148,7 +173,7 @@ func syncWorkspace(db *gorm.DB, user models.User, token string, ws models.JiraWo
 }
 
 // SyncUserJiraWorkspace syncs a single workspace for a user.
-func SyncUserJiraWorkspace(db *gorm.DB, enc *crypto.Encryptor, userID uint, workspaceID uint) error {
+func SyncUserJiraWorkspace(db *gorm.DB, enc *crypto.Encryptor, userID uint, workspaceID uint, wv ...*wvClient.Client) error {
 	var user models.User
 	if err := db.First(&user, userID).Error; err != nil {
 		return fmt.Errorf("user not found: %w", err)
@@ -168,7 +193,11 @@ func SyncUserJiraWorkspace(db *gorm.DB, enc *crypto.Encryptor, userID uint, work
 		return fmt.Errorf("workspace not found")
 	}
 
-	return syncWorkspace(db, user, token, ws)
+	var wvC *wvClient.Client
+	if len(wv) > 0 {
+		wvC = wv[0]
+	}
+	return syncWorkspace(db, user, token, ws, wvC)
 }
 
 func SyncAllUsersJira(db *gorm.DB, enc *crypto.Encryptor) {

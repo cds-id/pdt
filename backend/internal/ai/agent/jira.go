@@ -10,12 +10,14 @@ import (
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/helpers"
 	"github.com/cds-id/pdt/backend/internal/models"
+	wvClient "github.com/cds-id/pdt/backend/internal/services/weaviate"
 	"gorm.io/gorm"
 )
 
 type JiraAgent struct {
-	DB     *gorm.DB
-	UserID uint
+	DB       *gorm.DB
+	UserID   uint
+	Weaviate *wvClient.Client
 }
 
 func (a *JiraAgent) Name() string { return "jira" }
@@ -93,6 +95,19 @@ func (a *JiraAgent) Tools() []minimax.Tool {
 			}`),
 		},
 		{
+			Name:        "semantic_search_cards",
+			Description: "Search Jira cards and comments by meaning/topic using vector search. Use for finding cards about a concept even if exact keywords don't match.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"query": {"type": "string", "description": "Describe what you're looking for"},
+					"workspace_id": {"type": "integer", "description": "Optional: filter by workspace ID"},
+					"limit": {"type": "integer", "description": "Max results (default 10)"}
+				},
+				"required": ["query"]
+			}`),
+		},
+		{
 			Name:        "link_commit_to_card",
 			Description: "Link a commit to a Jira card by SHA and card key",
 			InputSchema: json.RawMessage(`{
@@ -117,6 +132,8 @@ func (a *JiraAgent) ExecuteTool(ctx context.Context, name string, args json.RawM
 		return a.getCardDetail(args)
 	case "search_cards":
 		return a.searchCards(args)
+	case "semantic_search_cards":
+		return a.semanticSearchCards(ctx, args)
 	case "link_commit_to_card":
 		return a.linkCommitToCard(args)
 	default:
@@ -497,6 +514,38 @@ func (a *JiraAgent) searchCards(args json.RawMessage) (any, error) {
 		results = append(results, result{Key: c.Key, Summary: c.Summary, Status: c.Status})
 	}
 	return results, nil
+}
+
+func (a *JiraAgent) semanticSearchCards(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		Query       string `json:"query"`
+		WorkspaceID int    `json:"workspace_id"`
+		Limit       int    `json:"limit"`
+	}
+	json.Unmarshal(args, &params)
+	if params.Limit == 0 {
+		params.Limit = 10
+	}
+
+	if a.Weaviate == nil {
+		return map[string]any{"error": "Semantic search not available (Weaviate not configured)"}, nil
+	}
+
+	var wsID *int
+	if params.WorkspaceID > 0 {
+		wsID = &params.WorkspaceID
+	}
+
+	results, err := a.Weaviate.SearchJira(ctx, params.Query, int(a.UserID), wsID, params.Limit)
+	if err != nil {
+		return nil, fmt.Errorf("semantic search failed: %w", err)
+	}
+
+	return map[string]any{
+		"query":   params.Query,
+		"results": results,
+		"count":   len(results),
+	}, nil
 }
 
 // getProjectKeys returns combined project keys for filtering.

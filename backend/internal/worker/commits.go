@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/cds-id/pdt/backend/internal/services"
 	"github.com/cds-id/pdt/backend/internal/services/github"
 	"github.com/cds-id/pdt/backend/internal/services/gitlab"
+	wvClient "github.com/cds-id/pdt/backend/internal/services/weaviate"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -23,7 +25,7 @@ type CommitSyncResult struct {
 	Error    string `json:"error,omitempty"`
 }
 
-func SyncUserCommits(db *gorm.DB, enc *crypto.Encryptor, userID uint) ([]CommitSyncResult, error) {
+func SyncUserCommits(db *gorm.DB, enc *crypto.Encryptor, userID uint, wv ...*wvClient.Client) ([]CommitSyncResult, error) {
 	var user models.User
 	if err := db.First(&user, userID).Error; err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
@@ -109,6 +111,14 @@ func SyncUserCommits(db *gorm.DB, enc *crypto.Encryptor, userID uint) ([]CommitS
 
 			if res.RowsAffected > 0 {
 				result.New++
+
+				// Embed new commits in Weaviate
+				if len(wv) > 0 && wv[0] != nil {
+					repoName := fmt.Sprintf("%s/%s", repo.Owner, repo.Name)
+					if err := wv[0].UpsertCommit(context.Background(), int(commit.ID), int(userID), ci.SHA, ci.Message, repoName, ci.Author, ci.Date); err != nil {
+						log.Printf("[commit-sync] embed commit %s error: %v", ci.SHA[:7], err)
+					}
+				}
 			}
 		}
 

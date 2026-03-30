@@ -12,6 +12,7 @@ import (
 	"github.com/cds-id/pdt/backend/internal/services"
 	githubsvc "github.com/cds-id/pdt/backend/internal/services/github"
 	gitlabsvc "github.com/cds-id/pdt/backend/internal/services/gitlab"
+	wvClient "github.com/cds-id/pdt/backend/internal/services/weaviate"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +20,7 @@ type GitAgent struct {
 	DB        *gorm.DB
 	UserID    uint
 	Encryptor *crypto.Encryptor
+	Weaviate  *wvClient.Client
 }
 
 func shortSHA(sha string) string {
@@ -100,6 +102,18 @@ func (a *GitAgent) Tools() []minimax.Tool {
 				"required": ["card_key"]
 			}`),
 		},
+		{
+			Name:        "semantic_search_commits",
+			Description: "Search git commits by meaning/topic using vector search. Use for finding commits about a concept (e.g., 'authentication changes', 'performance fixes') even if exact keywords don't match.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"query": {"type": "string", "description": "Describe what you're looking for"},
+					"limit": {"type": "integer", "description": "Max results (default 10)"}
+				},
+				"required": ["query"]
+			}`),
+		},
 	}
 }
 
@@ -117,6 +131,8 @@ func (a *GitAgent) ExecuteTool(ctx context.Context, name string, args json.RawMe
 		return a.getCommitChanges(args)
 	case "analyze_card_changes":
 		return a.analyzeCardChanges(args)
+	case "semantic_search_commits":
+		return a.semanticSearchCommits(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -407,4 +423,30 @@ func (a *GitAgent) analyzeCardChanges(args json.RawMessage) (any, error) {
 		result["fetch_errors"] = fetchErrors
 	}
 	return result, nil
+}
+
+func (a *GitAgent) semanticSearchCommits(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		Query string `json:"query"`
+		Limit int    `json:"limit"`
+	}
+	json.Unmarshal(args, &params)
+	if params.Limit == 0 {
+		params.Limit = 10
+	}
+
+	if a.Weaviate == nil {
+		return map[string]any{"error": "Semantic search not available (Weaviate not configured)"}, nil
+	}
+
+	results, err := a.Weaviate.SearchCommits(ctx, params.Query, int(a.UserID), params.Limit)
+	if err != nil {
+		return nil, fmt.Errorf("semantic search failed: %w", err)
+	}
+
+	return map[string]any{
+		"query":   params.Query,
+		"results": results,
+		"count":   len(results),
+	}, nil
 }

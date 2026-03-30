@@ -80,7 +80,7 @@ func main() {
 	// Worker scheduler
 	var syncStatus *worker.SyncStatus
 	if cfg.SyncEnabled {
-		scheduler := worker.NewScheduler(db, encryptor, cfg.SyncIntervalCommits, cfg.SyncIntervalJira, cfg.ReportAutoGenerate, cfg.ReportAutoTime, cfg.ReportMonthlyAutoTime, r2Client)
+		scheduler := worker.NewScheduler(db, encryptor, cfg.SyncIntervalCommits, cfg.SyncIntervalJira, cfg.ReportAutoGenerate, cfg.ReportAutoTime, cfg.ReportMonthlyAutoTime, r2Client, weaviateClient)
 		scheduler.Start(ctx)
 		syncStatus = scheduler.Status
 	} else {
