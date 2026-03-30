@@ -75,6 +75,11 @@ export const API_CONSTANTS = {
     WS: '/ws/chat',
   },
 
+  // AI Usage Endpoints
+  AI: {
+    USAGE: '/ai/usage',
+  },
+
   // WhatsApp Endpoints
   WA: {
     NUMBERS: '/wa/numbers',
