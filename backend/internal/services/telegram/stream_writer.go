@@ -176,7 +176,8 @@ func escapeMarkdownV2(text string) string {
 			continue
 		}
 
-		specialChars := []string{"_", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
+		// Escape special MarkdownV2 chars, preserving * (bold) and _ (italic)
+		specialChars := []string{"[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
 		escaped := part
 		for _, ch := range specialChars {
 			escaped = strings.ReplaceAll(escaped, ch, "\\"+ch)

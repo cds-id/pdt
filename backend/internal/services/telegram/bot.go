@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gorm.io/gorm"
@@ -20,9 +21,11 @@ import (
 )
 
 type Bot struct {
-	api     *tgbotapi.BotAPI
-	handler *Handler
-	cancel  context.CancelFunc
+	api       *tgbotapi.BotAPI
+	handler   *Handler
+	encryptor *crypto.Encryptor
+	token     string
+	cancel    context.CancelFunc
 }
 
 func NewBot(
@@ -56,8 +59,10 @@ func NewBot(
 	}
 
 	return &Bot{
-		api:     api,
-		handler: handler,
+		api:       api,
+		handler:   handler,
+		encryptor: encryptor,
+		token:     token,
 	}, nil
 }
 
@@ -101,9 +106,11 @@ func (b *Bot) SeedWhitelist(whitelist string) {
 			var cfg models.TelegramConfig
 			err := b.handler.DB.Where("user_id = ?", uid).First(&cfg).Error
 			if err != nil {
+				encToken, _ := b.encryptor.Encrypt(b.token)
 				cfg = models.TelegramConfig{
-					UserID:  uid,
-					Enabled: true,
+					UserID:   uid,
+					BotToken: encToken,
+					Enabled:  true,
 				}
 				b.handler.DB.Create(&cfg)
 			}
@@ -127,22 +134,43 @@ func (b *Bot) Start(ctx context.Context) {
 	b.cancel = cancel
 
 	go func() {
-		u := tgbotapi.NewUpdate(0)
-		u.Timeout = 30
-
-		updates := b.api.GetUpdatesChan(u)
+		backoff := time.Second
+		const maxBackoff = 60 * time.Second
 
 		for {
-			select {
-			case <-pollCtx.Done():
+			if pollCtx.Err() != nil {
 				log.Println("[telegram] polling stopped")
 				return
-			case update, ok := <-updates:
-				if !ok {
-					return
-				}
-				go b.handler.HandleUpdate(pollCtx, update)
 			}
+
+			u := tgbotapi.NewUpdate(0)
+			u.Timeout = 30
+			updates := b.api.GetUpdatesChan(u)
+			backoff = time.Second // reset on successful connection
+
+			for {
+				select {
+				case <-pollCtx.Done():
+					log.Println("[telegram] polling stopped")
+					return
+				case update, ok := <-updates:
+					if !ok {
+						// Channel closed — reconnect with backoff
+						log.Printf("[telegram] update channel closed, retrying in %v", backoff)
+						select {
+						case <-time.After(backoff):
+						case <-pollCtx.Done():
+							return
+						}
+						if backoff < maxBackoff {
+							backoff *= 2
+						}
+						goto reconnect
+					}
+					go b.handler.HandleUpdate(pollCtx, update)
+				}
+			}
+		reconnect:
 		}
 	}()
 
