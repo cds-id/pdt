@@ -38,6 +38,9 @@ type Config struct {
 	GeminiAPIKey    string
 	WeaviateURL     string
 	WhatsmeowDBPath string
+	// Telegram
+	TelegramBotToken  string
+	TelegramWhitelist string
 }
 
 func Load() (*Config, error) {
@@ -91,6 +94,8 @@ func Load() (*Config, error) {
 	cfg.GeminiAPIKey = getEnv("GEMINI_API_KEY", "")
 	cfg.WeaviateURL = getEnv("WEAVIATE_URL", "http://localhost:8081")
 	cfg.WhatsmeowDBPath = getEnv("WHATSMEOW_DB_PATH", "data/whatsmeow.db")
+	cfg.TelegramBotToken = getEnv("TELEGRAM_BOT_TOKEN", "")
+	cfg.TelegramWhitelist = getEnv("TELEGRAM_WHITELIST", "")
 
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")
