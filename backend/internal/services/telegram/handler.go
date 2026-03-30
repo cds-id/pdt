@@ -171,6 +171,10 @@ func (h *Handler) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 
 	writer := newStreamWriter(h.Bot, chatID)
 
+	// Send typing indicator
+	typing := tgbotapi.NewChatAction(chatID, tgbotapi.ChatTyping)
+	h.Bot.Send(typing)
+
 	log.Printf("[telegram] calling orchestrator with %d messages", len(messages))
 	result, err := orchestrator.HandleMessage(ctx, messages, writer)
 	if err != nil {
