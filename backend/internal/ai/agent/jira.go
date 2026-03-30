@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
@@ -20,24 +21,41 @@ type JiraAgent struct {
 func (a *JiraAgent) Name() string { return "jira" }
 
 func (a *JiraAgent) SystemPrompt() string {
-	return `You are a Jira assistant for PDT. You help users explore their Jira sprints, cards, and issues. You can also link commits to Jira cards. Use the available tools to fetch data and provide helpful answers.`
+	// List configured workspaces for context
+	var workspaces []models.JiraWorkspaceConfig
+	a.DB.Where("user_id = ? AND is_active = ?", a.UserID, true).Find(&workspaces)
+
+	wsList := ""
+	for _, ws := range workspaces {
+		wsList += fmt.Sprintf("\n- %s (ID: %d, keys: %s)", ws.Name, ws.ID, ws.ProjectKeys)
+	}
+	if wsList == "" {
+		wsList = "\n- No workspaces configured"
+	}
+
+	return fmt.Sprintf(`You are a Jira assistant for PDT. You help users explore their Jira sprints, cards, and issues. You can also link commits to Jira cards. Use the available tools to fetch data and provide helpful answers.
+
+WORKSPACES:%s
+
+When the user asks about a specific workspace or project, use the workspace_id filter. When not specified, results come from all workspaces.`, wsList)
 }
 
 func (a *JiraAgent) Tools() []minimax.Tool {
 	return []minimax.Tool{
 		{
 			Name:        "get_sprints",
-			Description: "List all synced Jira sprints, optionally filtered by state",
+			Description: "List all synced Jira sprints, optionally filtered by state and workspace",
 			InputSchema: json.RawMessage(`{
 				"type": "object",
 				"properties": {
-					"state": {"type": "string", "enum": ["active", "closed", "future"], "description": "Filter by sprint state"}
+					"state": {"type": "string", "enum": ["active", "closed", "future"], "description": "Filter by sprint state"},
+					"workspace_id": {"type": "integer", "description": "Filter by workspace ID (optional, omit for all workspaces)"}
 				}
 			}`),
 		},
 		{
 			Name:        "get_cards",
-			Description: "List Jira cards, optionally filtered by sprint, status, or assignee",
+			Description: "List Jira cards, optionally filtered by sprint, status, assignee, or workspace",
 			InputSchema: json.RawMessage(`{
 				"type": "object",
 				"properties": {
@@ -46,6 +64,7 @@ func (a *JiraAgent) Tools() []minimax.Tool {
 					"status": {"type": "string", "description": "Filter by card status (case-insensitive, e.g., 'Done', 'In Progress', 'READY TO TEST')"},
 					"assignee": {"type": "string", "description": "Filter by assignee name (partial match)"},
 					"keyword": {"type": "string", "description": "Search keyword in card summary"},
+					"workspace_id": {"type": "integer", "description": "Filter by workspace ID (optional)"},
 					"limit": {"type": "integer", "description": "Max results (default 30)"}
 				}
 			}`),
@@ -107,13 +126,17 @@ func (a *JiraAgent) ExecuteTool(ctx context.Context, name string, args json.RawM
 
 func (a *JiraAgent) getSprints(args json.RawMessage) (any, error) {
 	var params struct {
-		State string `json:"state"`
+		State       string `json:"state"`
+		WorkspaceID int    `json:"workspace_id"`
 	}
 	json.Unmarshal(args, &params)
 
 	query := a.DB.Where("user_id = ?", a.UserID)
 	if params.State != "" {
 		query = query.Where("state = ?", params.State)
+	}
+	if params.WorkspaceID > 0 {
+		query = query.Where("workspace_id = ?", params.WorkspaceID)
 	}
 
 	var sprints []models.Sprint
@@ -150,23 +173,24 @@ func (a *JiraAgent) getSprints(args json.RawMessage) (any, error) {
 
 func (a *JiraAgent) getCards(args json.RawMessage) (any, error) {
 	var params struct {
-		SprintID   int    `json:"sprint_id"`
-		SprintName string `json:"sprint_name"`
-		Status     string `json:"status"`
-		Assignee   string `json:"assignee"`
-		Keyword    string `json:"keyword"`
-		Limit      int    `json:"limit"`
+		SprintID    int    `json:"sprint_id"`
+		SprintName  string `json:"sprint_name"`
+		Status      string `json:"status"`
+		Assignee    string `json:"assignee"`
+		Keyword     string `json:"keyword"`
+		WorkspaceID int    `json:"workspace_id"`
+		Limit       int    `json:"limit"`
 	}
 	json.Unmarshal(args, &params)
 	if params.Limit == 0 {
 		params.Limit = 30
 	}
 
-	// Get user for project key filtering
-	var user models.User
-	a.DB.First(&user, a.UserID)
-
 	query := a.DB.Where("jira_cards.user_id = ?", a.UserID)
+
+	if params.WorkspaceID > 0 {
+		query = query.Where("jira_cards.workspace_id = ?", params.WorkspaceID)
+	}
 
 	// Resolve sprint by name if provided
 	if params.SprintName != "" && params.SprintID == 0 {
@@ -188,8 +212,9 @@ func (a *JiraAgent) getCards(args json.RawMessage) (any, error) {
 		query = query.Where("summary LIKE ?", "%"+params.Keyword+"%")
 	}
 
-	// Apply project key filter
-	if clause, filterArgs := helpers.BuildProjectKeyWhereClauses(user.JiraProjectKeys, "card_key"); clause != "" {
+	// Apply project key filter from workspaces
+	projectKeys := a.getProjectKeys(params.WorkspaceID)
+	if clause, filterArgs := helpers.BuildProjectKeyWhereClauses(projectKeys, "card_key"); clause != "" {
 		query = query.Where(clause, filterArgs...)
 	}
 
@@ -472,6 +497,37 @@ func (a *JiraAgent) searchCards(args json.RawMessage) (any, error) {
 		results = append(results, result{Key: c.Key, Summary: c.Summary, Status: c.Status})
 	}
 	return results, nil
+}
+
+// getProjectKeys returns combined project keys for filtering.
+// If workspaceID > 0, returns keys for that workspace only.
+// Otherwise returns all keys from all active workspaces.
+func (a *JiraAgent) getProjectKeys(workspaceID int) string {
+	if workspaceID > 0 {
+		var ws models.JiraWorkspaceConfig
+		if a.DB.Where("id = ? AND user_id = ?", workspaceID, a.UserID).First(&ws).Error == nil {
+			return ws.ProjectKeys
+		}
+		return ""
+	}
+
+	var workspaces []models.JiraWorkspaceConfig
+	a.DB.Where("user_id = ? AND is_active = ?", a.UserID, true).Find(&workspaces)
+
+	var allKeys []string
+	for _, ws := range workspaces {
+		if ws.ProjectKeys != "" {
+			allKeys = append(allKeys, ws.ProjectKeys)
+		}
+	}
+	if len(allKeys) == 0 {
+		// Legacy fallback
+		var user models.User
+		if a.DB.First(&user, a.UserID).Error == nil {
+			return user.JiraProjectKeys
+		}
+	}
+	return strings.Join(allKeys, ",")
 }
 
 func (a *JiraAgent) linkCommitToCard(args json.RawMessage) (any, error) {

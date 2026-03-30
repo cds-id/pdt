@@ -175,6 +175,10 @@ func main() {
 
 			jira := protected.Group("/jira")
 			{
+				jira.GET("/workspaces", jiraHandler.ListWorkspaces)
+				jira.POST("/workspaces", jiraHandler.AddWorkspace)
+				jira.PATCH("/workspaces/:id", jiraHandler.UpdateWorkspace)
+				jira.DELETE("/workspaces/:id", jiraHandler.DeleteWorkspace)
 				jira.GET("/sprints", jiraHandler.ListSprints)
 				jira.GET("/sprints/:id", jiraHandler.GetSprint)
 				jira.GET("/active-sprint", jiraHandler.GetActiveSprint)
