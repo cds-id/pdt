@@ -96,12 +96,12 @@ func (c *Client) ensureSchema(ctx context.Context) error {
 
 	class := &models.Class{
 		Class:      collectionName,
-		Vectorizer: "text2vec-palm",
+		Vectorizer: "text2vec-google",
 		ModuleConfig: map[string]interface{}{
-			"text2vec-palm": map[string]interface{}{
+			"text2vec-google": map[string]interface{}{
 				"projectId":   "google",
 				"apiEndpoint": "generativelanguage.googleapis.com",
-				"modelId":     "text-embedding-004",
+				"modelId":     "gemini-embedding-001",
 			},
 		},
 		Properties: []*models.Property{
@@ -109,7 +109,7 @@ func (c *Client) ensureSchema(ctx context.Context) error {
 				Name:     "message_id",
 				DataType: []string{"number"},
 				ModuleConfig: map[string]interface{}{
-					"text2vec-palm": map[string]interface{}{
+					"text2vec-google": map[string]interface{}{
 						"skip": true,
 					},
 				},
@@ -118,7 +118,7 @@ func (c *Client) ensureSchema(ctx context.Context) error {
 				Name:     "listener_id",
 				DataType: []string{"number"},
 				ModuleConfig: map[string]interface{}{
-					"text2vec-palm": map[string]interface{}{
+					"text2vec-google": map[string]interface{}{
 						"skip": true,
 					},
 				},
@@ -127,7 +127,7 @@ func (c *Client) ensureSchema(ctx context.Context) error {
 				Name:     "user_id",
 				DataType: []string{"number"},
 				ModuleConfig: map[string]interface{}{
-					"text2vec-palm": map[string]interface{}{
+					"text2vec-google": map[string]interface{}{
 						"skip": true,
 					},
 				},
@@ -138,7 +138,7 @@ func (c *Client) ensureSchema(ctx context.Context) error {
 				IndexInverted: &trueVal,
 				Tokenization:  models.PropertyTokenizationWord,
 				ModuleConfig: map[string]interface{}{
-					"text2vec-palm": map[string]interface{}{
+					"text2vec-google": map[string]interface{}{
 						"skip": false,
 					},
 				},
@@ -149,7 +149,7 @@ func (c *Client) ensureSchema(ctx context.Context) error {
 				IndexInverted: &falseVal,
 				// Skip vectorization for sender_name
 				ModuleConfig: map[string]interface{}{
-					"text2vec-palm": map[string]interface{}{
+					"text2vec-google": map[string]interface{}{
 						"skip": true,
 					},
 				},
@@ -158,7 +158,7 @@ func (c *Client) ensureSchema(ctx context.Context) error {
 				Name:     "timestamp",
 				DataType: []string{"date"},
 				ModuleConfig: map[string]interface{}{
-					"text2vec-palm": map[string]interface{}{
+					"text2vec-google": map[string]interface{}{
 						"skip": true,
 					},
 				},
