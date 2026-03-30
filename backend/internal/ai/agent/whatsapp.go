@@ -203,12 +203,13 @@ func (a *WhatsAppAgent) Tools() []minimax.Tool {
 		},
 		{
 			Name:        "send_message",
-			Description: "Send a WhatsApp message. By default creates a pending outbox entry for user approval. Set auto_approve=true when the user has EXPLICITLY asked to send (e.g., 'kirim pesan ke X', 'send message to Y') — this approves immediately and the message is sent within seconds.",
+			Description: "Send a WhatsApp message, optionally with an image. By default creates a pending outbox entry for user approval. Set auto_approve=true when the user has EXPLICITLY asked to send (e.g., 'kirim pesan ke X', 'send message to Y') — this approves immediately and the message is sent within seconds. To send an image, provide media_url with a publicly accessible image URL; the content becomes the image caption.",
 			InputSchema: json.RawMessage(`{
 				"type": "object",
 				"properties": {
 					"target_jid": {"type": "string", "description": "Target WhatsApp JID (e.g., '628123456789@s.whatsapp.net' or group JID)"},
-					"content": {"type": "string", "description": "Message content to send"},
+					"content": {"type": "string", "description": "Message content to send (or image caption if media_url is provided)"},
+					"media_url": {"type": "string", "description": "Optional: public URL of an image to send. The content field becomes the caption."},
 					"context": {"type": "string", "description": "Why you are sending this message — reason and background"},
 					"auto_approve": {"type": "boolean", "description": "Set true if user explicitly asked to send. Default false (pending approval)."}
 				},
@@ -836,6 +837,7 @@ func (a *WhatsAppAgent) sendMessage(args json.RawMessage) (any, error) {
 	var params struct {
 		TargetJID   string `json:"target_jid"`
 		Content     string `json:"content"`
+		MediaURL    string `json:"media_url"`
 		Context     string `json:"context"`
 		AutoApprove bool   `json:"auto_approve"`
 	}
@@ -871,6 +873,7 @@ func (a *WhatsAppAgent) sendMessage(args json.RawMessage) (any, error) {
 		TargetJID:   params.TargetJID,
 		TargetName:  targetName,
 		Content:     params.Content,
+		MediaURL:    params.MediaURL,
 		Status:      status,
 		RequestedBy: "agent",
 		Context:     params.Context,
