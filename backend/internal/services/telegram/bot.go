@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -112,7 +113,10 @@ func (b *Bot) SeedWhitelist(whitelist string) {
 					BotToken: encToken,
 					Enabled:  true,
 				}
-				b.handler.DB.Create(&cfg)
+				if err := b.handler.DB.Create(&cfg).Error; err != nil {
+					log.Printf("[telegram] failed to create config for user %d: %v", uid, err)
+					continue
+				}
 			}
 			configID = cfg.ID
 			configCache[uid] = configID
@@ -124,7 +128,10 @@ func (b *Bot) SeedWhitelist(whitelist string) {
 			TelegramUserID:   tgUserID,
 			DisplayName:      fmt.Sprintf("TG:%d", tgUserID),
 		}
-		b.handler.DB.Create(&entry)
+		if err := b.handler.DB.Create(&entry).Error; err != nil {
+			log.Printf("[telegram] failed to seed whitelist entry tg=%d: %v", tgUserID, err)
+			continue
+		}
 		log.Printf("[telegram] whitelist seeded: tg=%d -> pdt=%d", tgUserID, uid)
 	}
 }
@@ -133,9 +140,18 @@ func (b *Bot) Start(ctx context.Context) {
 	pollCtx, cancel := context.WithCancel(ctx)
 	b.cancel = cancel
 
+	// Per-chat mutex to serialize message processing within each chat
+	chatMu := &sync.Map{} // map[int64]*sync.Mutex
+
+	getChatMu := func(chatID int64) *sync.Mutex {
+		val, _ := chatMu.LoadOrStore(chatID, &sync.Mutex{})
+		return val.(*sync.Mutex)
+	}
+
 	go func() {
 		backoff := time.Second
 		const maxBackoff = 60 * time.Second
+		firstUpdate := true
 
 		for {
 			if pollCtx.Err() != nil {
@@ -146,7 +162,7 @@ func (b *Bot) Start(ctx context.Context) {
 			u := tgbotapi.NewUpdate(0)
 			u.Timeout = 30
 			updates := b.api.GetUpdatesChan(u)
-			backoff = time.Second // reset on successful connection
+			firstUpdate = true
 
 			for {
 				select {
@@ -155,7 +171,8 @@ func (b *Bot) Start(ctx context.Context) {
 					return
 				case update, ok := <-updates:
 					if !ok {
-						// Channel closed — reconnect with backoff
+						// Stop old goroutine before reconnecting
+						b.api.StopReceivingUpdates()
 						log.Printf("[telegram] update channel closed, retrying in %v", backoff)
 						select {
 						case <-time.After(backoff):
@@ -167,7 +184,26 @@ func (b *Bot) Start(ctx context.Context) {
 						}
 						goto reconnect
 					}
-					go b.handler.HandleUpdate(pollCtx, update)
+					// Reset backoff on first successful update
+					if firstUpdate {
+						backoff = time.Second
+						firstUpdate = false
+					}
+					// Serialize per chat to prevent history races
+					go func(upd tgbotapi.Update) {
+						chatID := int64(0)
+						if upd.Message != nil {
+							chatID = upd.Message.Chat.ID
+						} else if upd.CallbackQuery != nil && upd.CallbackQuery.Message != nil {
+							chatID = upd.CallbackQuery.Message.Chat.ID
+						}
+						if chatID != 0 {
+							mu := getChatMu(chatID)
+							mu.Lock()
+							defer mu.Unlock()
+						}
+						b.handler.HandleUpdate(pollCtx, upd)
+					}(update)
 				}
 			}
 		reconnect:

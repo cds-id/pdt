@@ -135,6 +135,13 @@ func (w *streamWriter) WriteDone() error {
 }
 
 func (w *streamWriter) WriteError(msg string) error {
+	w.mu.Lock()
+	// Flush any pending thinking edits
+	if w.pendingEdit && w.thinkingMsgID != 0 {
+		w.editThinkingLocked()
+	}
+	w.mu.Unlock()
+
 	errMsg := tgbotapi.NewMessage(w.chatID, "❌ Error: "+msg)
 	_, err := w.bot.Send(errMsg)
 	return err
@@ -177,8 +184,9 @@ func escapeMarkdownV2(text string) string {
 		}
 
 		// Escape special MarkdownV2 chars, preserving * (bold) and _ (italic)
+		// Backslash must be escaped first to avoid double-escaping
+		escaped := strings.ReplaceAll(part, "\\", "\\\\")
 		specialChars := []string{"[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
-		escaped := part
 		for _, ch := range specialChars {
 			escaped = strings.ReplaceAll(escaped, ch, "\\"+ch)
 		}

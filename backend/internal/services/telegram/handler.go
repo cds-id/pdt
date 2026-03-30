@@ -146,12 +146,15 @@ func (h *Handler) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 		&agent.WhatsAppAgent{DB: h.DB, UserID: userID, Weaviate: h.WeaviateClient, Manager: h.WaManager},
 	)
 
-	// Record outbox count before orchestrator run
-	var outboxCountBefore int64
-	h.DB.Model(&models.WaOutbox{}).
-		Joins("JOIN wa_numbers ON wa_numbers.id = wa_outboxes.wa_number_id").
-		Where("wa_numbers.user_id = ? AND wa_outboxes.status = ?", userID, "pending").
-		Count(&outboxCountBefore)
+	// Record max outbox ID before orchestrator run
+	var maxOutboxIDBefore uint
+	var lastOutbox models.WaOutbox
+	if err := h.DB.Joins("JOIN wa_numbers ON wa_numbers.id = wa_outboxes.wa_number_id").
+		Where("wa_numbers.user_id = ?", userID).
+		Order("wa_outboxes.id desc").Limit(1).
+		First(&lastOutbox).Error; err == nil {
+		maxOutboxIDBefore = lastOutbox.ID
+	}
 
 	writer := newStreamWriter(h.Bot, chatID)
 
@@ -189,25 +192,19 @@ func (h *Handler) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 	h.DB.Model(&conv).Update("updated_at", time.Now())
 
 	// Check for new pending outbox entries and send confirmation buttons
-	h.sendOutboxConfirmations(userID, chatID, outboxCountBefore)
+	h.sendOutboxConfirmations(userID, chatID, maxOutboxIDBefore)
 }
 
 // sendOutboxConfirmations checks for new pending outbox entries and sends
 // inline keyboard confirmation messages for each.
-func (h *Handler) sendOutboxConfirmations(userID uint, chatID int64, countBefore int64) {
-	var pendingOutbox []models.WaOutbox
+func (h *Handler) sendOutboxConfirmations(userID uint, chatID int64, maxIDBefore uint) {
+	var newOutbox []models.WaOutbox
 	h.DB.Joins("JOIN wa_numbers ON wa_numbers.id = wa_outboxes.wa_number_id").
-		Where("wa_numbers.user_id = ? AND wa_outboxes.status = ?", userID, "pending").
-		Order("wa_outboxes.created_at desc").
-		Find(&pendingOutbox)
+		Where("wa_numbers.user_id = ? AND wa_outboxes.status = ? AND wa_outboxes.id > ?", userID, "pending", maxIDBefore).
+		Order("wa_outboxes.created_at asc").
+		Find(&newOutbox)
 
-	if int64(len(pendingOutbox)) <= countBefore {
-		return
-	}
-
-	newCount := int64(len(pendingOutbox)) - countBefore
-	for i := 0; i < int(newCount) && i < len(pendingOutbox); i++ {
-		entry := pendingOutbox[i]
+	for _, entry := range newOutbox {
 		text := fmt.Sprintf("📤 *Outbox Message*\nTo: %s\n\n%s", entry.TargetName, entry.Content)
 		if len(text) > 4000 {
 			text = text[:4000] + "..."
