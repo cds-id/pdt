@@ -292,7 +292,7 @@ func (h *WhatsAppHandler) HandlePairing(c *gin.Context) {
 			})
 
 			// Wire up message handler for this number
-			handler := waService.NewMessageHandler(h.DB, nil, nil, number.ID)
+			handler := waService.NewMessageHandler(h.DB, nil, nil, nil, number.ID)
 			handler.SetClient(client)
 			client.AddEventHandler(handler.HandleEvent)
 
