@@ -5,6 +5,7 @@ import "time"
 type JiraComment struct {
 	ID          uint      `gorm:"primarykey" json:"id"`
 	UserID      uint      `gorm:"index;not null" json:"user_id"`
+	WorkspaceID *uint     `gorm:"index" json:"workspace_id"`
 	CardKey     string    `gorm:"type:varchar(50);index;not null" json:"card_key"`
 	CommentID   string    `gorm:"type:varchar(50);uniqueIndex;not null" json:"comment_id"`
 	Author      string    `gorm:"type:varchar(255)" json:"author"`
@@ -13,4 +14,5 @@ type JiraComment struct {
 	CommentedAt time.Time `gorm:"index" json:"commented_at"`
 	CreatedAt   time.Time `json:"created_at"`
 	User        User      `gorm:"foreignKey:UserID" json:"-"`
+	Workspace   *JiraWorkspaceConfig `gorm:"foreignKey:WorkspaceID" json:"-"`
 }
