@@ -56,21 +56,28 @@ func (h *Handler) HandleUpdate(ctx context.Context, update tgbotapi.Update) {
 		return
 	}
 
-	// Handle /new command
-	if update.Message.IsCommand() && update.Message.Command() == "new" {
+	// Handle commands
+	if update.Message.IsCommand() {
 		userID := h.resolveUser(update.Message.From.ID)
 		if userID == 0 {
 			return
 		}
-		conv := models.Conversation{
-			UserID:         userID,
-			Title:          "Telegram conversation",
-			TelegramChatID: update.Message.Chat.ID,
+		switch update.Message.Command() {
+		case "start":
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "PDT Assistant ready. Send me a message to get started.\n\nUse /new to start a fresh conversation.")
+			h.Bot.Send(msg)
+			return
+		case "new":
+			conv := models.Conversation{
+				UserID:         userID,
+				Title:          "Telegram conversation",
+				TelegramChatID: update.Message.Chat.ID,
+			}
+			h.DB.Create(&conv)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "New conversation started.")
+			h.Bot.Send(msg)
+			return
 		}
-		h.DB.Create(&conv)
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "New conversation started.")
-		h.Bot.Send(msg)
-		return
 	}
 
 	h.handleMessage(ctx, update.Message)
@@ -164,12 +171,14 @@ func (h *Handler) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 
 	writer := newStreamWriter(h.Bot, chatID)
 
+	log.Printf("[telegram] calling orchestrator with %d messages", len(messages))
 	result, err := orchestrator.HandleMessage(ctx, messages, writer)
 	if err != nil {
 		log.Printf("[telegram] orchestrator error: %v", err)
 		writer.WriteError(err.Error())
 		return
 	}
+	log.Printf("[telegram] orchestrator done, response length: %d", len(result.FullResponse))
 
 	// Save assistant response
 	if result.FullResponse != "" {
