@@ -59,6 +59,7 @@ type WaOutbox struct {
 	TargetJID   string     `gorm:"column:target_jid;type:varchar(100);not null" json:"target_jid"`
 	TargetName  string     `gorm:"type:varchar(200)" json:"target_name"`
 	Content     string     `gorm:"type:text;not null" json:"content"`
+	MediaURL    string     `gorm:"column:media_url;type:varchar(500)" json:"media_url,omitempty"`
 	Status      string     `gorm:"type:varchar(20);default:pending;index" json:"status"`
 	RequestedBy string     `gorm:"type:varchar(20);default:agent" json:"requested_by"`
 	Context     string     `gorm:"type:text" json:"context"`
