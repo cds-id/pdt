@@ -229,6 +229,9 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 			usage := models.AIUsage{
 				UserID:           userID,
 				ConversationID:   conv.ID,
+				Provider:         "minimax",
+				Model:            "MiniMax-M2.7",
+				Feature:          "chat",
 				PromptTokens:     result.Usage.PromptTokens,
 				CompletionTokens: result.Usage.CompletionTokens,
 			}
