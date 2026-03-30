@@ -52,8 +52,8 @@ func (w *SenderWorker) processApproved(ctx context.Context) {
 	}
 
 	for _, item := range outboxItems {
-		log.Printf("[wa-sender] sending outbox %d: number=%d target=%s content=%q", item.ID, item.WaNumberID, item.TargetJID, item.Content[:min(len(item.Content), 50)])
-		waMsgID, err := w.Manager.SendMessage(ctx, item.WaNumberID, item.TargetJID, item.Content)
+		log.Printf("[wa-sender] sending outbox %d: number=%d target=%s content=%q media=%q", item.ID, item.WaNumberID, item.TargetJID, item.Content[:min(len(item.Content), 50)], item.MediaURL)
+		waMsgID, err := w.Manager.SendMediaMessage(ctx, item.WaNumberID, item.TargetJID, item.Content, item.MediaURL)
 		if err != nil {
 			log.Printf("[wa-sender] send failed for outbox %d: %v", item.ID, err)
 			w.DB.Model(&models.WaOutbox{}).Where("id = ?", item.ID).Update("status", "failed")
