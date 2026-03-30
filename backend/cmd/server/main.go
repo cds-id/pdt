@@ -68,7 +68,7 @@ func main() {
 
 	// WhatsApp manager
 	var waManager *waService.Manager
-	waManager, err = waService.NewManager(ctx, db, r2Client, embeddingWorker, cfg.WhatsmeowDBPath)
+	waManager, err = waService.NewManager(ctx, db, r2Client, embeddingWorker, cfg.WhatsmeowDBPath, cfg.MistralAPIKey)
 	if err != nil {
 		log.Printf("WhatsApp manager init failed: %v", err)
 	} else {
@@ -105,6 +105,8 @@ func main() {
 	if cfg.MiniMaxAPIKey != "" {
 		miniMaxClient = minimax.NewClient(cfg.MiniMaxAPIKey, cfg.MiniMaxGroupID)
 	}
+
+	aiUsageHandler := &handlers.AIUsageHandler{DB: db}
 
 	chatHandler := &handlers.ChatHandler{
 		DB:              db,
@@ -198,6 +200,8 @@ func main() {
 					templates.POST("/preview", reportHandler.PreviewTemplate)
 				}
 			}
+
+			protected.GET("/ai/usage", aiUsageHandler.GetUsageSummary)
 
 			if miniMaxClient != nil {
 				protected.GET("/ws/chat", chatHandler.HandleWebSocket)
