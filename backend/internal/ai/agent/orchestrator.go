@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 )
@@ -65,6 +66,15 @@ var routerTool = minimax.Tool{
 }
 
 func (o *Orchestrator) HandleMessage(ctx context.Context, messages []minimax.Message, writer StreamWriter) (*LoopResult, error) {
+	// Extract last user message for keyword fallback
+	var userMessage string
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role == "user" {
+			userMessage = messages[i].Content
+			break
+		}
+	}
+
 	routerMessages := append([]minimax.Message{{
 		Role:    "system",
 		Content: routerSystemPrompt,
@@ -96,16 +106,25 @@ func (o *Orchestrator) HandleMessage(ctx context.Context, messages []minimax.Mes
 	}
 
 	tc := choice.Delta.ToolCalls[0]
+	log.Printf("[orchestrator] tool call: name=%s args=%s", tc.Function.Name, tc.Function.Arguments)
+
 	var routing struct {
 		AgentName string `json:"agent_name"`
 		Reason    string `json:"reason"`
 	}
 	if err := json.Unmarshal([]byte(tc.Function.Arguments), &routing); err != nil {
+		log.Printf("[orchestrator] parse routing failed: %v, raw=%s", err, tc.Function.Arguments)
 		return nil, fmt.Errorf("parse routing: %w", err)
 	}
 
 	if routing.AgentName == "" {
-		// LLM called route_to_agent with empty name — treat as a general response
+		// LLM returned empty agent — try keyword-based fallback
+		routing.AgentName = detectAgentByKeyword(userMessage)
+		routing.Reason = "keyword fallback"
+		log.Printf("[orchestrator] empty agent from LLM, keyword fallback: %s", routing.AgentName)
+	}
+
+	if routing.AgentName == "" {
 		content := "Maaf, saya tidak bisa menentukan agent yang tepat. Bisa ulangi pertanyaannya?"
 		if err := writer.WriteContent(content); err != nil {
 			return nil, err
@@ -121,4 +140,54 @@ func (o *Orchestrator) HandleMessage(ctx context.Context, messages []minimax.Mes
 	log.Printf("[orchestrator] routing to %s: %s", routing.AgentName, routing.Reason)
 
 	return RunLoop(ctx, o.Client, agent, messages, writer)
+}
+
+// detectAgentByKeyword provides a fallback when the LLM fails to route.
+func detectAgentByKeyword(msg string) string {
+	lower := strings.ToLower(msg)
+
+	// Order matters — more specific patterns first
+	waKeywords := []string{"whatsapp", "wa ", "kirim pesan", "send message", "send to", "kirim ke", "chat summary", "ringkasan chat", "send report", "send briefing", "kirim laporan"}
+	for _, kw := range waKeywords {
+		if strings.Contains(lower, kw) {
+			return "whatsapp"
+		}
+	}
+
+	reportKeywords := []string{"report", "laporan", "generate report", "daily report", "monthly report", "template"}
+	for _, kw := range reportKeywords {
+		if strings.Contains(lower, kw) {
+			return "report"
+		}
+	}
+
+	briefingKeywords := []string{"briefing", "standup", "blocker", "risiko", "audit"}
+	for _, kw := range briefingKeywords {
+		if strings.Contains(lower, kw) {
+			return "briefing"
+		}
+	}
+
+	jiraKeywords := []string{"jira", "sprint", "card", "ticket", "tiket", "issue", "backlog"}
+	for _, kw := range jiraKeywords {
+		if strings.Contains(lower, kw) {
+			return "jira"
+		}
+	}
+
+	gitKeywords := []string{"commit", "repository", "branch", "git", "repo", "push", "merge"}
+	for _, kw := range gitKeywords {
+		if strings.Contains(lower, kw) {
+			return "git"
+		}
+	}
+
+	proofKeywords := []string{"proof", "evidence", "bukti", "quality", "requirement"}
+	for _, kw := range proofKeywords {
+		if strings.Contains(lower, kw) {
+			return "proof"
+		}
+	}
+
+	return ""
 }
