@@ -104,6 +104,15 @@ func (o *Orchestrator) HandleMessage(ctx context.Context, messages []minimax.Mes
 		return nil, fmt.Errorf("parse routing: %w", err)
 	}
 
+	if routing.AgentName == "" {
+		// LLM called route_to_agent with empty name — treat as a general response
+		content := "Maaf, saya tidak bisa menentukan agent yang tepat. Bisa ulangi pertanyaannya?"
+		if err := writer.WriteContent(content); err != nil {
+			return nil, err
+		}
+		return &LoopResult{FullResponse: content, Usage: resp.Usage}, nil
+	}
+
 	agent, ok := o.Agents[routing.AgentName]
 	if !ok {
 		return nil, fmt.Errorf("unknown agent: %s", routing.AgentName)
