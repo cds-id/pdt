@@ -45,6 +45,8 @@ func (h *Handler) resolveUser(telegramUserID int64) uint {
 
 // HandleUpdate processes a single Telegram update.
 func (h *Handler) HandleUpdate(ctx context.Context, update tgbotapi.Update) {
+	log.Printf("[telegram] update received: message=%v callback=%v", update.Message != nil, update.CallbackQuery != nil)
+
 	if update.CallbackQuery != nil {
 		h.handleCallback(ctx, update.CallbackQuery)
 		return
@@ -75,10 +77,14 @@ func (h *Handler) HandleUpdate(ctx context.Context, update tgbotapi.Update) {
 }
 
 func (h *Handler) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
+	log.Printf("[telegram] received message from user %d: %s", msg.From.ID, msg.Text)
+
 	userID := h.resolveUser(msg.From.ID)
 	if userID == 0 {
-		return // silently ignore non-whitelisted users
+		log.Printf("[telegram] user %d not whitelisted, ignoring", msg.From.ID)
+		return
 	}
+	log.Printf("[telegram] resolved to PDT user %d", userID)
 
 	chatID := msg.Chat.ID
 	text := msg.Text
