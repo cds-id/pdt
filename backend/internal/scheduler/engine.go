@@ -18,15 +18,19 @@ const (
 	defaultMaxWorkers   = 3
 )
 
+// AgentBuilder creates user-scoped agents for a given userID.
+type AgentBuilder func(userID uint) []agent.Agent
+
 type Engine struct {
-	db       *gorm.DB
-	client   *minimax.Client
-	agents   map[string]agent.Agent
-	pool     *Pool
-	bus      *eventbus.Bus
-	notifier *Notifier
-	unsubs   []func()
-	mu       sync.Mutex
+	db           *gorm.DB
+	client       *minimax.Client
+	agents       map[string]agent.Agent
+	agentBuilder AgentBuilder
+	pool         *Pool
+	bus          *eventbus.Bus
+	notifier     *Notifier
+	unsubs       []func()
+	mu           sync.Mutex
 }
 
 func NewEngine(db *gorm.DB, client *minimax.Client, bus *eventbus.Bus, notifier *Notifier, agents ...agent.Agent) *Engine {
@@ -47,6 +51,11 @@ func NewEngine(db *gorm.DB, client *minimax.Client, bus *eventbus.Bus, notifier 
 // RegisterAgent adds an agent to the engine's agent map.
 func (e *Engine) RegisterAgent(a agent.Agent) {
 	e.agents[a.Name()] = a
+}
+
+// SetAgentBuilder sets a function that creates user-scoped agents per run.
+func (e *Engine) SetAgentBuilder(builder AgentBuilder) {
+	e.agentBuilder = builder
 }
 
 func (e *Engine) Start(ctx context.Context) {
@@ -96,10 +105,19 @@ func (e *Engine) pollAndDispatch(ctx context.Context) {
 func (e *Engine) executeSchedule(ctx context.Context, schedule models.AgentSchedule, triggerType string) {
 	log.Printf("[scheduler] executing schedule %q (id=%s, trigger=%s)", schedule.Name, schedule.ID, triggerType)
 
+	// Build user-scoped agents if builder is available, otherwise use shared agents
+	agents := e.agents
+	if e.agentBuilder != nil {
+		agents = make(map[string]agent.Agent)
+		for _, a := range e.agentBuilder(schedule.UserID) {
+			agents[a.Name()] = a
+		}
+	}
+
 	executor := &Executor{
 		DB:       e.db,
 		Client:   e.client,
-		Agents:   e.agents,
+		Agents:   agents,
 		Notifier: e.notifier,
 	}
 

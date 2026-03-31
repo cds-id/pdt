@@ -167,8 +167,20 @@ func main() {
 			&agent.ReportAgent{DB: db, Generator: reportGen, R2: r2Client},
 			&agent.ProofAgent{DB: db},
 			&agent.BriefingAgent{DB: db},
+			&agent.WhatsAppAgent{DB: db, Weaviate: weaviateClient, Manager: waManager},
 		)
 		scheduleEngine.RegisterAgent(&agent.SchedulerAgent{DB: db, Engine: scheduleEngine})
+		scheduleEngine.SetAgentBuilder(func(userID uint) []agent.Agent {
+			return []agent.Agent{
+				&agent.GitAgent{DB: db, UserID: userID, Encryptor: encryptor, Weaviate: weaviateClient},
+				&agent.JiraAgent{DB: db, UserID: userID, Weaviate: weaviateClient},
+				&agent.ReportAgent{DB: db, UserID: userID, Generator: reportGen, R2: r2Client},
+				&agent.ProofAgent{DB: db, UserID: userID},
+				&agent.BriefingAgent{DB: db, UserID: userID},
+				&agent.WhatsAppAgent{DB: db, UserID: userID, Weaviate: weaviateClient, Manager: waManager},
+				&agent.SchedulerAgent{DB: db, UserID: userID, Engine: scheduleEngine},
+			}
+		})
 		scheduleEngine.Start(ctx)
 	}
 
