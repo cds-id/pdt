@@ -213,6 +213,10 @@ func (b *Bot) Start(ctx context.Context) {
 	log.Println("[telegram] long-polling started")
 }
 
+func (b *Bot) API() *tgbotapi.BotAPI {
+	return b.api
+}
+
 func (b *Bot) Stop() {
 	if b.cancel != nil {
 		b.cancel()

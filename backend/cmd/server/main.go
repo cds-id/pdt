@@ -8,12 +8,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cds-id/pdt/backend/internal/ai/agent"
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/config"
 	"github.com/cds-id/pdt/backend/internal/crypto"
 	"github.com/cds-id/pdt/backend/internal/database"
 	"github.com/cds-id/pdt/backend/internal/handlers"
 	"github.com/cds-id/pdt/backend/internal/middleware"
+	agentScheduler "github.com/cds-id/pdt/backend/internal/scheduler"
+	"github.com/cds-id/pdt/backend/internal/scheduler/eventbus"
 	"github.com/cds-id/pdt/backend/internal/services/report"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
 	tgService "github.com/cds-id/pdt/backend/internal/services/telegram"
@@ -78,10 +81,14 @@ func main() {
 		sender.Start(ctx)
 	}
 
+	// Event bus (shared between worker and agent scheduler)
+	eventBus := eventbus.New()
+
 	// Worker scheduler
 	var syncStatus *worker.SyncStatus
 	if cfg.SyncEnabled {
 		scheduler := worker.NewScheduler(db, encryptor, cfg.SyncIntervalCommits, cfg.SyncIntervalJira, cfg.ReportAutoGenerate, cfg.ReportAutoTime, cfg.ReportMonthlyAutoTime, r2Client, weaviateClient)
+		scheduler.EventBus = eventBus
 		scheduler.Start(ctx)
 		syncStatus = scheduler.Status
 	} else {
@@ -145,6 +152,28 @@ func main() {
 			tgBot.SeedWhitelist(cfg.TelegramWhitelist)
 			tgBot.Start(ctx)
 		}
+	}
+
+	// Agent scheduler engine
+	var scheduleEngine *agentScheduler.Engine
+	if miniMaxClient != nil {
+		var notifier *agentScheduler.Notifier
+		if tgBot != nil {
+			notifier = &agentScheduler.Notifier{DB: db, Bot: tgBot.API()}
+		}
+		scheduleEngine = agentScheduler.NewEngine(db, miniMaxClient, eventBus, notifier,
+			&agent.GitAgent{DB: db, Encryptor: encryptor, Weaviate: weaviateClient},
+			&agent.JiraAgent{DB: db, Weaviate: weaviateClient},
+			&agent.ReportAgent{DB: db, Generator: reportGen, R2: r2Client},
+			&agent.ProofAgent{DB: db},
+			&agent.BriefingAgent{DB: db},
+		)
+		scheduleEngine.Start(ctx)
+	}
+
+	scheduleHandler := &handlers.ScheduleHandler{
+		DB:     db,
+		Engine: scheduleEngine,
 	}
 
 	// Router
@@ -236,6 +265,18 @@ func main() {
 				protected.GET("/conversations", chatHandler.ListConversations)
 				protected.GET("/conversations/:id", chatHandler.GetConversation)
 				protected.DELETE("/conversations/:id", chatHandler.DeleteConversation)
+			}
+
+			schedules := protected.Group("/schedules")
+			{
+				schedules.GET("", scheduleHandler.List)
+				schedules.POST("", scheduleHandler.Create)
+				schedules.PUT("/:id", scheduleHandler.Update)
+				schedules.DELETE("/:id", scheduleHandler.Delete)
+				schedules.POST("/:id/toggle", scheduleHandler.Toggle)
+				schedules.POST("/:id/run", scheduleHandler.RunNow)
+				schedules.GET("/:id/runs", scheduleHandler.ListRuns)
+				schedules.GET("/runs/:runId", scheduleHandler.GetRun)
 			}
 
 			wa := protected.Group("/wa")
