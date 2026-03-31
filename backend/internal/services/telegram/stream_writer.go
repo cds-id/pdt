@@ -7,6 +7,8 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	"github.com/cds-id/pdt/backend/internal/services/telegram/formatter"
 )
 
 // streamWriter implements agent.StreamWriter for Telegram.
@@ -116,12 +118,13 @@ func (w *streamWriter) WriteDone() error {
 
 	chunks := splitMessage(content, 4096)
 	for i, chunk := range chunks {
-		msg := tgbotapi.NewMessage(w.chatID, escapeMarkdownV2(chunk))
-		msg.ParseMode = "MarkdownV2"
+		htmlContent := formatter.ToTelegramHTML(chunk)
+		msg := tgbotapi.NewMessage(w.chatID, htmlContent)
+		msg.ParseMode = "HTML"
 		if _, err := w.bot.Send(msg); err != nil {
-			// Retry without markdown on parse failure
+			// Retry without markup on parse failure
 			msg.ParseMode = ""
-			msg.Text = chunk
+			msg.Text = stripHTMLTags(chunk)
 			if _, err := w.bot.Send(msg); err != nil {
 				return fmt.Errorf("send chunk %d: %w", i, err)
 			}
@@ -169,31 +172,29 @@ func (w *streamWriter) editThinkingLocked() error {
 	return err
 }
 
-// escapeMarkdownV2 escapes special characters for Telegram MarkdownV2 parse mode,
-// preserving code blocks and bold formatting.
-func escapeMarkdownV2(text string) string {
-	parts := strings.Split(text, "```")
-
-	var result strings.Builder
-	for i, part := range parts {
-		if i%2 == 1 {
-			result.WriteString("```")
-			result.WriteString(part)
-			result.WriteString("```")
+// stripHTMLTags removes HTML tags from s and decodes basic HTML entities,
+// used as a plain-text fallback when Telegram rejects HTML parse mode.
+func stripHTMLTags(s string) string {
+	var buf strings.Builder
+	inTag := false
+	for _, r := range s {
+		if r == '<' {
+			inTag = true
 			continue
 		}
-
-		// Escape special MarkdownV2 chars, preserving * (bold) and _ (italic)
-		// Backslash must be escaped first to avoid double-escaping
-		escaped := strings.ReplaceAll(part, "\\", "\\\\")
-		specialChars := []string{"[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
-		for _, ch := range specialChars {
-			escaped = strings.ReplaceAll(escaped, ch, "\\"+ch)
+		if r == '>' {
+			inTag = false
+			continue
 		}
-		result.WriteString(escaped)
+		if !inTag {
+			buf.WriteRune(r)
+		}
 	}
-
-	return result.String()
+	result := buf.String()
+	result = strings.ReplaceAll(result, "&amp;", "&")
+	result = strings.ReplaceAll(result, "&lt;", "<")
+	result = strings.ReplaceAll(result, "&gt;", ">")
+	return result
 }
 
 // splitMessage splits text into chunks of at most maxLen characters,
