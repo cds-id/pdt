@@ -14,43 +14,43 @@ func TestToTelegramHTML(t *testing.T) {
 	}{
 		{
 			name:     "plain text with special chars",
-			input:    "Hello <world> & friends",
-			expected: "Hello &lt;world&gt; &amp; friends",
+			input:    `Hello <world> & "friends"`,
+			expected: `Hello &lt;world&gt; &amp; "friends"`,
 		},
 		{
 			name:     "bold",
-			input:    "**bold**",
-			expected: "<b>bold</b>",
+			input:    "This is **bold** text",
+			expected: "This is <b>bold</b> text",
 		},
 		{
 			name:     "italic with asterisks",
-			input:    "*italic*",
-			expected: "<i>italic</i>",
+			input:    "This is *italic* text",
+			expected: "This is <i>italic</i> text",
 		},
 		{
 			name:     "italic with underscores",
-			input:    "_italic_",
-			expected: "<i>italic</i>",
+			input:    "This is _italic_ text",
+			expected: "This is <i>italic</i> text",
 		},
 		{
 			name:     "strikethrough",
-			input:    "~~deleted~~",
-			expected: "<s>deleted</s>",
+			input:    "This is ~~deleted~~ text",
+			expected: "This is <s>deleted</s> text",
 		},
 		{
 			name:     "inline code",
-			input:    "`code`",
-			expected: "<code>code</code>",
+			input:    "Use `fmt.Println` here",
+			expected: "Use <code>fmt.Println</code> here",
 		},
 		{
 			name:     "link",
-			input:    "[text](https://example.com)",
-			expected: `<a href="https://example.com">text</a>`,
+			input:    "Visit [Google](https://google.com) now",
+			expected: `Visit <a href="https://google.com">Google</a> now`,
 		},
 		{
 			name:     "nested bold and italic",
-			input:    "***bold italic***",
-			expected: "<i><b>bold italic</b></i>",
+			input:    "This is ***bold italic*** text",
+			expected: "This is <i><b>bold italic</b></i> text",
 		},
 		{
 			name:     "image to link",
@@ -99,8 +99,8 @@ func TestToTelegramHTML(t *testing.T) {
 		},
 		{
 			name:     "horizontal rule",
-			input:    "---",
-			expected: "————————————",
+			input:    "Above\n\n---\n\nBelow",
+			expected: "Above\n\n————————————\n\nBelow",
 		},
 		{
 			name:     "nested list",

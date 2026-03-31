@@ -9,7 +9,6 @@ import (
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	extast "github.com/yuin/goldmark/extension/ast"
-	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 )
 
@@ -20,9 +19,6 @@ func ToTelegramHTML(markdown string) string {
 			extension.Strikethrough,
 			extension.Table,
 		),
-		goldmark.WithParserOptions(
-			parser.WithAutoHeadingID(),
-		),
 	)
 
 	src := []byte(markdown)
@@ -32,6 +28,32 @@ func ToTelegramHTML(markdown string) string {
 	var buf bytes.Buffer
 	walkNode(&buf, doc, src, 0)
 	return strings.TrimSpace(buf.String())
+}
+
+// bufEndsWith checks whether buf ends with the given suffix without converting
+// the entire buffer to a string (O(len(suffix)) instead of O(n)).
+func bufEndsWith(buf *bytes.Buffer, suffix string) bool {
+	b := buf.Bytes()
+	s := []byte(suffix)
+	if len(b) < len(s) {
+		return false
+	}
+	return bytes.Equal(b[len(b)-len(s):], s)
+}
+
+// ensureDoubleNewline adds the necessary newlines so that the next block starts
+// after a blank line, without ever writing more than two consecutive newlines.
+func ensureDoubleNewline(buf *bytes.Buffer) {
+	if buf.Len() == 0 {
+		return
+	}
+	if !bufEndsWith(buf, "\n\n") {
+		if bufEndsWith(buf, "\n") {
+			buf.WriteString("\n")
+		} else {
+			buf.WriteString("\n\n")
+		}
+	}
 }
 
 // escapeHTML escapes only the characters that Telegram HTML requires escaping.
@@ -67,11 +89,8 @@ func walkNode(buf *bytes.Buffer, node ast.Node, src []byte, depth int) {
 	case *ast.List:
 		writeList(buf, n, src, depth)
 
-	case *ast.ListItem:
-		writeListItem(buf, n, src, depth)
-
 	case *ast.ThematicBreak:
-		buf.WriteString("————————————")
+		writeThematicBreak(buf, n)
 
 	case *ast.HTMLBlock:
 		// skip raw HTML blocks
@@ -124,17 +143,7 @@ func writeParagraph(buf *bytes.Buffer, node *ast.Paragraph, src []byte, depth in
 	if content == "" {
 		return
 	}
-	// Add paragraph separator if there's already content in buf
-	if buf.Len() > 0 {
-		existing := buf.String()
-		if !strings.HasSuffix(existing, "\n\n") {
-			if strings.HasSuffix(existing, "\n") {
-				buf.WriteString("\n")
-			} else {
-				buf.WriteString("\n\n")
-			}
-		}
-	}
+	ensureDoubleNewline(buf)
 	buf.WriteString(content)
 }
 
@@ -143,16 +152,7 @@ func writeHeading(buf *bytes.Buffer, node *ast.Heading, src []byte, depth int) {
 	writeChildren(&inner, node, src, depth)
 	content := inner.String()
 
-	if buf.Len() > 0 {
-		existing := buf.String()
-		if !strings.HasSuffix(existing, "\n\n") {
-			if strings.HasSuffix(existing, "\n") {
-				buf.WriteString("\n")
-			} else {
-				buf.WriteString("\n\n")
-			}
-		}
-	}
+	ensureDoubleNewline(buf)
 
 	if node.Level == 1 {
 		buf.WriteString("<b>")
@@ -166,16 +166,7 @@ func writeHeading(buf *bytes.Buffer, node *ast.Heading, src []byte, depth int) {
 }
 
 func writeFencedCode(buf *bytes.Buffer, node *ast.FencedCodeBlock, src []byte) {
-	if buf.Len() > 0 {
-		existing := buf.String()
-		if !strings.HasSuffix(existing, "\n\n") {
-			if strings.HasSuffix(existing, "\n") {
-				buf.WriteString("\n")
-			} else {
-				buf.WriteString("\n\n")
-			}
-		}
-	}
+	ensureDoubleNewline(buf)
 
 	lang := string(node.Language(src))
 	if lang != "" {
@@ -193,16 +184,7 @@ func writeFencedCode(buf *bytes.Buffer, node *ast.FencedCodeBlock, src []byte) {
 }
 
 func writeCodeBlock(buf *bytes.Buffer, node *ast.CodeBlock, src []byte) {
-	if buf.Len() > 0 {
-		existing := buf.String()
-		if !strings.HasSuffix(existing, "\n\n") {
-			if strings.HasSuffix(existing, "\n") {
-				buf.WriteString("\n")
-			} else {
-				buf.WriteString("\n\n")
-			}
-		}
-	}
+	ensureDoubleNewline(buf)
 
 	buf.WriteString("<pre><code>")
 	for i := 0; i < node.Lines().Len(); i++ {
@@ -213,16 +195,7 @@ func writeCodeBlock(buf *bytes.Buffer, node *ast.CodeBlock, src []byte) {
 }
 
 func writeBlockquote(buf *bytes.Buffer, node *ast.Blockquote, src []byte, depth int) {
-	if buf.Len() > 0 {
-		existing := buf.String()
-		if !strings.HasSuffix(existing, "\n\n") {
-			if strings.HasSuffix(existing, "\n") {
-				buf.WriteString("\n")
-			} else {
-				buf.WriteString("\n\n")
-			}
-		}
-	}
+	ensureDoubleNewline(buf)
 
 	buf.WriteString("<blockquote>")
 	// Blockquote contains paragraphs — render their inner content directly
@@ -239,15 +212,8 @@ func writeBlockquote(buf *bytes.Buffer, node *ast.Blockquote, src []byte, depth 
 }
 
 func writeList(buf *bytes.Buffer, node *ast.List, src []byte, depth int) {
-	if depth == 0 && buf.Len() > 0 {
-		existing := buf.String()
-		if !strings.HasSuffix(existing, "\n\n") {
-			if strings.HasSuffix(existing, "\n") {
-				buf.WriteString("\n")
-			} else {
-				buf.WriteString("\n\n")
-			}
-		}
+	if depth == 0 {
+		ensureDoubleNewline(buf)
 	}
 
 	isFirst := true
@@ -301,9 +267,12 @@ func writeListItemContent(buf *bytes.Buffer, node *ast.ListItem, src []byte, dep
 	}
 }
 
-// writeListItem is kept for completeness but list item rendering is done via writeListItemContent.
-func writeListItem(buf *bytes.Buffer, node *ast.ListItem, src []byte, depth int) {
-	writeListItemContent(buf, node, src, depth)
+func writeThematicBreak(buf *bytes.Buffer, node *ast.ThematicBreak) {
+	ensureDoubleNewline(buf)
+	buf.WriteString("————————————")
+	if node.NextSibling() != nil {
+		buf.WriteString("\n\n")
+	}
 }
 
 func writeText(buf *bytes.Buffer, node *ast.Text, src []byte) {
