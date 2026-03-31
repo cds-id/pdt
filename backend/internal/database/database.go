@@ -45,6 +45,9 @@ func Migrate(db *gorm.DB) error {
 		&models.WaOutbox{},
 		&models.TelegramConfig{},
 		&models.TelegramWhitelist{},
+		&models.AgentSchedule{},
+		&models.AgentScheduleRun{},
+		&models.AgentScheduleRunStep{},
 	); err != nil {
 		return err
 	}
