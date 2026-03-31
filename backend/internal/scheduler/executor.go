@@ -96,6 +96,7 @@ func (e *Executor) Run(ctx context.Context, schedule models.AgentSchedule, trigg
 		"token_usage":     func() *string { s := string(usageJSON); return &s }(),
 	})
 	run.Status = "completed"
+	run.ResultSummary = summarize(result.FullResponse, 500)
 	if e.Notifier != nil {
 		e.Notifier.NotifyRunCompleted(&run, schedule.Name)
 	}
