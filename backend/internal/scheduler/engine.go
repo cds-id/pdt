@@ -152,3 +152,9 @@ func (e *Engine) subscribeEvents() {
 func (e *Engine) RefreshEventSubscriptions() {
 	e.subscribeEvents()
 }
+
+func (e *Engine) RunScheduleNow(schedule models.AgentSchedule) {
+	e.pool.Submit(func() {
+		e.executeSchedule(context.Background(), schedule, "manual")
+	})
+}
