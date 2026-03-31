@@ -44,6 +44,11 @@ func NewEngine(db *gorm.DB, client *minimax.Client, bus *eventbus.Bus, notifier 
 	}
 }
 
+// RegisterAgent adds an agent to the engine's agent map.
+func (e *Engine) RegisterAgent(a agent.Agent) {
+	e.agents[a.Name()] = a
+}
+
 func (e *Engine) Start(ctx context.Context) {
 	e.subscribeEvents()
 	go e.pollLoop(ctx)

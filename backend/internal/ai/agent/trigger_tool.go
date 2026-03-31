@@ -31,7 +31,7 @@ func (t *TriggerAgentTool) Definition() minimax.Tool {
 			"properties": {
 				"agent": {
 					"type": "string",
-					"enum": ["git", "jira", "report", "proof", "briefing", "whatsapp"],
+					"enum": ["git", "jira", "report", "proof", "briefing", "whatsapp", "scheduler"],
 					"description": "The agent to trigger"
 				},
 				"prompt": {

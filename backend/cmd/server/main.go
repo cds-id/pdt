@@ -168,6 +168,7 @@ func main() {
 			&agent.ProofAgent{DB: db},
 			&agent.BriefingAgent{DB: db},
 		)
+		scheduleEngine.RegisterAgent(&agent.SchedulerAgent{DB: db, Engine: scheduleEngine})
 		scheduleEngine.Start(ctx)
 	}
 
