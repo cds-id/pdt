@@ -98,7 +98,7 @@ func (e *Executor) Run(ctx context.Context, schedule models.AgentSchedule, trigg
 	run.Status = "completed"
 	run.ResultSummary = summarize(result.FullResponse, 500)
 	if e.Notifier != nil {
-		e.Notifier.NotifyRunCompleted(&run, schedule.Name)
+		e.Notifier.SendFullResponse(schedule.UserID, schedule.Name, result.FullResponse)
 	}
 	return &run, nil
 }
