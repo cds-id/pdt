@@ -50,7 +50,7 @@ type AgentScheduleRun struct {
 	CompletedAt    *time.Time    `json:"completed_at,omitempty"`
 	ResultSummary  string        `gorm:"type:text" json:"result_summary,omitempty"`
 	Error          string        `gorm:"type:text" json:"error,omitempty"`
-	TokenUsage     string        `gorm:"type:json" json:"token_usage,omitempty"`
+	TokenUsage     *string       `gorm:"type:json" json:"token_usage,omitempty"`
 	CreatedAt      time.Time     `json:"created_at"`
 	Schedule       AgentSchedule `gorm:"foreignKey:ScheduleID" json:"-"`
 	User           User          `gorm:"foreignKey:UserID" json:"-"`

@@ -89,7 +89,7 @@ func (e *Executor) Run(ctx context.Context, schedule models.AgentSchedule, trigg
 		"completed_at":    &completedAt,
 		"conversation_id": conv.ID,
 		"result_summary":  summarize(result.FullResponse, 500),
-		"token_usage":     string(usageJSON),
+		"token_usage":     func() *string { s := string(usageJSON); return &s }(),
 	})
 	run.Status = "completed"
 	if e.Notifier != nil {
