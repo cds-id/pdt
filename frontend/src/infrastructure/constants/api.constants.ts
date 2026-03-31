@@ -83,6 +83,18 @@ export const API_CONSTANTS = {
     USAGE: '/ai/usage',
   },
 
+  // Schedule Endpoints
+  SCHEDULES: {
+    LIST: '/schedules',
+    CREATE: '/schedules',
+    UPDATE: (id: string) => `/schedules/${id}`,
+    DELETE: (id: string) => `/schedules/${id}`,
+    TOGGLE: (id: string) => `/schedules/${id}/toggle`,
+    RUN: (id: string) => `/schedules/${id}/run`,
+    RUNS: (id: string) => `/schedules/${id}/runs`,
+    GET_RUN: (runId: string) => `/schedules/runs/${runId}`,
+  },
+
   // WhatsApp Endpoints
   WA: {
     NUMBERS: '/wa/numbers',

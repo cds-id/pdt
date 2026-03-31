@@ -9,6 +9,7 @@ import {
   Brain,
   MessageSquare,
   Send,
+  Calendar,
   type LucideIcon
 } from 'lucide-react'
 
@@ -51,7 +52,8 @@ export const dashboardNavigation: NavGroup[] = [
     title: 'AI',
     items: [
       { title: 'AI Assistant', href: '/assistant', icon: Bot },
-      { title: 'AI Usage', href: '/dashboard/ai-usage', icon: Brain }
+      { title: 'AI Usage', href: '/dashboard/ai-usage', icon: Brain },
+      { title: 'Schedules', href: '/dashboard/schedules', icon: Calendar }
     ]
   },
   {
