@@ -15,6 +15,7 @@ import (
 	"github.com/cds-id/pdt/backend/internal/ai/agent"
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/crypto"
+	"github.com/cds-id/pdt/backend/internal/scheduler"
 	"github.com/cds-id/pdt/backend/internal/models"
 	"github.com/cds-id/pdt/backend/internal/services/report"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
@@ -31,6 +32,7 @@ type ChatHandler struct {
 	ContextWindow   int
 	WaManager       *waService.Manager
 	WeaviateClient  *wvClient.Client
+	ScheduleEngine  *scheduler.Engine
 }
 
 // wsStreamWriter implements agent.StreamWriter for WebSocket connections.
@@ -131,6 +133,7 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 		&agent.ProofAgent{DB: h.DB, UserID: userID},
 		&agent.BriefingAgent{DB: h.DB, UserID: userID},
 		&agent.WhatsAppAgent{DB: h.DB, UserID: userID, Weaviate: h.WeaviateClient, Manager: h.WaManager},
+		&agent.SchedulerAgent{DB: h.DB, UserID: userID, Engine: h.ScheduleEngine},
 	)
 
 	for {

@@ -15,6 +15,7 @@ import (
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/crypto"
 	"github.com/cds-id/pdt/backend/internal/models"
+	"github.com/cds-id/pdt/backend/internal/scheduler"
 	"github.com/cds-id/pdt/backend/internal/services/report"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
 	waService "github.com/cds-id/pdt/backend/internal/services/whatsapp"
@@ -215,6 +216,11 @@ func (b *Bot) Start(ctx context.Context) {
 
 func (b *Bot) API() *tgbotapi.BotAPI {
 	return b.api
+}
+
+// SetScheduleEngine sets the schedule engine for the scheduler agent.
+func (b *Bot) SetScheduleEngine(engine *scheduler.Engine) {
+	b.handler.ScheduleEngine = engine
 }
 
 func (b *Bot) Stop() {

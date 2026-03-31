@@ -14,6 +14,7 @@ import (
 	"github.com/cds-id/pdt/backend/internal/ai/agent"
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/crypto"
+	"github.com/cds-id/pdt/backend/internal/scheduler"
 	"github.com/cds-id/pdt/backend/internal/models"
 	"github.com/cds-id/pdt/backend/internal/services/report"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
@@ -31,6 +32,7 @@ type Handler struct {
 	ContextWindow   int
 	WaManager       *waService.Manager
 	WeaviateClient  *wvClient.Client
+	ScheduleEngine  *scheduler.Engine
 }
 
 // resolveUser checks the whitelist and returns the PDT user_id for a Telegram user.
@@ -157,6 +159,7 @@ func (h *Handler) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 		&agent.ProofAgent{DB: h.DB, UserID: userID},
 		&agent.BriefingAgent{DB: h.DB, UserID: userID},
 		&agent.WhatsAppAgent{DB: h.DB, UserID: userID, Weaviate: h.WeaviateClient, Manager: h.WaManager},
+		&agent.SchedulerAgent{DB: h.DB, UserID: userID, Engine: h.ScheduleEngine},
 	)
 
 	// Record max outbox ID before orchestrator run

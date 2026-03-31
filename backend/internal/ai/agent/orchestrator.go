@@ -35,10 +35,12 @@ Available agents:
 - "proof": Handles finding evidence in Jira comments, detecting quality issues in cards, and checking requirement coverage. Use this when users ask about what someone said, want proof of decisions, or want to find quality problems.
 - "briefing": Handles morning briefing preparation, sprint auditing for risks, and blocker analysis. Use this when users ask to prepare for standup, audit their cards, find blockers, or identify risky tickets that could be questioned.
 - "whatsapp": Handles WhatsApp messages, chat analytics, sending messages, AND sending any PDT content (reports, briefings, summaries) via WhatsApp. Use this when users ask about WhatsApp chats, want to search conversations, OR want to SEND anything via WhatsApp. This agent can generate briefings/summaries and send reports directly.
+- "scheduler": Handles creating, listing, enabling/disabling, deleting, and running scheduled agent tasks. Use this when users ask to schedule something, manage their schedules, automate tasks, set up recurring agents, or check schedule run history.
 
 The user may write in Indonesian or English. Route based on intent, not language.
 Keywords that suggest "briefing" agent: morning briefing, standup, persiapkan report, audit tiket, blocker, risiko, laporan pagi, briefing pagi.
 Keywords that suggest "whatsapp" agent: whatsapp, wa, chat summary, pesan, kirim pesan, ringkasan chat, listener, group chat, send report, send briefing, kirim laporan, kirim ringkasan, share via wa, send to contact, send to group.
+Keywords that suggest "scheduler" agent: schedule, jadwal, jadwalkan, automate, recurring, cron, timer, every morning, setiap pagi, scheduled task, my schedules, run history, disable schedule, enable schedule.
 IMPORTANT: When user asks to SEND something via WhatsApp (report, briefing, summary, any content), ALWAYS route to "whatsapp" even if the content is about Jira, reports, or git.
 
 If the user's message is a simple greeting or general question not related to any agent, respond directly without routing.
@@ -53,7 +55,7 @@ var routerTool = minimax.Tool{
 		"properties": {
 			"agent_name": {
 				"type": "string",
-				"enum": ["git", "jira", "report", "proof", "briefing", "whatsapp"],
+				"enum": ["git", "jira", "report", "proof", "briefing", "whatsapp", "scheduler"],
 				"description": "The specialist agent to route to"
 			},
 			"reason": {
@@ -162,6 +164,13 @@ func detectAgentByKeyword(msg string) string {
 	lower := strings.ToLower(msg)
 
 	// Order matters — more specific patterns first
+	scheduleKeywords := []string{"schedule", "jadwal", "jadwalkan", "automate", "recurring", "cron", "scheduled task", "my schedules", "run history", "disable schedule"}
+	for _, kw := range scheduleKeywords {
+		if strings.Contains(lower, kw) {
+			return "scheduler"
+		}
+	}
+
 	waKeywords := []string{"whatsapp", "wa ", "kirim pesan", "send message", "send to", "kirim ke", "chat summary", "ringkasan chat", "send report", "send briefing", "kirim laporan"}
 	for _, kw := range waKeywords {
 		if strings.Contains(lower, kw) {

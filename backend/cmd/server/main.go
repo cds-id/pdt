@@ -171,6 +171,12 @@ func main() {
 		scheduleEngine.Start(ctx)
 	}
 
+	// Wire schedule engine to chat and telegram handlers
+	chatHandler.ScheduleEngine = scheduleEngine
+	if tgBot != nil && scheduleEngine != nil {
+		tgBot.SetScheduleEngine(scheduleEngine)
+	}
+
 	scheduleHandler := &handlers.ScheduleHandler{
 		DB:     db,
 		Engine: scheduleEngine,
