@@ -8,6 +8,7 @@ import (
 
 	"github.com/cds-id/pdt/backend/internal/crypto"
 	"github.com/cds-id/pdt/backend/internal/models"
+	"github.com/cds-id/pdt/backend/internal/scheduler/eventbus"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
 	wvClient "github.com/cds-id/pdt/backend/internal/services/weaviate"
 	"gorm.io/gorm"
@@ -24,6 +25,7 @@ type Scheduler struct {
 	ReportMonthlyAutoTime string
 	R2                    *storage.R2Client
 	Weaviate              *wvClient.Client
+	EventBus              *eventbus.Bus
 	commitRunning         atomic.Bool
 	jiraRunning           atomic.Bool
 	reportRunning         atomic.Bool
@@ -108,6 +110,14 @@ func (s *Scheduler) runCommitSync() {
 		s.Status.SetCommitDone(uid, nextSync, nil)
 	}
 
+	if s.EventBus != nil {
+		for _, uid := range userIDs {
+			s.EventBus.Publish("commit_synced", map[string]any{
+				"user_id": uid,
+			})
+		}
+	}
+
 	log.Println("[worker] commit sync completed")
 }
 
@@ -151,6 +161,14 @@ func (s *Scheduler) runJiraSync() {
 		} else {
 			s.Status.SetJiraDone(user.ID, nextSync, nil)
 			log.Printf("[worker] jira sync completed for user %d", user.ID)
+		}
+	}
+
+	if s.EventBus != nil {
+		for _, user := range users {
+			s.EventBus.Publish("jira_synced", map[string]any{
+				"user_id": user.ID,
+			})
 		}
 	}
 
