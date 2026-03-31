@@ -50,12 +50,14 @@ function formatDate(s: string | null): string {
 }
 
 function triggerLabel(s: AgentSchedule): string {
+  if (s.trigger_type === 'once') return 'run once'
   if (s.trigger_type === 'cron') return s.cron_expr || 'cron'
   if (s.trigger_type === 'interval') return `every ${s.interval_seconds}s`
   return s.event_name || 'event'
 }
 
 function triggerIcon(type: AgentSchedule['trigger_type']) {
+  if (type === 'once') return <Play className="size-3" />
   if (type === 'cron') return <Clock className="size-3" />
   if (type === 'interval') return <RefreshCw className="size-3" />
   return <Radio className="size-3" />
@@ -275,6 +277,9 @@ function CreateScheduleDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="once">
+                  <span className="flex items-center gap-2"><Play className="size-3.5" /> Run Once</span>
+                </SelectItem>
                 <SelectItem value="cron">
                   <span className="flex items-center gap-2"><Clock className="size-3.5" /> Cron</span>
                 </SelectItem>

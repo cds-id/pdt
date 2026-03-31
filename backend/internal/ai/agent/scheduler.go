@@ -39,6 +39,7 @@ CAPABILITIES:
 - View run history for a schedule
 
 TRIGGER TYPES:
+- "once": Run immediately one time, then auto-disable. Use for one-off tasks.
 - "cron": Standard 5-field cron expressions (minute hour day-of-month month day-of-week)
   Examples: "0 8 * * 1-5" (weekdays 8am), "0 9 * * 1" (Monday 9am), "0 * * * *" (every hour)
 - "interval": Run every N seconds. Common values: 900 (15min), 1800 (30min), 3600 (1hr)
@@ -79,7 +80,7 @@ func (a *SchedulerAgent) Tools() []minimax.Tool {
 					"name": {"type": "string", "description": "Human-readable name for the schedule"},
 					"agent_name": {"type": "string", "description": "Agent to run (briefing, git, jira, report, proof, whatsapp, or empty for auto-route)"},
 					"prompt": {"type": "string", "description": "The message/instruction to send to the agent"},
-					"trigger_type": {"type": "string", "enum": ["cron", "interval", "event"], "description": "Type of trigger"},
+					"trigger_type": {"type": "string", "enum": ["cron", "interval", "event", "once"], "description": "Type of trigger. Use 'once' to run immediately one time."},
 					"cron_expr": {"type": "string", "description": "Cron expression (for cron trigger type)"},
 					"interval_seconds": {"type": "integer", "description": "Interval in seconds (for interval trigger type)"},
 					"event_name": {"type": "string", "description": "Event name (for event trigger type): commit_synced, jira_synced, report_generated, schedule_completed"},
@@ -241,7 +242,10 @@ func (a *SchedulerAgent) createSchedule(args json.RawMessage) (any, error) {
 	}
 
 	// Compute next run
-	if schedule.TriggerType != "event" {
+	if schedule.TriggerType == "once" {
+		now := time.Now()
+		schedule.NextRunAt = &now
+	} else if schedule.TriggerType != "event" {
 		nextRun, err := computeNextRun(schedule.TriggerType, schedule.CronExpr, schedule.IntervalSeconds, time.Now())
 		if err != nil {
 			return map[string]string{"error": "Invalid schedule config: " + err.Error()}, nil

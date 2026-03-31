@@ -7,7 +7,7 @@ export interface AgentSchedule {
   name: string
   agent_name: string
   prompt: string
-  trigger_type: 'cron' | 'interval' | 'event'
+  trigger_type: 'cron' | 'interval' | 'event' | 'once'
   cron_expr: string
   interval_seconds: number
   event_name: string
@@ -59,7 +59,7 @@ export interface CreateScheduleRequest {
   name: string
   agent_name: string
   prompt: string
-  trigger_type: 'cron' | 'interval' | 'event'
+  trigger_type: 'cron' | 'interval' | 'event' | 'once'
   cron_expr?: string
   interval_seconds?: number
   event_name?: string

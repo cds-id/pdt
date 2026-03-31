@@ -72,12 +72,17 @@ func (h *ScheduleHandler) Create(c *gin.Context) {
 		Enabled:         enabled,
 	}
 
-	nextRun, err := scheduler.NextRunAt(req.TriggerType, req.CronExpr, req.IntervalSeconds, time.Now())
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid trigger configuration: " + err.Error()})
-		return
+	if req.TriggerType == "once" {
+		now := time.Now()
+		schedule.NextRunAt = &now
+	} else {
+		nextRun, err := scheduler.NextRunAt(req.TriggerType, req.CronExpr, req.IntervalSeconds, time.Now())
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid trigger configuration: " + err.Error()})
+			return
+		}
+		schedule.NextRunAt = nextRun
 	}
-	schedule.NextRunAt = nextRun
 
 	if err := h.DB.Create(&schedule).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

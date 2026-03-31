@@ -29,6 +29,8 @@ func NextRunAt(triggerType, cronExpr string, intervalSeconds int, after time.Tim
 	case "interval":
 		next := after.Add(time.Duration(intervalSeconds) * time.Second)
 		return &next, nil
+	case "once":
+		return nil, nil // once runs immediately, no next run
 	case "event":
 		return nil, nil
 	default:

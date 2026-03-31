@@ -127,11 +127,16 @@ func (e *Engine) executeSchedule(ctx context.Context, schedule models.AgentSched
 		return
 	}
 
-	nextRun, err := NextRunAt(schedule.TriggerType, schedule.CronExpr, schedule.IntervalSeconds, time.Now())
-	if err != nil {
-		log.Printf("[scheduler] failed to compute next run for %q: %v", schedule.Name, err)
+	// Auto-disable "once" schedules after execution
+	if schedule.TriggerType == "once" {
+		e.db.Model(&schedule).Updates(map[string]any{"enabled": false, "next_run_at": nil})
+	} else {
+		nextRun, err := NextRunAt(schedule.TriggerType, schedule.CronExpr, schedule.IntervalSeconds, time.Now())
+		if err != nil {
+			log.Printf("[scheduler] failed to compute next run for %q: %v", schedule.Name, err)
+		}
+		e.db.Model(&schedule).Update("next_run_at", nextRun)
 	}
-	e.db.Model(&schedule).Update("next_run_at", nextRun)
 
 	if e.bus != nil {
 		e.bus.Publish("schedule_completed", map[string]any{
