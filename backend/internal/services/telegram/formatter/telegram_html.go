@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
@@ -153,6 +154,27 @@ func writeParagraph(buf *bytes.Buffer, node *ast.Paragraph, src []byte, depth in
 	buf.WriteString(content)
 }
 
+// uppercaseTextOnly uppercases only the text characters in an HTML string,
+// leaving tag names and attribute values untouched.
+func uppercaseTextOnly(html string) string {
+	var buf strings.Builder
+	inTag := false
+	for _, r := range html {
+		if r == '<' {
+			inTag = true
+			buf.WriteRune(r)
+		} else if r == '>' {
+			inTag = false
+			buf.WriteRune(r)
+		} else if inTag {
+			buf.WriteRune(r)
+		} else {
+			buf.WriteRune(unicode.ToUpper(r))
+		}
+	}
+	return buf.String()
+}
+
 func writeHeading(buf *bytes.Buffer, node *ast.Heading, src []byte, depth int) {
 	var inner bytes.Buffer
 	writeChildren(&inner, node, src, depth)
@@ -162,7 +184,7 @@ func writeHeading(buf *bytes.Buffer, node *ast.Heading, src []byte, depth int) {
 
 	if node.Level == 1 {
 		buf.WriteString("<b>")
-		buf.WriteString(strings.ToUpper(content))
+		buf.WriteString(uppercaseTextOnly(content))
 		buf.WriteString("</b>")
 	} else {
 		buf.WriteString("<b>")
@@ -364,13 +386,7 @@ func renderTable(buf *bytes.Buffer, node *extast.Table, src []byte, depth int) {
 	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
 		switch r := child.(type) {
 		case *extast.TableHeader:
-			// TableHeader may contain one or more TableRow children.
-			for row := r.FirstChild(); row != nil; row = row.NextSibling() {
-				if _, ok := row.(*extast.TableRow); ok {
-					rows = append(rows, collectTableRow(row, src))
-				}
-			}
-			// If the header itself holds cells directly (no inner row), collect them.
+			// TableHeader holds TableCell children directly.
 			if r.FirstChild() != nil {
 				if _, ok := r.FirstChild().(*extast.TableCell); ok {
 					rows = append(rows, collectTableRow(r, src))

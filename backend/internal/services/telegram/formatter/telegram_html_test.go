@@ -64,6 +64,11 @@ func TestToTelegramHTML(t *testing.T) {
 			expected: "<b>HELLO WORLD</b>",
 		},
 		{
+			name:     "h1 with inline formatting",
+			input:    "# Hello **World**",
+			expected: "<b>HELLO <b>WORLD</b></b>",
+		},
+		{
 			name:     "h2 heading",
 			input:    "## Subheading",
 			expected: "<b>Subheading</b>",

@@ -124,7 +124,7 @@ func (w *streamWriter) WriteDone() error {
 		if _, err := w.bot.Send(msg); err != nil {
 			// Retry without markup on parse failure
 			msg.ParseMode = ""
-			msg.Text = stripHTMLTags(chunk)
+			msg.Text = stripHTMLTags(htmlContent)
 			if _, err := w.bot.Send(msg); err != nil {
 				return fmt.Errorf("send chunk %d: %w", i, err)
 			}
