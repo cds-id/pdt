@@ -86,7 +86,8 @@ WHATSAPP MESSAGE FORMATTING (for all outgoing messages in send_message/reply_to_
 
 WORKFLOW:
 - Use list_listeners to see available chats/groups.
-- Use search_messages for keyword search, semantic_search for concept/topic search.
+- Use search_messages for keyword search, semantic_search for concept/topic search. Both include media URLs when messages have attachments.
+- Use list_media to find images, videos, documents sent in chats. Always include the file_url in your response so the user can view them.
 - Use summarize_chat or full_chat_report for conversation overviews.
 - Use send_message or reply_to_message ONLY when the user explicitly asks to send something.
 - After creating an outbox entry, show the user the message content and ask for confirmation.
@@ -186,6 +187,20 @@ func (a *WhatsAppAgent) Tools() []minimax.Tool {
 					"limit": {"type": "integer", "description": "Max results (default 10)"}
 				},
 				"required": ["query"]
+			}`),
+		},
+		{
+			Name:        "list_media",
+			Description: "List media files (images, videos, documents) from WhatsApp messages. Returns file URLs, types, and associated message info.",
+			InputSchema: json.RawMessage(`{
+				"type": "object",
+				"properties": {
+					"listener_id": {"type": "integer", "description": "Filter by listener/chat ID (optional)"},
+					"media_type": {"type": "string", "description": "Filter by type: image, video, audio, document (optional)"},
+					"start_date": {"type": "string", "description": "Start date filter (YYYY-MM-DD, optional)"},
+					"end_date": {"type": "string", "description": "End date filter (YYYY-MM-DD, optional)"},
+					"limit": {"type": "integer", "description": "Max results (default 20)"}
+				}
 			}`),
 		},
 		{
@@ -296,6 +311,8 @@ func (a *WhatsAppAgent) ExecuteTool(ctx context.Context, name string, args json.
 		return a.searchMessages(args)
 	case "semantic_search":
 		return a.semanticSearch(ctx, args)
+	case "list_media":
+		return a.listMedia(args)
 	case "summarize_chat":
 		return a.summarizeChat(args)
 	case "send_message":
@@ -649,27 +666,123 @@ func (a *WhatsAppAgent) searchMessages(args json.RawMessage) (any, error) {
 	query.Order("wa_messages.timestamp DESC").Limit(params.Limit).Find(&messages)
 
 	type msgEntry struct {
-		ID           uint   `json:"id"`
-		ListenerID   uint   `json:"listener_id"`
-		SenderName   string `json:"sender_name"`
-		SenderJID    string `json:"sender_jid"`
-		Content      string `json:"content"`
-		Timestamp    string `json:"timestamp"`
+		ID          uint   `json:"id"`
+		ListenerID  uint   `json:"listener_id"`
+		SenderName  string `json:"sender_name"`
+		SenderJID   string `json:"sender_jid"`
+		Content     string `json:"content"`
+		MessageType string `json:"message_type"`
+		HasMedia    bool   `json:"has_media"`
+		MediaURL    string `json:"media_url,omitempty"`
+		Timestamp   string `json:"timestamp"`
 	}
 	results := make([]msgEntry, 0, len(messages))
 	for _, m := range messages {
-		results = append(results, msgEntry{
-			ID:         m.ID,
-			ListenerID: m.WaListenerID,
-			SenderName: m.SenderName,
-			SenderJID:  m.SenderJID,
-			Content:    truncateStr(m.Content, 300),
-			Timestamp:  m.Timestamp.Format("2006-01-02 15:04"),
-		})
+		entry := msgEntry{
+			ID:          m.ID,
+			ListenerID:  m.WaListenerID,
+			SenderName:  m.SenderName,
+			SenderJID:   m.SenderJID,
+			Content:     truncateStr(m.Content, 300),
+			MessageType: m.MessageType,
+			HasMedia:    m.HasMedia,
+			Timestamp:   m.Timestamp.Format("2006-01-02 15:04"),
+		}
+		if m.HasMedia {
+			var media models.WaMedia
+			if err := a.DB.Where("wa_message_id = ?", m.ID).First(&media).Error; err == nil {
+				entry.MediaURL = media.FileURL
+			}
+		}
+		results = append(results, entry)
 	}
 
 	return map[string]any{
 		"query":   params.Query,
+		"count":   len(results),
+		"results": results,
+	}, nil
+}
+
+// listMedia lists media files from WhatsApp messages with their URLs.
+func (a *WhatsAppAgent) listMedia(args json.RawMessage) (any, error) {
+	var params struct {
+		ListenerID *uint  `json:"listener_id"`
+		MediaType  string `json:"media_type"`
+		StartDate  string `json:"start_date"`
+		EndDate    string `json:"end_date"`
+		Limit      int    `json:"limit"`
+	}
+	json.Unmarshal(args, &params)
+	if params.Limit == 0 {
+		params.Limit = 20
+	}
+
+	query := a.DB.Model(&models.WaMedia{}).
+		Joins("JOIN wa_messages ON wa_messages.id = wa_media.wa_message_id").
+		Joins("JOIN wa_listeners ON wa_listeners.id = wa_messages.wa_listener_id").
+		Joins("JOIN wa_numbers ON wa_numbers.id = wa_listeners.wa_number_id").
+		Where("wa_numbers.user_id = ?", a.UserID)
+
+	if params.ListenerID != nil {
+		query = query.Where("wa_messages.wa_listener_id = ?", *params.ListenerID)
+	}
+	if params.MediaType != "" {
+		query = query.Where("wa_messages.message_type = ?", params.MediaType)
+	}
+	if params.StartDate != "" {
+		if t, err := time.Parse("2006-01-02", params.StartDate); err == nil {
+			query = query.Where("wa_messages.timestamp >= ?", t)
+		}
+	}
+	if params.EndDate != "" {
+		if t, err := time.Parse("2006-01-02", params.EndDate); err == nil {
+			query = query.Where("wa_messages.timestamp <= ?", t.Add(24*time.Hour))
+		}
+	}
+
+	type mediaResult struct {
+		MediaID     uint   `json:"media_id"`
+		MessageID   uint   `json:"message_id"`
+		SenderName  string `json:"sender_name"`
+		MessageType string `json:"message_type"`
+		Caption     string `json:"caption,omitempty"`
+		FileName    string `json:"file_name"`
+		MimeType    string `json:"mime_type"`
+		FileURL     string `json:"file_url"`
+		Timestamp   string `json:"timestamp"`
+	}
+
+	var mediaFiles []models.WaMedia
+	query.Select("wa_media.*").Order("wa_messages.timestamp DESC").Limit(params.Limit).Find(&mediaFiles)
+
+	results := make([]mediaResult, 0, len(mediaFiles))
+	for _, media := range mediaFiles {
+		var msg models.WaMessage
+		a.DB.First(&msg, media.WaMessageID)
+		caption := msg.Content
+		// Strip the "[Image description: ...]" suffix if present
+		if idx := strings.Index(caption, "\n[Image description:"); idx >= 0 {
+			caption = strings.TrimSpace(caption[:idx])
+		}
+		results = append(results, mediaResult{
+			MediaID:     media.ID,
+			MessageID:   media.WaMessageID,
+			SenderName:  msg.SenderName,
+			MessageType: msg.MessageType,
+			Caption:     caption,
+			FileName:    media.FileName,
+			MimeType:    media.MimeType,
+			FileURL:     media.FileURL,
+			Timestamp:   msg.Timestamp.Format("2006-01-02 15:04"),
+		})
+	}
+
+	if len(results) == 0 {
+		return map[string]string{"message": "No media files found"}, nil
+	}
+
+	return map[string]any{
 		"count":   len(results),
 		"results": results,
 	}, nil
