@@ -1,6 +1,7 @@
 package formatter_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/cds-id/pdt/backend/internal/services/telegram/formatter"
@@ -121,5 +122,36 @@ func TestToTelegramHTML(t *testing.T) {
 				t.Errorf("ToTelegramHTML(%q)\n  got:  %q\n  want: %q", tt.input, got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestToTelegramHTML_RealisticLLMOutput(t *testing.T) {
+	input := "# Daily Report\n\nHere's your **daily summary** for the team:\n\n## Git Activity\n\n- **3 commits** pushed to `main`\n- Fixed the *authentication bug* in login flow\n- Updated ~~deprecated~~ API endpoints\n\n## Task Status\n\n| Task | Status | Assignee |\n|------|--------|----------|\n| Auth fix | Done | Alice |\n| API update | In Progress | Bob |\n\n### Code Example\n\n```go\nfunc main() {\n    fmt.Println(\"Hello <world> & friends\")\n}\n```\n\n> Note: Deploy is scheduled for tomorrow.\n\n---\n\nFor details, visit [Dashboard](https://app.example.com/dashboard)."
+
+	result := formatter.ToTelegramHTML(input)
+
+	checks := []struct {
+		desc string
+		want string
+	}{
+		{"h1 uppercase bold", "<b>DAILY REPORT</b>"},
+		{"h2 bold", "<b>Git Activity</b>"},
+		{"bold text", "<b>daily summary</b>"},
+		{"inline code", "<code>main</code>"},
+		{"italic", "<i>authentication bug</i>"},
+		{"strikethrough", "<s>deprecated</s>"},
+		{"bullet list", "• "},
+		{"code block", "<pre><code class=\"language-go\">"},
+		{"html escaping in code", "&lt;world&gt; &amp; friends"},
+		{"table in pre", "<pre>"},
+		{"blockquote", "<blockquote>"},
+		{"horizontal rule", "————————————"},
+		{"link", "<a href=\"https://app.example.com/dashboard\">Dashboard</a>"},
+	}
+
+	for _, c := range checks {
+		if !strings.Contains(result, c.want) {
+			t.Errorf("%s: expected output to contain %q\n\nFull output:\n%s", c.desc, c.want, result)
+		}
 	}
 }
