@@ -311,6 +311,11 @@ func (a *SchedulerAgent) deleteSchedule(args json.RawMessage) (any, error) {
 	}
 
 	name := s.Name
+	var runIDs []string
+	a.DB.Model(&models.AgentScheduleRun{}).Where("schedule_id = ?", req.ScheduleID).Pluck("id", &runIDs)
+	if len(runIDs) > 0 {
+		a.DB.Where("run_id IN ?", runIDs).Delete(&models.AgentScheduleRunStep{})
+	}
 	a.DB.Where("schedule_id = ?", req.ScheduleID).Delete(&models.AgentScheduleRun{})
 	a.DB.Delete(&s)
 

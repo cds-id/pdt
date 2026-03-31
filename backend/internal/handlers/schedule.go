@@ -174,7 +174,12 @@ func (h *ScheduleHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Delete associated runs (steps cascade via DB or we delete explicitly)
+	// Delete in order: steps → runs → schedule (FK constraints)
+	var runIDs []string
+	h.DB.Model(&models.AgentScheduleRun{}).Where("schedule_id = ?", id).Pluck("id", &runIDs)
+	if len(runIDs) > 0 {
+		h.DB.Where("run_id IN ?", runIDs).Delete(&models.AgentScheduleRunStep{})
+	}
 	h.DB.Where("schedule_id = ?", id).Delete(&models.AgentScheduleRun{})
 	h.DB.Delete(&schedule)
 
