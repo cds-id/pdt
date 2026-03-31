@@ -15,9 +15,10 @@ import (
 )
 
 type Executor struct {
-	DB     *gorm.DB
-	Client *minimax.Client
-	Agents map[string]agent.Agent
+	DB       *gorm.DB
+	Client   *minimax.Client
+	Agents   map[string]agent.Agent
+	Notifier *Notifier
 }
 
 type nopWriter struct{}
@@ -46,7 +47,7 @@ func (e *Executor) Run(ctx context.Context, schedule models.AgentSchedule, trigg
 		Title:  fmt.Sprintf("Scheduled: %s — %s", schedule.Name, now.Format("2006-01-02")),
 	}
 	if err := e.DB.Create(&conv).Error; err != nil {
-		e.failRun(&run, fmt.Errorf("create conversation: %w", err))
+		e.failRun(&run, schedule.Name, fmt.Errorf("create conversation: %w", err))
 		return &run, nil
 	}
 	run.ConversationID = conv.ID
@@ -61,7 +62,7 @@ func (e *Executor) Run(ctx context.Context, schedule models.AgentSchedule, trigg
 	messages := []minimax.Message{{Role: "user", Content: schedule.Prompt}}
 	result, err := e.runAgent(ctx, schedule.AgentName, messages, &run)
 	if err != nil {
-		e.failRun(&run, err)
+		e.failRun(&run, schedule.Name, err)
 		return &run, nil
 	}
 
@@ -91,6 +92,9 @@ func (e *Executor) Run(ctx context.Context, schedule models.AgentSchedule, trigg
 		"token_usage":     string(usageJSON),
 	})
 	run.Status = "completed"
+	if e.Notifier != nil {
+		e.Notifier.NotifyRunCompleted(&run, schedule.Name)
+	}
 	return &run, nil
 }
 
@@ -155,7 +159,7 @@ func (e *Executor) runChain(ctx context.Context, chainConfigJSON json.RawMessage
 	}
 }
 
-func (e *Executor) failRun(run *models.AgentScheduleRun, err error) {
+func (e *Executor) failRun(run *models.AgentScheduleRun, scheduleName string, err error) {
 	now := time.Now()
 	e.DB.Model(run).Updates(map[string]any{
 		"status":       "failed",
@@ -164,6 +168,9 @@ func (e *Executor) failRun(run *models.AgentScheduleRun, err error) {
 	})
 	run.Status = "failed"
 	run.Error = err.Error()
+	if e.Notifier != nil {
+		e.Notifier.NotifyRunCompleted(run, scheduleName)
+	}
 }
 
 func (e *Executor) agentSlice() []agent.Agent {

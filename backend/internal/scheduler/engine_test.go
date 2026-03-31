@@ -3,7 +3,7 @@ package scheduler
 import "testing"
 
 func TestEngineCreation(t *testing.T) {
-	e := NewEngine(nil, nil, nil)
+	e := NewEngine(nil, nil, nil, nil)
 	if e == nil {
 		t.Fatal("expected non-nil engine")
 	}

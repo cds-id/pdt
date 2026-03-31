@@ -19,26 +19,28 @@ const (
 )
 
 type Engine struct {
-	db     *gorm.DB
-	client *minimax.Client
-	agents map[string]agent.Agent
-	pool   *Pool
-	bus    *eventbus.Bus
-	unsubs []func()
-	mu     sync.Mutex
+	db       *gorm.DB
+	client   *minimax.Client
+	agents   map[string]agent.Agent
+	pool     *Pool
+	bus      *eventbus.Bus
+	notifier *Notifier
+	unsubs   []func()
+	mu       sync.Mutex
 }
 
-func NewEngine(db *gorm.DB, client *minimax.Client, bus *eventbus.Bus, agents ...agent.Agent) *Engine {
+func NewEngine(db *gorm.DB, client *minimax.Client, bus *eventbus.Bus, notifier *Notifier, agents ...agent.Agent) *Engine {
 	agentMap := make(map[string]agent.Agent)
 	for _, a := range agents {
 		agentMap[a.Name()] = a
 	}
 	return &Engine{
-		db:     db,
-		client: client,
-		agents: agentMap,
-		pool:   NewPool(defaultMaxWorkers),
-		bus:    bus,
+		db:       db,
+		client:   client,
+		agents:   agentMap,
+		pool:     NewPool(defaultMaxWorkers),
+		bus:      bus,
+		notifier: notifier,
 	}
 }
 
@@ -90,9 +92,10 @@ func (e *Engine) executeSchedule(ctx context.Context, schedule models.AgentSched
 	log.Printf("[scheduler] executing schedule %q (id=%s, trigger=%s)", schedule.Name, schedule.ID, triggerType)
 
 	executor := &Executor{
-		DB:     e.db,
-		Client: e.client,
-		Agents: e.agents,
+		DB:       e.db,
+		Client:   e.client,
+		Agents:   e.agents,
+		Notifier: e.notifier,
 	}
 
 	run, err := executor.Run(ctx, schedule, triggerType)
