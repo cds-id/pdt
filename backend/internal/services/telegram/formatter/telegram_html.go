@@ -1,0 +1,371 @@
+package formatter
+
+import (
+	"bytes"
+	"fmt"
+	"strings"
+
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/extension"
+	extast "github.com/yuin/goldmark/extension/ast"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/text"
+)
+
+// ToTelegramHTML converts standard Markdown to Telegram-compatible HTML.
+func ToTelegramHTML(markdown string) string {
+	md := goldmark.New(
+		goldmark.WithExtensions(
+			extension.Strikethrough,
+			extension.Table,
+		),
+		goldmark.WithParserOptions(
+			parser.WithAutoHeadingID(),
+		),
+	)
+
+	src := []byte(markdown)
+	reader := text.NewReader(src)
+	doc := md.Parser().Parse(reader)
+
+	var buf bytes.Buffer
+	walkNode(&buf, doc, src, 0)
+	return strings.TrimSpace(buf.String())
+}
+
+// escapeHTML escapes only the characters that Telegram HTML requires escaping.
+func escapeHTML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
+}
+
+// walkNode recursively walks an AST node and writes Telegram HTML to buf.
+// depth tracks list nesting level.
+func walkNode(buf *bytes.Buffer, node ast.Node, src []byte, depth int) {
+	switch n := node.(type) {
+	case *ast.Document:
+		writeChildren(buf, n, src, depth)
+
+	case *ast.Paragraph:
+		writeParagraph(buf, n, src, depth)
+
+	case *ast.Heading:
+		writeHeading(buf, n, src, depth)
+
+	case *ast.FencedCodeBlock:
+		writeFencedCode(buf, n, src)
+
+	case *ast.CodeBlock:
+		writeCodeBlock(buf, n, src)
+
+	case *ast.Blockquote:
+		writeBlockquote(buf, n, src, depth)
+
+	case *ast.List:
+		writeList(buf, n, src, depth)
+
+	case *ast.ListItem:
+		writeListItem(buf, n, src, depth)
+
+	case *ast.ThematicBreak:
+		buf.WriteString("————————————")
+
+	case *ast.HTMLBlock:
+		// skip raw HTML blocks
+
+	case *ast.Text:
+		writeText(buf, n, src)
+
+	case *ast.String:
+		buf.WriteString(escapeHTML(string(n.Value)))
+
+	case *ast.Emphasis:
+		writeEmphasis(buf, n, src, depth)
+
+	case *ast.CodeSpan:
+		writeCodeSpan(buf, n, src)
+
+	case *ast.Link:
+		writeLink(buf, n, src, depth)
+
+	case *ast.Image:
+		writeImage(buf, n, src, depth)
+
+	case *ast.AutoLink:
+		writeAutoLink(buf, n, src)
+
+	case *ast.RawHTML:
+		writeRawHTML(buf, n, src)
+
+	case *extast.Strikethrough:
+		buf.WriteString("<s>")
+		writeChildren(buf, n, src, depth)
+		buf.WriteString("</s>")
+
+	default:
+		// For unknown nodes, recurse into children
+		writeChildren(buf, node, src, depth)
+	}
+}
+
+func writeChildren(buf *bytes.Buffer, node ast.Node, src []byte, depth int) {
+	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		walkNode(buf, child, src, depth)
+	}
+}
+
+func writeParagraph(buf *bytes.Buffer, node *ast.Paragraph, src []byte, depth int) {
+	var inner bytes.Buffer
+	writeChildren(&inner, node, src, depth)
+	content := inner.String()
+	if content == "" {
+		return
+	}
+	// Add paragraph separator if there's already content in buf
+	if buf.Len() > 0 {
+		existing := buf.String()
+		if !strings.HasSuffix(existing, "\n\n") {
+			if strings.HasSuffix(existing, "\n") {
+				buf.WriteString("\n")
+			} else {
+				buf.WriteString("\n\n")
+			}
+		}
+	}
+	buf.WriteString(content)
+}
+
+func writeHeading(buf *bytes.Buffer, node *ast.Heading, src []byte, depth int) {
+	var inner bytes.Buffer
+	writeChildren(&inner, node, src, depth)
+	content := inner.String()
+
+	if buf.Len() > 0 {
+		existing := buf.String()
+		if !strings.HasSuffix(existing, "\n\n") {
+			if strings.HasSuffix(existing, "\n") {
+				buf.WriteString("\n")
+			} else {
+				buf.WriteString("\n\n")
+			}
+		}
+	}
+
+	if node.Level == 1 {
+		buf.WriteString("<b>")
+		buf.WriteString(strings.ToUpper(content))
+		buf.WriteString("</b>")
+	} else {
+		buf.WriteString("<b>")
+		buf.WriteString(content)
+		buf.WriteString("</b>")
+	}
+}
+
+func writeFencedCode(buf *bytes.Buffer, node *ast.FencedCodeBlock, src []byte) {
+	if buf.Len() > 0 {
+		existing := buf.String()
+		if !strings.HasSuffix(existing, "\n\n") {
+			if strings.HasSuffix(existing, "\n") {
+				buf.WriteString("\n")
+			} else {
+				buf.WriteString("\n\n")
+			}
+		}
+	}
+
+	lang := string(node.Language(src))
+	if lang != "" {
+		buf.WriteString(fmt.Sprintf("<pre><code class=\"language-%s\">", escapeHTML(lang)))
+	} else {
+		buf.WriteString("<pre><code>")
+	}
+
+	for i := 0; i < node.Lines().Len(); i++ {
+		line := node.Lines().At(i)
+		buf.WriteString(escapeHTML(string(line.Value(src))))
+	}
+
+	buf.WriteString("</code></pre>")
+}
+
+func writeCodeBlock(buf *bytes.Buffer, node *ast.CodeBlock, src []byte) {
+	if buf.Len() > 0 {
+		existing := buf.String()
+		if !strings.HasSuffix(existing, "\n\n") {
+			if strings.HasSuffix(existing, "\n") {
+				buf.WriteString("\n")
+			} else {
+				buf.WriteString("\n\n")
+			}
+		}
+	}
+
+	buf.WriteString("<pre><code>")
+	for i := 0; i < node.Lines().Len(); i++ {
+		line := node.Lines().At(i)
+		buf.WriteString(escapeHTML(string(line.Value(src))))
+	}
+	buf.WriteString("</code></pre>")
+}
+
+func writeBlockquote(buf *bytes.Buffer, node *ast.Blockquote, src []byte, depth int) {
+	if buf.Len() > 0 {
+		existing := buf.String()
+		if !strings.HasSuffix(existing, "\n\n") {
+			if strings.HasSuffix(existing, "\n") {
+				buf.WriteString("\n")
+			} else {
+				buf.WriteString("\n\n")
+			}
+		}
+	}
+
+	buf.WriteString("<blockquote>")
+	// Blockquote contains paragraphs — render their inner content directly
+	var inner bytes.Buffer
+	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		if p, ok := child.(*ast.Paragraph); ok {
+			writeChildren(&inner, p, src, depth)
+		} else {
+			walkNode(&inner, child, src, depth)
+		}
+	}
+	buf.WriteString(strings.TrimSpace(inner.String()))
+	buf.WriteString("</blockquote>")
+}
+
+func writeList(buf *bytes.Buffer, node *ast.List, src []byte, depth int) {
+	if depth == 0 && buf.Len() > 0 {
+		existing := buf.String()
+		if !strings.HasSuffix(existing, "\n\n") {
+			if strings.HasSuffix(existing, "\n") {
+				buf.WriteString("\n")
+			} else {
+				buf.WriteString("\n\n")
+			}
+		}
+	}
+
+	isFirst := true
+	itemNum := node.Start
+	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		if li, ok := child.(*ast.ListItem); ok {
+			if !isFirst {
+				buf.WriteString("\n")
+			}
+			isFirst = false
+
+			indent := strings.Repeat("  ", depth)
+			buf.WriteString(indent)
+
+			if node.IsOrdered() {
+				buf.WriteString(fmt.Sprintf("%d. ", itemNum))
+				itemNum++
+			} else {
+				buf.WriteString("• ")
+			}
+
+			writeListItemContent(buf, li, src, depth+1)
+		}
+	}
+}
+
+func writeListItemContent(buf *bytes.Buffer, node *ast.ListItem, src []byte, depth int) {
+	// A list item may have a paragraph (tight lists have TextBlock) and sub-lists
+	firstBlock := true
+	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		switch c := child.(type) {
+		case *ast.TextBlock:
+			if !firstBlock {
+				buf.WriteString("\n")
+			}
+			writeChildren(buf, c, src, depth)
+			firstBlock = false
+		case *ast.Paragraph:
+			if !firstBlock {
+				buf.WriteString("\n")
+			}
+			writeChildren(buf, c, src, depth)
+			firstBlock = false
+		case *ast.List:
+			buf.WriteString("\n")
+			writeList(buf, c, src, depth)
+			firstBlock = false
+		default:
+			walkNode(buf, child, src, depth)
+		}
+	}
+}
+
+// writeListItem is kept for completeness but list item rendering is done via writeListItemContent.
+func writeListItem(buf *bytes.Buffer, node *ast.ListItem, src []byte, depth int) {
+	writeListItemContent(buf, node, src, depth)
+}
+
+func writeText(buf *bytes.Buffer, node *ast.Text, src []byte) {
+	seg := node.Segment
+	val := seg.Value(src)
+	buf.WriteString(escapeHTML(string(val)))
+	if node.SoftLineBreak() {
+		buf.WriteString("\n")
+	} else if node.HardLineBreak() {
+		buf.WriteString("\n")
+	}
+}
+
+func writeEmphasis(buf *bytes.Buffer, node *ast.Emphasis, src []byte, depth int) {
+	if node.Level == 2 {
+		buf.WriteString("<b>")
+		writeChildren(buf, node, src, depth)
+		buf.WriteString("</b>")
+	} else {
+		buf.WriteString("<i>")
+		writeChildren(buf, node, src, depth)
+		buf.WriteString("</i>")
+	}
+}
+
+func writeCodeSpan(buf *bytes.Buffer, node *ast.CodeSpan, src []byte) {
+	buf.WriteString("<code>")
+	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		if t, ok := child.(*ast.Text); ok {
+			seg := t.Segment
+			buf.WriteString(escapeHTML(string(seg.Value(src))))
+		} else if s, ok := child.(*ast.String); ok {
+			buf.WriteString(escapeHTML(string(s.Value)))
+		}
+	}
+	buf.WriteString("</code>")
+}
+
+func writeLink(buf *bytes.Buffer, node *ast.Link, src []byte, depth int) {
+	href := escapeHTML(string(node.Destination))
+	buf.WriteString(fmt.Sprintf(`<a href="%s">`, href))
+	writeChildren(buf, node, src, depth)
+	buf.WriteString("</a>")
+}
+
+func writeImage(buf *bytes.Buffer, node *ast.Image, src []byte, depth int) {
+	href := escapeHTML(string(node.Destination))
+	buf.WriteString(fmt.Sprintf(`<a href="%s">`, href))
+	writeChildren(buf, node, src, depth)
+	buf.WriteString("</a>")
+}
+
+func writeAutoLink(buf *bytes.Buffer, node *ast.AutoLink, src []byte) {
+	url := escapeHTML(string(node.URL(src)))
+	buf.WriteString(fmt.Sprintf(`<a href="%s">%s</a>`, url, url))
+}
+
+func writeRawHTML(buf *bytes.Buffer, node *ast.RawHTML, src []byte) {
+	// Escape raw HTML so it renders as literal text in Telegram
+	segs := node.Segments
+	for i := 0; i < segs.Len(); i++ {
+		seg := segs.At(i)
+		buf.WriteString(escapeHTML(string(seg.Value(src))))
+	}
+}
