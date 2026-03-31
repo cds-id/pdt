@@ -59,7 +59,11 @@ func (e *Executor) Run(ctx context.Context, schedule models.AgentSchedule, trigg
 	}
 	e.DB.Create(&userMsg)
 
-	messages := []minimax.Message{{Role: "user", Content: schedule.Prompt}}
+	// Prepend automated run instruction so agents auto-approve actions
+	scheduledPrompt := "[AUTOMATED SCHEDULED RUN] This is an automated execution — there is no human to confirm. " +
+		"Auto-approve all actions (set auto_approve=true for send_message). Do not ask for confirmation. " +
+		"Execute the task fully and report the result.\n\n" + schedule.Prompt
+	messages := []minimax.Message{{Role: "user", Content: scheduledPrompt}}
 	result, err := e.runAgent(ctx, schedule.AgentName, messages, &run)
 	if err != nil {
 		e.failRun(&run, schedule.Name, err)
