@@ -124,6 +124,12 @@ func walkNode(buf *bytes.Buffer, node ast.Node, src []byte, depth int) {
 		writeChildren(buf, n, src, depth)
 		buf.WriteString("</s>")
 
+	case *extast.Table:
+		renderTable(buf, n, src, depth)
+
+	case *extast.TableHeader, *extast.TableRow, *extast.TableCell:
+		// handled by renderTable
+
 	default:
 		// For unknown nodes, recurse into children
 		writeChildren(buf, node, src, depth)
@@ -336,5 +342,111 @@ func writeRawHTML(buf *bytes.Buffer, node *ast.RawHTML, src []byte) {
 	for i := 0; i < segs.Len(); i++ {
 		seg := segs.At(i)
 		buf.WriteString(escapeHTML(string(seg.Value(src))))
+	}
+}
+
+// collectTableRow extracts the text content of each cell in a row node.
+func collectTableRow(row ast.Node, src []byte) []string {
+	var cells []string
+	for cell := row.FirstChild(); cell != nil; cell = cell.NextSibling() {
+		var cellBuf bytes.Buffer
+		writeChildren(&cellBuf, cell, src, 0)
+		cells = append(cells, strings.TrimSpace(cellBuf.String()))
+	}
+	return cells
+}
+
+// renderTable renders an extast.Table as monospace text inside <pre> tags.
+func renderTable(buf *bytes.Buffer, node *extast.Table, src []byte, depth int) {
+	var rows [][]string
+
+	// Collect all rows: header first, then body rows.
+	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		switch r := child.(type) {
+		case *extast.TableHeader:
+			// TableHeader may contain one or more TableRow children.
+			for row := r.FirstChild(); row != nil; row = row.NextSibling() {
+				if _, ok := row.(*extast.TableRow); ok {
+					rows = append(rows, collectTableRow(row, src))
+				}
+			}
+			// If the header itself holds cells directly (no inner row), collect them.
+			if r.FirstChild() != nil {
+				if _, ok := r.FirstChild().(*extast.TableCell); ok {
+					rows = append(rows, collectTableRow(r, src))
+				}
+			}
+		case *extast.TableRow:
+			rows = append(rows, collectTableRow(r, src))
+		}
+	}
+
+	if len(rows) == 0 {
+		return
+	}
+
+	// Determine number of columns.
+	numCols := 0
+	for _, row := range rows {
+		if len(row) > numCols {
+			numCols = len(row)
+		}
+	}
+
+	// Calculate max width per column.
+	colWidths := make([]int, numCols)
+	for _, row := range rows {
+		for i, cell := range row {
+			if len(cell) > colWidths[i] {
+				colWidths[i] = len(cell)
+			}
+		}
+	}
+
+	ensureDoubleNewline(buf)
+	buf.WriteString("<pre>")
+
+	for rowIdx, row := range rows {
+		// Build the row line.
+		for colIdx := 0; colIdx < numCols; colIdx++ {
+			cell := ""
+			if colIdx < len(row) {
+				cell = row[colIdx]
+			}
+			if colIdx < numCols-1 {
+				// Pad cell to column width for all but the last column.
+				padded := cell + strings.Repeat(" ", colWidths[colIdx]-len(cell))
+				buf.WriteString(padded)
+				buf.WriteString(" | ")
+			} else {
+				// Last column: no trailing padding.
+				buf.WriteString(cell)
+			}
+		}
+
+		buf.WriteString("\n")
+
+		// After the header row (index 0), write the separator line.
+		if rowIdx == 0 {
+			for colIdx := 0; colIdx < numCols; colIdx++ {
+				buf.WriteString(strings.Repeat("-", colWidths[colIdx]+1))
+				if colIdx < numCols-1 {
+					buf.WriteString("+")
+				}
+			}
+			buf.WriteString("\n")
+		}
+	}
+
+	// Trim the trailing newline inside the <pre> block, then close it.
+	preStart := strings.LastIndex(buf.String(), "<pre>")
+	trimmed := strings.TrimRight(buf.String()[preStart+5:], "\n")
+	buf.Truncate(preStart)
+	buf.WriteString("<pre>")
+	buf.WriteString(trimmed)
+	buf.WriteString("</pre>")
+
+	if node.NextSibling() != nil {
+		buf.WriteString("\n\n")
 	}
 }

@@ -107,6 +107,11 @@ func TestToTelegramHTML(t *testing.T) {
 			input:    "- item one\n  - nested item\n- item two",
 			expected: "• item one\n  • nested item\n• item two",
 		},
+		{
+			name:     "simple table",
+			input:    "| Name | Age |\n|------|-----|\n| Alice | 30 |\n| Bob | 25 |",
+			expected: "<pre>Name  | Age\n------+----\nAlice | 30\nBob   | 25</pre>",
+		},
 	}
 
 	for _, tt := range tests {
