@@ -171,12 +171,26 @@ func (h *Handler) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 
 	writer := newStreamWriter(h.Bot, chatID)
 
-	// Send typing indicator
-	typing := tgbotapi.NewChatAction(chatID, tgbotapi.ChatTyping)
-	h.Bot.Send(typing)
+	// Send typing indicator repeatedly until orchestrator finishes
+	stopTyping := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(4 * time.Second)
+		defer ticker.Stop()
+		// Send immediately
+		h.Bot.Send(tgbotapi.NewChatAction(chatID, tgbotapi.ChatTyping))
+		for {
+			select {
+			case <-stopTyping:
+				return
+			case <-ticker.C:
+				h.Bot.Send(tgbotapi.NewChatAction(chatID, tgbotapi.ChatTyping))
+			}
+		}
+	}()
 
 	log.Printf("[telegram] calling orchestrator with %d messages", len(messages))
 	result, err := orchestrator.HandleMessage(ctx, messages, writer)
+	close(stopTyping)
 	if err != nil {
 		log.Printf("[telegram] orchestrator error: %v", err)
 		writer.WriteError(err.Error())
