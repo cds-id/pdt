@@ -58,7 +58,7 @@ func (e *EnhancedAgent) Tools() []minimax.Tool {
 func (e *EnhancedAgent) ExecuteTool(ctx context.Context, name string, args json.RawMessage) (any, error) {
 	// Check if this is a Composio tool
 	if accountID, ok := e.toolToAccount[name]; ok {
-		result, err := e.client.ExecuteTool(e.apiKey, name, accountID, e.entityID, args)
+		result, err := e.client.ExecuteTool(e.apiKey, name, accountID, args)
 		if err != nil {
 			log.Printf("[composio] tool %s error: %v", name, err)
 			return map[string]string{"error": err.Error()}, nil

@@ -19,7 +19,7 @@ type GetToolsResponse struct {
 // ExecuteRequest is the body for POST /api/v3/tools/execute/{slug}.
 type ExecuteRequest struct {
 	ConnectedAccountID string          `json:"connected_account_id"`
-	EntityID           string          `json:"entity_id"`
+	EntityID           string          `json:"entity_id,omitempty"`
 	Arguments          json.RawMessage `json:"arguments"`
 }
 

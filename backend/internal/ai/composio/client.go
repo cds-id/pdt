@@ -68,10 +68,9 @@ func (c *Client) GetTools(apiKey string, toolkits []string) ([]minimax.Tool, err
 }
 
 // ExecuteTool calls a Composio tool with the given arguments.
-func (c *Client) ExecuteTool(apiKey, toolSlug, connectedAccountID, entityID string, args json.RawMessage) (json.RawMessage, error) {
+func (c *Client) ExecuteTool(apiKey, toolSlug, connectedAccountID string, args json.RawMessage) (json.RawMessage, error) {
 	body, err := json.Marshal(ExecuteRequest{
 		ConnectedAccountID: connectedAccountID,
-		EntityID:           entityID,
 		Arguments:          args,
 	})
 	if err != nil {
