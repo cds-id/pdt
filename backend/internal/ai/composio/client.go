@@ -163,7 +163,7 @@ func (c *Client) InitiateConnection(apiKey, authConfigID, redirectURI, entityID 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("composio initiate: status %d: %s", resp.StatusCode, respBody)
 	}
