@@ -48,6 +48,8 @@ func Migrate(db *gorm.DB) error {
 		&models.AgentSchedule{},
 		&models.AgentScheduleRun{},
 		&models.AgentScheduleRunStep{},
+		&models.ComposioConfig{},
+		&models.ComposioConnection{},
 	); err != nil {
 		return err
 	}
