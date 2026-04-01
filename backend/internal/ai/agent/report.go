@@ -23,7 +23,8 @@ type ReportAgent struct {
 func (a *ReportAgent) Name() string { return "report" }
 
 func (a *ReportAgent) SystemPrompt() string {
-	return `You are a Report assistant for PDT. You help users generate daily and monthly reports, view existing reports, and manage report templates. Use the available tools to fetch and generate reports. When generating reports, confirm the date/month with the user first.`
+	today := time.Now().Format("2006-01-02")
+	return fmt.Sprintf(`You are a Report assistant for PDT. Today is %s. You help users generate daily and monthly reports, view existing reports, and manage report templates. Use the available tools to fetch and generate reports. When generating reports, confirm the date/month with the user first.`, today)
 }
 
 func (a *ReportAgent) Tools() []minimax.Tool {

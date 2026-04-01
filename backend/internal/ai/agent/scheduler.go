@@ -28,7 +28,8 @@ type SchedulerAgent struct {
 func (a *SchedulerAgent) Name() string { return "scheduler" }
 
 func (a *SchedulerAgent) SystemPrompt() string {
-	return `You are a Schedule Manager for PDT. You help users create, view, modify, and manage scheduled agent tasks.
+	today := time.Now().Format("2006-01-02")
+	return fmt.Sprintf(`You are a Schedule Manager for PDT. Today is %s. You help users create, view, modify, and manage scheduled agent tasks.
 
 CAPABILITIES:
 - List all schedules
@@ -61,7 +62,7 @@ CHAIN CONDITIONS:
 - "status:failed": Run if previous step failed
 
 When creating schedules, help the user by suggesting appropriate cron expressions, agents, and prompts.
-Respond in the user's language (Indonesian or English).`
+Respond in the user's language (Indonesian or English).`, today)
 }
 
 func (a *SchedulerAgent) Tools() []minimax.Tool {

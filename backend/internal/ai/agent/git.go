@@ -33,7 +33,8 @@ func shortSHA(sha string) string {
 func (a *GitAgent) Name() string { return "git" }
 
 func (a *GitAgent) SystemPrompt() string {
-	return `You are a Git assistant for PDT. You help users explore their commit history, repository statistics, and code activity. Use the available tools to fetch data and provide insightful answers. Always be specific with numbers and dates.`
+	today := time.Now().Format("2006-01-02")
+	return fmt.Sprintf(`You are a Git assistant for PDT. Today is %s. You help users explore their commit history, repository statistics, and code activity. Use the available tools to fetch data and provide insightful answers. Always be specific with numbers and dates.`, today)
 }
 
 func (a *GitAgent) Tools() []minimax.Tool {

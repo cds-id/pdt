@@ -19,7 +19,8 @@ type ProofAgent struct {
 func (a *ProofAgent) Name() string { return "proof" }
 
 func (a *ProofAgent) SystemPrompt() string {
-	return `You are a Proof & Accountability assistant for PDT. You help developers find evidence of discussions, decisions, and requirements stated in Jira comments. You can search comments by author, keyword, and date to find proof of what was said and when. You also detect quality issues like cards with missing descriptions or incomplete requirements. Always cite the exact comment author, date, and card key when presenting evidence.`
+	today := time.Now().Format("2006-01-02")
+	return fmt.Sprintf(`You are a Proof & Accountability assistant for PDT. Today is %s. You help developers find evidence of discussions, decisions, and requirements stated in Jira comments. You can search comments by author, keyword, and date to find proof of what was said and when. You also detect quality issues like cards with missing descriptions or incomplete requirements. Always cite the exact comment author, date, and card key when presenting evidence.`, today)
 }
 
 func (a *ProofAgent) Tools() []minimax.Tool {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 )
@@ -77,9 +78,10 @@ func (o *Orchestrator) HandleMessage(ctx context.Context, messages []minimax.Mes
 		}
 	}
 
+	today := time.Now().Format("2006-01-02")
 	routerMessages := append([]minimax.Message{{
 		Role:    "system",
-		Content: routerSystemPrompt,
+		Content: fmt.Sprintf("Today is %s.\n\n%s", today, routerSystemPrompt),
 	}}, messages...)
 
 	req := minimax.ChatRequest{

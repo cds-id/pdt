@@ -35,11 +35,12 @@ func (a *JiraAgent) SystemPrompt() string {
 		wsList = "\n- No workspaces configured"
 	}
 
-	return fmt.Sprintf(`You are a Jira assistant for PDT. You help users explore their Jira sprints, cards, and issues. You can also link commits to Jira cards. Use the available tools to fetch data and provide helpful answers.
+	today := time.Now().Format("2006-01-02")
+	return fmt.Sprintf(`You are a Jira assistant for PDT. Today is %s. You help users explore their Jira sprints, cards, and issues. You can also link commits to Jira cards. Use the available tools to fetch data and provide helpful answers.
 
 WORKSPACES:%s
 
-When the user asks about a specific workspace or project, use the workspace_id filter. When not specified, results come from all workspaces.`, wsList)
+When the user asks about a specific workspace or project, use the workspace_id filter. When not specified, results come from all workspaces.`, today, wsList)
 }
 
 func (a *JiraAgent) Tools() []minimax.Tool {
