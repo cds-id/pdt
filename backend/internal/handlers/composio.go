@@ -163,7 +163,7 @@ func (h *ComposioHandler) InitiateConnection(c *gin.Context) {
 
 	h.DB.Model(&conn).Updates(map[string]any{
 		"account_id": result.ConnectedAccountID,
-		"status":     result.ConnectionStatus,
+		"status":     strings.ToLower(result.ConnectionStatus),
 	})
 
 	c.JSON(http.StatusOK, gin.H{
