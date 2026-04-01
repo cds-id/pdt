@@ -154,7 +154,15 @@ func (e *Executor) runChain(ctx context.Context, chainConfigJSON json.RawMessage
 		if !evaluateCondition(step.Condition, previousResponse, "completed") {
 			continue
 		}
-		messages := []minimax.Message{{Role: "user", Content: step.Prompt}}
+		// Inject previous response into the chain step prompt
+		prompt := step.Prompt
+		if strings.Contains(prompt, "{{previous_response}}") {
+			prompt = strings.ReplaceAll(prompt, "{{previous_response}}", previousResponse)
+		} else {
+			// Auto-append previous response as context
+			prompt = fmt.Sprintf("%s\n\nPrevious agent response:\n%s", prompt, previousResponse)
+		}
+		messages := []minimax.Message{{Role: "user", Content: prompt}}
 		result, err := e.runAgent(ctx, step.Agent, messages, run)
 		if err != nil {
 			log.Printf("[scheduler] chain step %s failed: %v", step.Agent, err)
