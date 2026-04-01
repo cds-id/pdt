@@ -47,7 +47,7 @@ export const composioApi = api.injectEndpoints({
       query: () => API_CONSTANTS.COMPOSIO.CONNECTIONS,
       providesTags: [{ type: 'Composio' as const, id: 'CONNECTIONS' }]
     }),
-    initiateComposioConnection: builder.mutation<InitiateResponse, { toolkit: string; integration_id: string; redirect_uri: string }>({
+    initiateComposioConnection: builder.mutation<InitiateResponse, { toolkit: string; redirect_uri: string }>({
       query: ({ toolkit, ...body }) => ({
         url: API_CONSTANTS.COMPOSIO.INITIATE(toolkit),
         method: 'POST',

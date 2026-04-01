@@ -96,8 +96,7 @@ func (h *ComposioHandler) InitiateConnection(c *gin.Context) {
 	toolkit := c.Param("toolkit")
 
 	var req struct {
-		IntegrationID string `json:"integration_id" binding:"required"`
-		RedirectURI   string `json:"redirect_uri" binding:"required"`
+		RedirectURI string `json:"redirect_uri" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -116,8 +115,14 @@ func (h *ComposioHandler) InitiateConnection(c *gin.Context) {
 		return
 	}
 
+	authConfigID, err := h.ComposioClient.GetAuthConfigID(apiKey, toolkit)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+
 	entityID := fmt.Sprintf("pdt-user-%d", userID)
-	result, err := h.ComposioClient.InitiateConnection(apiKey, req.IntegrationID, req.RedirectURI, entityID)
+	result, err := h.ComposioClient.InitiateConnection(apiKey, authConfigID, req.RedirectURI, entityID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -127,18 +132,16 @@ func (h *ComposioHandler) InitiateConnection(c *gin.Context) {
 	dbResult := h.DB.Where("user_id = ? AND toolkit = ?", userID, toolkit).First(&conn)
 	if dbResult.Error != nil {
 		conn = models.ComposioConnection{
-			UserID:        userID,
-			Toolkit:       toolkit,
-			IntegrationID: req.IntegrationID,
-			AccountID:     result.ConnectedAccountID,
-			Status:        result.ConnectionStatus,
+			UserID:    userID,
+			Toolkit:   toolkit,
+			AccountID: result.ConnectedAccountID,
+			Status:    result.ConnectionStatus,
 		}
 		h.DB.Create(&conn)
 	} else {
 		h.DB.Model(&conn).Updates(map[string]any{
-			"account_id":     result.ConnectedAccountID,
-			"integration_id": req.IntegrationID,
-			"status":         result.ConnectionStatus,
+			"account_id": result.ConnectedAccountID,
+			"status":     result.ConnectionStatus,
 		})
 	}
 

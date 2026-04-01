@@ -139,12 +139,47 @@ func (c *Client) GetConnectedAccounts(apiKey, entityID string) ([]ConnectedAccou
 	return result.Items, nil
 }
 
+// GetAuthConfigID looks up the auth config ID for a given toolkit slug.
+func (c *Client) GetAuthConfigID(apiKey, toolkitSlug string) (string, error) {
+	u, _ := url.Parse(baseURL + "/auth_configs")
+	q := u.Query()
+	q.Set("toolkit_slug", toolkitSlug)
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("x-api-key", apiKey)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("composio get auth configs: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("composio get auth configs: status %d: %s", resp.StatusCode, body)
+	}
+
+	var result GetAuthConfigsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	if len(result.Items) == 0 {
+		return "", fmt.Errorf("no auth config found for toolkit %q", toolkitSlug)
+	}
+	return result.Items[0].ID, nil
+}
+
 // InitiateConnection starts an OAuth flow for a toolkit and returns the redirect URL.
-func (c *Client) InitiateConnection(apiKey, integrationID, redirectURI, entityID string) (*InitiateConnectionResponse, error) {
+func (c *Client) InitiateConnection(apiKey, authConfigID, redirectURI, entityID string) (*InitiateConnectionResponse, error) {
 	body, err := json.Marshal(InitiateConnectionRequest{
-		IntegrationID: integrationID,
-		RedirectURI:   redirectURI,
-		UserID:        entityID,
+		AuthConfig:  AuthConfigRef{ID: authConfigID},
+		RedirectURI: redirectURI,
+		UserID:      entityID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("composio marshal initiate request: %w", err)

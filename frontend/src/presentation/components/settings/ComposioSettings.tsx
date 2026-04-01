@@ -61,7 +61,6 @@ export function ComposioSettings() {
       const redirectURI = window.location.origin + '/dashboard/settings'
       const result = await initiateConnection({
         toolkit,
-        integration_id: toolkit,
         redirect_uri: redirectURI
       }).unwrap()
 

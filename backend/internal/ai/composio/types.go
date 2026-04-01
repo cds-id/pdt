@@ -42,16 +42,35 @@ type GetConnectedAccountsResponse struct {
 	Items []ConnectedAccount `json:"items"`
 }
 
+// AuthConfig represents an auth config from the Composio API.
+type AuthConfig struct {
+	ID      string `json:"id"`
+	Toolkit struct {
+		Slug string `json:"slug"`
+	} `json:"toolkit"`
+}
+
+// GetAuthConfigsResponse is the response from GET /api/v3/auth_configs.
+type GetAuthConfigsResponse struct {
+	Items []AuthConfig `json:"items"`
+}
+
 // InitiateConnectionRequest is the body for POST /api/v3/connected_accounts.
 type InitiateConnectionRequest struct {
-	IntegrationID string `json:"integrationId"`
-	RedirectURI   string `json:"redirectUri"`
-	UserID        string `json:"entityId"`
+	AuthConfig  AuthConfigRef `json:"auth_config"`
+	Connection  struct{}      `json:"connection"`
+	RedirectURI string        `json:"redirect_uri"`
+	UserID      string        `json:"user_id"`
+}
+
+// AuthConfigRef references an existing auth config by ID.
+type AuthConfigRef struct {
+	ID string `json:"id"`
 }
 
 // InitiateConnectionResponse is the response with the OAuth redirect URL.
 type InitiateConnectionResponse struct {
-	ConnectionStatus   string `json:"connectionStatus"`
-	ConnectedAccountID string `json:"connectedAccountId"`
-	RedirectURL        string `json:"redirectUrl"`
+	ConnectionStatus   string `json:"status"`
+	ConnectedAccountID string `json:"id"`
+	RedirectURL        string `json:"redirect_url"`
 }
