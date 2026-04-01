@@ -27,7 +27,7 @@ type ExecuteRequest struct {
 type ExecuteResponse struct {
 	Data       json.RawMessage `json:"data"`
 	Error      string          `json:"error,omitempty"`
-	Successful bool            `json:"successfull"`
+	Successful bool            `json:"successful"`
 }
 
 // ConnectedAccount is a user's connected service account.
