@@ -199,10 +199,13 @@ func (h *ComposioHandler) SyncConnections(c *gin.Context) {
 			continue
 		}
 
-		// Find the most recent ACTIVE account, or fall back to the latest status
+		// Find an ACTIVE account matching this toolkit
 		bestStatus := "inactive"
 		bestAccountID := local.AccountID
 		for _, acc := range accounts {
+			if !strings.EqualFold(acc.Toolkit.Slug, local.Toolkit) {
+				continue
+			}
 			if strings.EqualFold(acc.Status, "ACTIVE") {
 				bestStatus = "active"
 				bestAccountID = acc.ID
