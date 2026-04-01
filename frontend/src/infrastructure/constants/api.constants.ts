@@ -112,6 +112,7 @@ export const API_CONSTANTS = {
   COMPOSIO: {
     CONFIG: '/composio/config',
     CONNECTIONS: '/composio/connections',
+    AUTH_CONFIG: (toolkit: string) => `/composio/connections/${toolkit}/auth-config`,
     INITIATE: (toolkit: string) => `/composio/connections/${toolkit}/initiate`,
     SYNC: '/composio/connections/sync',
     DISCONNECT: (toolkit: string) => `/composio/connections/${toolkit}`,

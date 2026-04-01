@@ -351,6 +351,7 @@ func main() {
 				comp.PUT("/config", composioHandler.SaveConfig)
 				comp.DELETE("/config", composioHandler.DeleteConfig)
 				comp.GET("/connections", composioHandler.ListConnections)
+				comp.PUT("/connections/:toolkit/auth-config", composioHandler.SaveAuthConfigID)
 				comp.POST("/connections/:toolkit/initiate", composioHandler.InitiateConnection)
 				comp.POST("/connections/sync", composioHandler.SyncConnections)
 				comp.DELETE("/connections/:toolkit", composioHandler.DeleteConnection)

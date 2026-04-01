@@ -90,6 +90,35 @@ func (h *ComposioHandler) ListConnections(c *gin.Context) {
 	c.JSON(http.StatusOK, connections)
 }
 
+// SaveAuthConfigID saves the Composio auth config ID for a toolkit.
+func (h *ComposioHandler) SaveAuthConfigID(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	toolkit := c.Param("toolkit")
+
+	var req struct {
+		AuthConfigID string `json:"auth_config_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var conn models.ComposioConnection
+	result := h.DB.Where("user_id = ? AND toolkit = ?", userID, toolkit).First(&conn)
+	if result.Error != nil {
+		conn = models.ComposioConnection{
+			UserID:       userID,
+			Toolkit:      toolkit,
+			AuthConfigID: req.AuthConfigID,
+		}
+		h.DB.Create(&conn)
+	} else {
+		h.DB.Model(&conn).Update("auth_config_id", req.AuthConfigID)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Auth config saved for %s", toolkit)})
+}
+
 // InitiateConnection starts the OAuth flow for a toolkit.
 func (h *ComposioHandler) InitiateConnection(c *gin.Context) {
 	userID := c.GetUint("user_id")
@@ -100,6 +129,12 @@ func (h *ComposioHandler) InitiateConnection(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var conn models.ComposioConnection
+	if err := h.DB.Where("user_id = ? AND toolkit = ?", userID, toolkit).First(&conn).Error; err != nil || conn.AuthConfigID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Auth Config ID not set for this toolkit. Please configure it first."})
 		return
 	}
 
@@ -115,35 +150,17 @@ func (h *ComposioHandler) InitiateConnection(c *gin.Context) {
 		return
 	}
 
-	authConfigID, err := h.ComposioClient.GetAuthConfigID(apiKey, toolkit)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
-		return
-	}
-
 	entityID := fmt.Sprintf("pdt-user-%d", userID)
-	result, err := h.ComposioClient.InitiateConnection(apiKey, authConfigID, req.RedirectURI, entityID)
+	result, err := h.ComposioClient.InitiateConnection(apiKey, conn.AuthConfigID, req.RedirectURI, entityID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 
-	var conn models.ComposioConnection
-	dbResult := h.DB.Where("user_id = ? AND toolkit = ?", userID, toolkit).First(&conn)
-	if dbResult.Error != nil {
-		conn = models.ComposioConnection{
-			UserID:    userID,
-			Toolkit:   toolkit,
-			AccountID: result.ConnectedAccountID,
-			Status:    result.ConnectionStatus,
-		}
-		h.DB.Create(&conn)
-	} else {
-		h.DB.Model(&conn).Updates(map[string]any{
-			"account_id": result.ConnectedAccountID,
-			"status":     result.ConnectionStatus,
-		})
-	}
+	h.DB.Model(&conn).Updates(map[string]any{
+		"account_id": result.ConnectedAccountID,
+		"status":     result.ConnectionStatus,
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"redirect_url": result.RedirectURL,

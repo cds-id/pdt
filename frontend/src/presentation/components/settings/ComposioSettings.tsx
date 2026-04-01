@@ -6,6 +6,7 @@ import {
   useSaveComposioConfigMutation,
   useDeleteComposioConfigMutation,
   useListComposioConnectionsQuery,
+  useSaveComposioAuthConfigMutation,
   useInitiateComposioConnectionMutation,
   useSyncComposioConnectionsMutation,
   useDeleteComposioConnectionMutation
@@ -28,11 +29,13 @@ export function ComposioSettings() {
   })
   const [saveConfig, { isLoading: isSaving }] = useSaveComposioConfigMutation()
   const [deleteConfig] = useDeleteComposioConfigMutation()
+  const [saveAuthConfig] = useSaveComposioAuthConfigMutation()
   const [initiateConnection] = useInitiateComposioConnectionMutation()
   const [syncConnections, { isLoading: isSyncing }] = useSyncComposioConnectionsMutation()
   const [deleteConnection] = useDeleteComposioConnectionMutation()
 
   const [apiKey, setApiKey] = useState('')
+  const [authConfigInputs, setAuthConfigInputs] = useState<Record<string, string>>({})
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const handleSaveKey = async () => {
@@ -53,6 +56,17 @@ export function ComposioSettings() {
       setMessage(null)
     } catch {
       setMessage({ type: 'error', text: 'Failed to remove API key.' })
+    }
+  }
+
+  const handleSaveAuthConfig = async (toolkit: string) => {
+    const authConfigId = authConfigInputs[toolkit]
+    if (!authConfigId) return
+    try {
+      await saveAuthConfig({ toolkit, auth_config_id: authConfigId }).unwrap()
+      setAuthConfigInputs((prev) => ({ ...prev, [toolkit]: '' }))
+    } catch (err) {
+      console.error('Failed to save auth config:', err)
     }
   }
 
@@ -81,9 +95,8 @@ export function ComposioSettings() {
     }
   }
 
-  const getConnectionStatus = (toolkit: string) => {
-    const conn = connections.find((c) => c.toolkit === toolkit)
-    return conn?.status === 'active' ? 'active' : 'inactive'
+  const getConnection = (toolkit: string) => {
+    return connections.find((c) => c.toolkit === toolkit)
   }
 
   return (
@@ -154,7 +167,16 @@ export function ComposioSettings() {
         >
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs text-pdt-neutral/50">
-              Connect services to let your AI agents use them.
+              Connect services to let your AI agents use them. Get the Auth Config ID from{' '}
+              <a
+                href="https://app.composio.dev/auth_configs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-pdt-accent underline"
+              >
+                Composio dashboard
+              </a>
+              .
             </p>
             <Button
               type="button"
@@ -169,32 +191,54 @@ export function ComposioSettings() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             {TOOLKITS.map((tk) => {
-              const status = getConnectionStatus(tk.slug)
-              const isActive = status === 'active'
+              const conn = getConnection(tk.slug)
+              const hasAuthConfig = !!conn?.auth_config_id
+              const isActive = conn?.status === 'active'
 
               return (
                 <div
                   key={tk.slug}
-                  className="flex items-center justify-between rounded-lg border border-pdt-neutral/10 p-3"
+                  className="rounded-lg border border-pdt-neutral/10 p-3"
                 >
-                  <div>
-                    <p className="text-sm font-medium text-pdt-neutral">{tk.name}</p>
-                    <p className="text-xs text-pdt-neutral/50">{tk.description}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge variant={isActive ? 'success' : 'warning'}>
-                      {isActive ? 'Connected' : 'Not Connected'}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-pdt-neutral">{tk.name}</p>
+                      <p className="text-xs text-pdt-neutral/50">{tk.description}</p>
+                    </div>
+                    <StatusBadge variant={isActive ? 'success' : hasAuthConfig ? 'warning' : 'danger'}>
+                      {isActive ? 'Connected' : hasAuthConfig ? 'Ready' : 'No Config'}
                     </StatusBadge>
-                    {isActive ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDisconnect(tk.slug)}
-                      >
-                        <Trash2 className="size-3 text-red-400" />
-                      </Button>
-                    ) : (
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Auth Config ID (e.g. ac_...)"
+                      value={authConfigInputs[tk.slug] || ''}
+                      onChange={(e) =>
+                        setAuthConfigInputs((prev) => ({ ...prev, [tk.slug]: e.target.value }))
+                      }
+                      className="h-7 border-pdt-accent/20 bg-pdt-primary-light text-xs text-pdt-neutral placeholder:text-pdt-neutral/40"
+                    />
+                    <Button
+                      type="button"
+                      variant="pdt"
+                      size="sm"
+                      disabled={!authConfigInputs[tk.slug]}
+                      onClick={() => handleSaveAuthConfig(tk.slug)}
+                    >
+                      <Save className="size-3" />
+                    </Button>
+                  </div>
+
+                  {hasAuthConfig && (
+                    <div className="mt-1 text-xs text-pdt-neutral/40">
+                      ID: {conn.auth_config_id}
+                    </div>
+                  )}
+
+                  <div className="mt-2 flex gap-2">
+                    {hasAuthConfig && !isActive && (
                       <Button
                         type="button"
                         variant="pdtOutline"
@@ -203,6 +247,17 @@ export function ComposioSettings() {
                       >
                         <ExternalLink className="mr-1 size-3" />
                         Connect
+                      </Button>
+                    )}
+                    {isActive && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDisconnect(tk.slug)}
+                      >
+                        <Trash2 className="mr-1 size-3 text-red-400" />
+                        <span className="text-red-400">Disconnect</span>
                       </Button>
                     )}
                   </div>

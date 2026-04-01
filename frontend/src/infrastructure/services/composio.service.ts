@@ -9,7 +9,7 @@ interface ComposioConnection {
   id: number
   user_id: number
   toolkit: string
-  integration_id: string
+  auth_config_id: string
   account_id: string
   status: string
   created_at: string
@@ -47,6 +47,14 @@ export const composioApi = api.injectEndpoints({
       query: () => API_CONSTANTS.COMPOSIO.CONNECTIONS,
       providesTags: [{ type: 'Composio' as const, id: 'CONNECTIONS' }]
     }),
+    saveComposioAuthConfig: builder.mutation<{ message: string }, { toolkit: string; auth_config_id: string }>({
+      query: ({ toolkit, ...body }) => ({
+        url: API_CONSTANTS.COMPOSIO.AUTH_CONFIG(toolkit),
+        method: 'PUT',
+        body
+      }),
+      invalidatesTags: [{ type: 'Composio' as const, id: 'CONNECTIONS' }]
+    }),
     initiateComposioConnection: builder.mutation<InitiateResponse, { toolkit: string; redirect_uri: string }>({
       query: ({ toolkit, ...body }) => ({
         url: API_CONSTANTS.COMPOSIO.INITIATE(toolkit),
@@ -77,6 +85,7 @@ export const {
   useSaveComposioConfigMutation,
   useDeleteComposioConfigMutation,
   useListComposioConnectionsQuery,
+  useSaveComposioAuthConfigMutation,
   useInitiateComposioConnectionMutation,
   useSyncComposioConnectionsMutation,
   useDeleteComposioConnectionMutation
