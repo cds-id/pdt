@@ -79,8 +79,13 @@ func (e *Executor) Run(ctx context.Context, schedule models.AgentSchedule, trigg
 		e.DB.Create(&assistantMsg)
 	}
 
+	// Run chain and collect the final response
+	finalResponse := result.FullResponse
 	if len(schedule.ChainConfig) > 0 {
-		e.runChain(ctx, schedule.ChainConfig, result.FullResponse, &run)
+		chainResponse := e.runChain(ctx, schedule.ChainConfig, result.FullResponse, &run, conv.ID)
+		if chainResponse != "" {
+			finalResponse = chainResponse
+		}
 	}
 
 	completedAt := time.Now()
@@ -92,13 +97,13 @@ func (e *Executor) Run(ctx context.Context, schedule models.AgentSchedule, trigg
 		"status":          "completed",
 		"completed_at":    &completedAt,
 		"conversation_id": conv.ID,
-		"result_summary":  summarize(result.FullResponse, 500),
+		"result_summary":  summarize(finalResponse, 500),
 		"token_usage":     func() *string { s := string(usageJSON); return &s }(),
 	})
 	run.Status = "completed"
-	run.ResultSummary = summarize(result.FullResponse, 500)
+	run.ResultSummary = summarize(finalResponse, 500)
 	if e.Notifier != nil {
-		e.Notifier.SendFullResponse(schedule.UserID, schedule.Name, result.FullResponse)
+		e.Notifier.SendFullResponse(schedule.UserID, schedule.Name, finalResponse)
 	}
 	return &run, nil
 }
@@ -144,11 +149,11 @@ func (e *Executor) runAgent(ctx context.Context, agentName string, messages []mi
 	return result, nil
 }
 
-func (e *Executor) runChain(ctx context.Context, chainConfigJSON json.RawMessage, previousResponse string, run *models.AgentScheduleRun) {
+func (e *Executor) runChain(ctx context.Context, chainConfigJSON json.RawMessage, previousResponse string, run *models.AgentScheduleRun, conversationID string) string {
 	var steps []models.ChainStep
 	if err := json.Unmarshal(chainConfigJSON, &steps); err != nil {
 		log.Printf("[scheduler] invalid chain config: %v", err)
-		return
+		return ""
 	}
 	for _, step := range steps {
 		if !evaluateCondition(step.Condition, previousResponse, "completed") {
@@ -162,14 +167,35 @@ func (e *Executor) runChain(ctx context.Context, chainConfigJSON json.RawMessage
 			// Auto-append previous response as context
 			prompt = fmt.Sprintf("%s\n\nPrevious agent response:\n%s", prompt, previousResponse)
 		}
+
+		// Save chain prompt to conversation
+		if conversationID != "" {
+			e.DB.Create(&models.ChatMessage{
+				ConversationID: conversationID,
+				Role:           "user",
+				Content:        fmt.Sprintf("[Chain → %s] %s", step.Agent, step.Prompt),
+			})
+		}
+
 		messages := []minimax.Message{{Role: "user", Content: prompt}}
 		result, err := e.runAgent(ctx, step.Agent, messages, run)
 		if err != nil {
 			log.Printf("[scheduler] chain step %s failed: %v", step.Agent, err)
 			continue
 		}
+
+		// Save chain response to conversation
+		if conversationID != "" && result.FullResponse != "" {
+			e.DB.Create(&models.ChatMessage{
+				ConversationID: conversationID,
+				Role:           "assistant",
+				Content:        result.FullResponse,
+			})
+		}
+
 		previousResponse = result.FullResponse
 	}
+	return previousResponse
 }
 
 func (e *Executor) failRun(run *models.AgentScheduleRun, scheduleName string, err error) {
