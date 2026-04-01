@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Save, Plus, Trash2, Pencil, RefreshCw } from 'lucide-react'
 
+import { ComposioSettings } from '@/presentation/components/settings/ComposioSettings'
+
 import {
   useGetProfileQuery,
   useUpdateProfileMutation,
@@ -255,6 +257,9 @@ export function SettingsPage() {
           )}
         </div>
       </form>
+
+      {/* Composio */}
+      <ComposioSettings />
 
       {/* Jira Workspaces */}
       <DataCard
