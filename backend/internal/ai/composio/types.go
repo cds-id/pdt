@@ -13,13 +13,14 @@ type ToolDefinition struct {
 
 // GetToolsResponse is the response from GET /api/v3/tools.
 type GetToolsResponse struct {
-	Tools []ToolDefinition `json:"tools"`
+	Tools []ToolDefinition `json:"items"`
 }
 
 // ExecuteRequest is the body for POST /api/v3/tools/execute/{slug}.
 type ExecuteRequest struct {
-	ConnectedAccountID string          `json:"connectedAccountId"`
-	Arguments          json.RawMessage `json:"input"`
+	ConnectedAccountID string          `json:"connected_account_id"`
+	EntityID           string          `json:"entity_id"`
+	Arguments          json.RawMessage `json:"arguments"`
 }
 
 // ExecuteResponse is the response from tool execution.

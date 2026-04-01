@@ -14,17 +14,19 @@ type EnhancedAgent struct {
 	Inner         agent.Agent
 	client        *Client
 	apiKey        string
+	entityID      string
 	composioTools []minimax.Tool
 	// toolToAccount maps tool slug -> connected account ID for execution
 	toolToAccount map[string]string
 }
 
 // NewEnhancedAgent creates a decorator that augments an agent with Composio tools.
-func NewEnhancedAgent(inner agent.Agent, client *Client, apiKey string, composioTools []minimax.Tool, toolToAccount map[string]string) *EnhancedAgent {
+func NewEnhancedAgent(inner agent.Agent, client *Client, apiKey, entityID string, composioTools []minimax.Tool, toolToAccount map[string]string) *EnhancedAgent {
 	return &EnhancedAgent{
 		Inner:         inner,
 		client:        client,
 		apiKey:        apiKey,
+		entityID:      entityID,
 		composioTools: composioTools,
 		toolToAccount: toolToAccount,
 	}
@@ -44,7 +46,7 @@ func (e *EnhancedAgent) Tools() []minimax.Tool {
 func (e *EnhancedAgent) ExecuteTool(ctx context.Context, name string, args json.RawMessage) (any, error) {
 	// Check if this is a Composio tool
 	if accountID, ok := e.toolToAccount[name]; ok {
-		result, err := e.client.ExecuteTool(e.apiKey, name, accountID, args)
+		result, err := e.client.ExecuteTool(e.apiKey, name, accountID, e.entityID, args)
 		if err != nil {
 			log.Printf("[composio] tool %s error: %v", name, err)
 			return map[string]string{"error": err.Error()}, nil

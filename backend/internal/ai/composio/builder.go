@@ -1,6 +1,7 @@
 package composio
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/cds-id/pdt/backend/internal/ai/agent"
@@ -53,9 +54,10 @@ func WrapAgents(db *gorm.DB, encryptor *crypto.Encryptor, client *Client, userID
 	toolToAccount := buildToolAccountMap(tools, connections)
 
 	// Wrap each agent
+	entityID := fmt.Sprintf("pdt-user-%d", userID)
 	wrapped := make([]agent.Agent, len(agents))
 	for i, a := range agents {
-		wrapped[i] = NewEnhancedAgent(a, client, apiKey, tools, toolToAccount)
+		wrapped[i] = NewEnhancedAgent(a, client, apiKey, entityID, tools, toolToAccount)
 	}
 	return wrapped
 }
