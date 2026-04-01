@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/cds-id/pdt/backend/internal/ai/composio"
@@ -151,8 +152,10 @@ func (h *ComposioHandler) InitiateConnection(c *gin.Context) {
 	}
 
 	entityID := fmt.Sprintf("pdt-user-%d", userID)
+	log.Printf("[composio] initiating connection: toolkit=%s auth_config_id=%s entity=%s", toolkit, conn.AuthConfigID, entityID)
 	result, err := h.ComposioClient.InitiateConnection(apiKey, conn.AuthConfigID, req.RedirectURI, entityID)
 	if err != nil {
+		log.Printf("[composio] initiate failed: %v", err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
