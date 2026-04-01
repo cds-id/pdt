@@ -493,7 +493,7 @@ func (a *WhatsAppAgent) listCommits(args json.RawMessage) (any, error) {
 
 	since := time.Now().AddDate(0, 0, -params.DaysBack)
 
-	query := a.DB.Where("commits.user_id = ? AND commits.date >= ?", a.UserID, since).
+	query := a.DB.Where("repositories.user_id = ? AND commits.date >= ?", a.UserID, since).
 		Joins("JOIN repositories ON repositories.id = commits.repo_id")
 
 	if params.RepoID > 0 {
@@ -546,7 +546,7 @@ func (a *WhatsAppAgent) sendCommitsReport(args json.RawMessage) (any, error) {
 
 	since := time.Now().AddDate(0, 0, -params.DaysBack)
 
-	query := a.DB.Where("commits.user_id = ? AND commits.date >= ?", a.UserID, since).
+	query := a.DB.Where("repositories.user_id = ? AND commits.date >= ?", a.UserID, since).
 		Joins("JOIN repositories ON repositories.id = commits.repo_id")
 
 	if params.RepoID > 0 {
