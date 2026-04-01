@@ -71,6 +71,7 @@ func (c *Client) GetTools(apiKey string, toolkits []string) ([]minimax.Tool, err
 func (c *Client) ExecuteTool(apiKey, toolSlug, connectedAccountID string, args json.RawMessage) (json.RawMessage, error) {
 	body, err := json.Marshal(ExecuteRequest{
 		ConnectedAccountID: connectedAccountID,
+		EntityID:           "default",
 		Arguments:          args,
 	})
 	if err != nil {
