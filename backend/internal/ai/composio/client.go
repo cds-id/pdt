@@ -69,12 +69,15 @@ func (c *Client) GetTools(apiKey string, toolkits []string) ([]minimax.Tool, err
 
 // ExecuteTool calls a Composio tool with the given arguments.
 func (c *Client) ExecuteTool(apiKey, toolSlug, connectedAccountID string, args json.RawMessage) (json.RawMessage, error) {
-	body, _ := json.Marshal(ExecuteRequest{
+	body, err := json.Marshal(ExecuteRequest{
 		ConnectedAccountID: connectedAccountID,
 		Arguments:          args,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("composio marshal execute request: %w", err)
+	}
 
-	req, err := http.NewRequest("POST", baseURL+"/tools/execute/"+toolSlug, bytes.NewReader(body))
+	req, err := http.NewRequest("POST", baseURL+"/tools/execute/"+url.PathEscape(toolSlug), bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -138,11 +141,14 @@ func (c *Client) GetConnectedAccounts(apiKey, entityID string) ([]ConnectedAccou
 
 // InitiateConnection starts an OAuth flow for a toolkit and returns the redirect URL.
 func (c *Client) InitiateConnection(apiKey, integrationID, redirectURI, entityID string) (*InitiateConnectionResponse, error) {
-	body, _ := json.Marshal(InitiateConnectionRequest{
+	body, err := json.Marshal(InitiateConnectionRequest{
 		IntegrationID: integrationID,
 		RedirectURI:   redirectURI,
 		UserID:        entityID,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("composio marshal initiate request: %w", err)
+	}
 
 	req, err := http.NewRequest("POST", baseURL+"/connected_accounts", bytes.NewReader(body))
 	if err != nil {

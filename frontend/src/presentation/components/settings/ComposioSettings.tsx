@@ -48,8 +48,12 @@ export function ComposioSettings() {
 
   const handleRemoveKey = async () => {
     if (!confirm('Remove Composio API key and all connections?')) return
-    await deleteConfig().unwrap()
-    setMessage(null)
+    try {
+      await deleteConfig().unwrap()
+      setMessage(null)
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to remove API key.' })
+    }
   }
 
   const handleConnect = async (toolkit: string) => {
@@ -71,7 +75,11 @@ export function ComposioSettings() {
 
   const handleDisconnect = async (toolkit: string) => {
     if (!confirm(`Disconnect ${toolkit}?`)) return
-    await deleteConnection(toolkit).unwrap()
+    try {
+      await deleteConnection(toolkit).unwrap()
+    } catch (err) {
+      console.error('Failed to disconnect:', err)
+    }
   }
 
   const getConnectionStatus = (toolkit: string) => {

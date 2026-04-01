@@ -14,8 +14,8 @@ type ComposioConfig struct {
 // ComposioConnection tracks a user's connected Composio service.
 type ComposioConnection struct {
 	ID            uint      `gorm:"primarykey" json:"id"`
-	UserID        uint      `gorm:"not null" json:"user_id"`
-	Toolkit       string    `gorm:"type:varchar(100);not null" json:"toolkit"`
+	UserID        uint      `gorm:"not null;uniqueIndex:idx_user_toolkit" json:"user_id"`
+	Toolkit       string    `gorm:"type:varchar(100);not null;uniqueIndex:idx_user_toolkit" json:"toolkit"`
 	IntegrationID string    `gorm:"type:varchar(255)" json:"integration_id"`
 	AccountID     string    `gorm:"type:varchar(255)" json:"account_id"`
 	Status        string    `gorm:"type:varchar(50);default:inactive" json:"status"`

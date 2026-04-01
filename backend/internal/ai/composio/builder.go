@@ -10,9 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// supportedToolkits defines which Composio toolkits map to which connection name.
-var supportedToolkits = []string{"gmail", "notion", "googlecalendar", "linkedin"}
-
 // WrapAgents takes a list of agents and returns them wrapped with Composio tools
 // if the user has a Composio config. Returns the original agents unchanged if not.
 func WrapAgents(db *gorm.DB, encryptor *crypto.Encryptor, client *Client, userID uint, agents []agent.Agent) []agent.Agent {
