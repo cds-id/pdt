@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/cds-id/pdt/backend/internal/ai/agent"
+	"github.com/cds-id/pdt/backend/internal/ai/composio"
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/crypto"
 	"github.com/cds-id/pdt/backend/internal/scheduler"
@@ -33,6 +34,7 @@ type ChatHandler struct {
 	WaManager       *waService.Manager
 	WeaviateClient  *wvClient.Client
 	ScheduleEngine  *scheduler.Engine
+	ComposioClient  *composio.Client
 }
 
 // wsStreamWriter implements agent.StreamWriter for WebSocket connections.
@@ -124,9 +126,8 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 		}
 	}()
 
-	// Build orchestrator with user-scoped agents
-	orchestrator := agent.NewOrchestrator(
-		h.MiniMaxClient,
+	// Build base agents
+	agents := []agent.Agent{
 		&agent.GitAgent{DB: h.DB, UserID: userID, Encryptor: h.Encryptor, Weaviate: h.WeaviateClient},
 		&agent.JiraAgent{DB: h.DB, UserID: userID, Weaviate: h.WeaviateClient},
 		&agent.ReportAgent{DB: h.DB, UserID: userID, Generator: h.ReportGenerator, R2: h.R2},
@@ -134,7 +135,14 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 		&agent.BriefingAgent{DB: h.DB, UserID: userID},
 		&agent.WhatsAppAgent{DB: h.DB, UserID: userID, Weaviate: h.WeaviateClient, Manager: h.WaManager},
 		&agent.SchedulerAgent{DB: h.DB, UserID: userID, Engine: h.ScheduleEngine},
-	)
+	}
+
+	// Wrap with Composio tools if user has it configured
+	if h.ComposioClient != nil {
+		agents = composio.WrapAgents(h.DB, h.Encryptor, h.ComposioClient, userID, agents)
+	}
+
+	orchestrator := agent.NewOrchestrator(h.MiniMaxClient, agents...)
 
 	for {
 		_, raw, err := conn.ReadMessage()

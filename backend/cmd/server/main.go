@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cds-id/pdt/backend/internal/ai/agent"
+	"github.com/cds-id/pdt/backend/internal/ai/composio"
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
 	"github.com/cds-id/pdt/backend/internal/config"
 	"github.com/cds-id/pdt/backend/internal/crypto"
@@ -114,6 +115,8 @@ func main() {
 		miniMaxClient = minimax.NewClient(cfg.MiniMaxAPIKey, cfg.MiniMaxGroupID)
 	}
 
+	composioClient := composio.NewClient()
+
 	aiUsageHandler := &handlers.AIUsageHandler{DB: db}
 
 	chatHandler := &handlers.ChatHandler{
@@ -125,6 +128,7 @@ func main() {
 		ContextWindow:   cfg.AIContextWindow,
 		WaManager:       waManager,
 		WeaviateClient:  weaviateClient,
+		ComposioClient:  composioClient,
 	}
 
 	waHandler := &handlers.WhatsAppHandler{
@@ -171,7 +175,7 @@ func main() {
 		)
 		scheduleEngine.RegisterAgent(&agent.SchedulerAgent{DB: db, Engine: scheduleEngine})
 		scheduleEngine.SetAgentBuilder(func(userID uint) []agent.Agent {
-			return []agent.Agent{
+			agents := []agent.Agent{
 				&agent.GitAgent{DB: db, UserID: userID, Encryptor: encryptor, Weaviate: weaviateClient},
 				&agent.JiraAgent{DB: db, UserID: userID, Weaviate: weaviateClient},
 				&agent.ReportAgent{DB: db, UserID: userID, Generator: reportGen, R2: r2Client},
@@ -180,6 +184,7 @@ func main() {
 				&agent.WhatsAppAgent{DB: db, UserID: userID, Weaviate: weaviateClient, Manager: waManager},
 				&agent.SchedulerAgent{DB: db, UserID: userID, Engine: scheduleEngine},
 			}
+			return composio.WrapAgents(db, encryptor, composioClient, userID, agents)
 		})
 		scheduleEngine.Start(ctx)
 	}
@@ -193,6 +198,12 @@ func main() {
 	scheduleHandler := &handlers.ScheduleHandler{
 		DB:     db,
 		Engine: scheduleEngine,
+	}
+
+	composioHandler := &handlers.ComposioHandler{
+		DB:             db,
+		Encryptor:      encryptor,
+		ComposioClient: composioClient,
 	}
 
 	// Router
@@ -330,6 +341,17 @@ func main() {
 				}
 
 				wa.GET("/pair/:id", waHandler.HandlePairing)
+			}
+
+			comp := protected.Group("/composio")
+			{
+				comp.GET("/config", composioHandler.GetConfig)
+				comp.PUT("/config", composioHandler.SaveConfig)
+				comp.DELETE("/config", composioHandler.DeleteConfig)
+				comp.GET("/connections", composioHandler.ListConnections)
+				comp.POST("/connections/:toolkit/initiate", composioHandler.InitiateConnection)
+				comp.POST("/connections/sync", composioHandler.SyncConnections)
+				comp.DELETE("/connections/:toolkit", composioHandler.DeleteConnection)
 			}
 		}
 	}
