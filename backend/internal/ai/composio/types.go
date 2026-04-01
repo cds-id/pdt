@@ -55,6 +55,24 @@ type GetAuthConfigsResponse struct {
 	Items []AuthConfig `json:"items"`
 }
 
+// CreateAuthConfigRequest is the body for POST /api/v3/auth_configs.
+type CreateAuthConfigRequest struct {
+	Toolkit         ToolkitSlugRef `json:"toolkit"`
+	UseComposioAuth bool           `json:"use_composio_auth"`
+}
+
+// ToolkitSlugRef references a toolkit by slug.
+type ToolkitSlugRef struct {
+	Slug string `json:"slug"`
+}
+
+// CreateAuthConfigResponse is the response from POST /api/v3/auth_configs.
+type CreateAuthConfigResponse struct {
+	AuthConfig struct {
+		ID string `json:"id"`
+	} `json:"auth_config"`
+}
+
 // InitiateConnectionRequest is the body for POST /api/v3/connected_accounts.
 type InitiateConnectionRequest struct {
 	AuthConfig  AuthConfigRef `json:"auth_config"`

@@ -169,9 +169,44 @@ func (c *Client) GetAuthConfigID(apiKey, toolkitSlug string) (string, error) {
 	}
 
 	if len(result.Items) == 0 {
-		return "", fmt.Errorf("no auth config found for toolkit %q", toolkitSlug)
+		return c.createAuthConfig(apiKey, toolkitSlug)
 	}
 	return result.Items[0].ID, nil
+}
+
+// createAuthConfig creates a Composio-managed auth config for a toolkit.
+func (c *Client) createAuthConfig(apiKey, toolkitSlug string) (string, error) {
+	body, err := json.Marshal(CreateAuthConfigRequest{
+		Toolkit:          ToolkitSlugRef{Slug: toolkitSlug},
+		UseComposioAuth: true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("composio marshal create auth config: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", baseURL+"/auth_configs", bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("x-api-key", apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("composio create auth config: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("composio create auth config: status %d: %s", resp.StatusCode, respBody)
+	}
+
+	var result CreateAuthConfigResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	return result.AuthConfig.ID, nil
 }
 
 // InitiateConnection starts an OAuth flow for a toolkit and returns the redirect URL.
