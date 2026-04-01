@@ -107,6 +107,15 @@ export const API_CONSTANTS = {
     OUTBOX_ITEM: (id: number) => `/wa/outbox/${id}`,
     PAIR: (numberId: number) => `/wa/pair/${numberId}`,
   },
+
+  // Composio Endpoints
+  COMPOSIO: {
+    CONFIG: '/composio/config',
+    CONNECTIONS: '/composio/connections',
+    INITIATE: (toolkit: string) => `/composio/connections/${toolkit}/initiate`,
+    SYNC: '/composio/connections/sync',
+    DISCONNECT: (toolkit: string) => `/composio/connections/${toolkit}`,
+  },
 }
 
 // Helper to build full URL

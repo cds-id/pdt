@@ -16,7 +16,8 @@ export const api = createApi({
     'Conversation',
     'WhatsApp',
     'AIUsage',
-    'Schedule'
+    'Schedule',
+    'Composio'
   ],
   baseQuery: fetchBaseQuery({
     baseUrl: `${API_CONSTANTS.BASE_URL}${API_CONSTANTS.API_PREFIX}`,
