@@ -29,6 +29,7 @@ func WrapAgents(db *gorm.DB, encryptor *crypto.Encryptor, client *Client, userID
 	// Get active connections
 	var connections []models.ComposioConnection
 	db.Where("user_id = ? AND status = ?", userID, "active").Find(&connections)
+	log.Printf("[composio] user %d: found %d active connections", userID, len(connections))
 	if len(connections) == 0 {
 		return agents // no active connections
 	}
@@ -38,6 +39,7 @@ func WrapAgents(db *gorm.DB, encryptor *crypto.Encryptor, client *Client, userID
 	for _, conn := range connections {
 		activeToolkits = append(activeToolkits, conn.Toolkit)
 	}
+	log.Printf("[composio] user %d: active toolkits: %v", userID, activeToolkits)
 
 	// Fetch tools from Composio for active toolkits only
 	tools, err := client.GetTools(apiKey, activeToolkits)
@@ -46,6 +48,7 @@ func WrapAgents(db *gorm.DB, encryptor *crypto.Encryptor, client *Client, userID
 		return agents
 	}
 
+	log.Printf("[composio] user %d: fetched %d tools", userID, len(tools))
 	if len(tools) == 0 {
 		return agents
 	}
