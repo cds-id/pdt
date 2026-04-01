@@ -108,12 +108,14 @@ func (c *Client) ExecuteTool(apiKey, toolSlug, connectedAccountID string, args j
 	return execResp.Data, nil
 }
 
-// GetConnectedAccounts lists a user's connected service accounts.
-func (c *Client) GetConnectedAccounts(apiKey, entityID string) ([]ConnectedAccount, error) {
+// GetConnectedAccounts lists connected accounts, optionally filtered by auth config ID.
+func (c *Client) GetConnectedAccounts(apiKey, authConfigID string) ([]ConnectedAccount, error) {
 	u, _ := url.Parse(baseURL + "/connected_accounts")
-	q := u.Query()
-	q.Set("user_uuid", entityID)
-	u.RawQuery = q.Encode()
+	if authConfigID != "" {
+		q := u.Query()
+		q.Set("auth_config_id", authConfigID)
+		u.RawQuery = q.Encode()
+	}
 
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {

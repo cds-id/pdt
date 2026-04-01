@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/cds-id/pdt/backend/internal/ai/composio"
 	"github.com/cds-id/pdt/backend/internal/crypto"
@@ -44,7 +45,7 @@ func (h *ComposioHandler) SaveConfig(c *gin.Context) {
 	}
 
 	// Validate the API key by making a test call
-	_, err := h.ComposioClient.GetConnectedAccounts(req.APIKey, fmt.Sprintf("pdt-user-%d", userID))
+	_, err := h.ComposioClient.GetConnectedAccounts(req.APIKey, "")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Composio API key"})
 		return
@@ -188,17 +189,31 @@ func (h *ComposioHandler) SyncConnections(c *gin.Context) {
 		return
 	}
 
-	entityID := fmt.Sprintf("pdt-user-%d", userID)
-	accounts, err := h.ComposioClient.GetConnectedAccounts(apiKey, entityID)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
-		return
-	}
+	var localConns []models.ComposioConnection
+	h.DB.Where("user_id = ? AND auth_config_id != ''", userID).Find(&localConns)
 
-	for _, acc := range accounts {
-		h.DB.Model(&models.ComposioConnection{}).
-			Where("user_id = ? AND account_id = ?", userID, acc.ID).
-			Update("status", acc.Status)
+	for _, local := range localConns {
+		accounts, err := h.ComposioClient.GetConnectedAccounts(apiKey, local.AuthConfigID)
+		if err != nil {
+			log.Printf("[composio] sync failed for %s: %v", local.Toolkit, err)
+			continue
+		}
+
+		// Find the most recent ACTIVE account, or fall back to the latest status
+		bestStatus := "inactive"
+		bestAccountID := local.AccountID
+		for _, acc := range accounts {
+			if strings.EqualFold(acc.Status, "ACTIVE") {
+				bestStatus = "active"
+				bestAccountID = acc.ID
+				break
+			}
+		}
+
+		h.DB.Model(&local).Updates(map[string]any{
+			"account_id": bestAccountID,
+			"status":     bestStatus,
+		})
 	}
 
 	var connections []models.ComposioConnection

@@ -31,10 +31,15 @@ type ExecuteResponse struct {
 
 // ConnectedAccount is a user's connected service account.
 type ConnectedAccount struct {
-	ID        string `json:"id"`
-	AppName   string `json:"appName"`
-	Status    string `json:"status"`
-	CreatedAt string `json:"createdAt"`
+	ID      string `json:"id"`
+	Status  string `json:"status"`
+	Toolkit struct {
+		Slug string `json:"slug"`
+	} `json:"toolkit"`
+	AuthConfig struct {
+		ID string `json:"id"`
+	} `json:"auth_config"`
+	CreatedAt string `json:"created_at"`
 }
 
 // GetConnectedAccountsResponse is the response from GET /api/v3/connected_accounts.

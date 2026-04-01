@@ -79,7 +79,14 @@ export function ComposioSettings() {
       }).unwrap()
 
       if (result.redirect_url) {
-        window.open(result.redirect_url, '_blank', 'width=600,height=700')
+        const popup = window.open(result.redirect_url, '_blank', 'width=600,height=700')
+        // Poll for popup close and sync connections
+        const interval = setInterval(() => {
+          if (popup?.closed) {
+            clearInterval(interval)
+            syncConnections()
+          }
+        }, 1000)
       }
     } catch (err) {
       console.error('Failed to initiate connection:', err)
