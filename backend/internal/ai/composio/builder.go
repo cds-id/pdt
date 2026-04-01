@@ -3,6 +3,7 @@ package composio
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/cds-id/pdt/backend/internal/ai/agent"
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
@@ -11,19 +12,27 @@ import (
 	"gorm.io/gorm"
 )
 
+// WrapResult contains the wrapped agents and routing hints for the orchestrator.
+type WrapResult struct {
+	Agents          []agent.Agent
+	ExternalToolHint string
+}
+
 // WrapAgents takes a list of agents and returns them wrapped with Composio tools
 // if the user has a Composio config. Returns the original agents unchanged if not.
-func WrapAgents(db *gorm.DB, encryptor *crypto.Encryptor, client *Client, userID uint, agents []agent.Agent) []agent.Agent {
+func WrapAgents(db *gorm.DB, encryptor *crypto.Encryptor, client *Client, userID uint, agents []agent.Agent) WrapResult {
 	// Check if user has Composio configured
+	noChange := WrapResult{Agents: agents}
+
 	var cfg models.ComposioConfig
 	if err := db.Where("user_id = ?", userID).First(&cfg).Error; err != nil {
-		return agents // no config, return as-is
+		return noChange // no config, return as-is
 	}
 
 	apiKey, err := encryptor.Decrypt(cfg.APIKey)
 	if err != nil {
 		log.Printf("[composio] decrypt api key for user %d: %v", userID, err)
-		return agents
+		return noChange
 	}
 
 	// Get active connections
@@ -31,7 +40,7 @@ func WrapAgents(db *gorm.DB, encryptor *crypto.Encryptor, client *Client, userID
 	db.Where("user_id = ? AND status = ?", userID, "active").Find(&connections)
 	log.Printf("[composio] user %d: found %d active connections", userID, len(connections))
 	if len(connections) == 0 {
-		return agents // no active connections
+		return noChange // no active connections
 	}
 
 	// Build toolkit list from active connections
@@ -45,12 +54,12 @@ func WrapAgents(db *gorm.DB, encryptor *crypto.Encryptor, client *Client, userID
 	tools, err := client.GetTools(apiKey, activeToolkits)
 	if err != nil {
 		log.Printf("[composio] fetch tools for user %d: %v", userID, err)
-		return agents
+		return noChange
 	}
 
 	log.Printf("[composio] user %d: fetched %d tools", userID, len(tools))
 	if len(tools) == 0 {
-		return agents
+		return noChange
 	}
 
 	// Build tool slug -> account ID mapping
@@ -62,7 +71,11 @@ func WrapAgents(db *gorm.DB, encryptor *crypto.Encryptor, client *Client, userID
 	for i, a := range agents {
 		wrapped[i] = NewEnhancedAgent(a, client, apiKey, entityID, tools, toolToAccount)
 	}
-	return wrapped
+
+	// Build routing hint for the orchestrator
+	hint := fmt.Sprintf("The user has connected external services via Composio: %s. ALL agents can handle requests for these services. For example, if the user asks about LinkedIn, route to any agent (e.g. 'git' or 'report') — they all have the external tools available.", strings.Join(activeToolkits, ", "))
+
+	return WrapResult{Agents: wrapped, ExternalToolHint: hint}
 }
 
 // buildToolAccountMap maps each tool slug to its connected account ID.

@@ -184,7 +184,7 @@ func main() {
 				&agent.WhatsAppAgent{DB: db, UserID: userID, Weaviate: weaviateClient, Manager: waManager},
 				&agent.SchedulerAgent{DB: db, UserID: userID, Engine: scheduleEngine},
 			}
-			return composio.WrapAgents(db, encryptor, composioClient, userID, agents)
+			return composio.WrapAgents(db, encryptor, composioClient, userID, agents).Agents
 		})
 		scheduleEngine.Start(ctx)
 	}

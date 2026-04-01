@@ -12,8 +12,9 @@ import (
 )
 
 type Orchestrator struct {
-	Client *minimax.Client
-	Agents map[string]Agent
+	Client          *minimax.Client
+	Agents          map[string]Agent
+	ExternalToolHint string
 }
 
 func NewOrchestrator(client *minimax.Client, agents ...Agent) *Orchestrator {
@@ -79,9 +80,13 @@ func (o *Orchestrator) HandleMessage(ctx context.Context, messages []minimax.Mes
 	}
 
 	today := time.Now().Format("2006-01-02")
+	prompt := routerSystemPrompt
+	if o.ExternalToolHint != "" {
+		prompt += "\n\n" + o.ExternalToolHint
+	}
 	routerMessages := append([]minimax.Message{{
 		Role:    "system",
-		Content: fmt.Sprintf("Today is %s.\n\n%s", today, routerSystemPrompt),
+		Content: fmt.Sprintf("Today is %s.\n\n%s", today, prompt),
 	}}, messages...)
 
 	req := minimax.ChatRequest{

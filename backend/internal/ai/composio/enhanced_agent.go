@@ -3,7 +3,9 @@ package composio
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/cds-id/pdt/backend/internal/ai/agent"
 	"github.com/cds-id/pdt/backend/internal/ai/minimax"
@@ -32,8 +34,18 @@ func NewEnhancedAgent(inner agent.Agent, client *Client, apiKey, entityID string
 	}
 }
 
-func (e *EnhancedAgent) Name() string         { return e.Inner.Name() }
-func (e *EnhancedAgent) SystemPrompt() string  { return e.Inner.SystemPrompt() }
+func (e *EnhancedAgent) Name() string { return e.Inner.Name() }
+func (e *EnhancedAgent) SystemPrompt() string {
+	base := e.Inner.SystemPrompt()
+	if len(e.composioTools) == 0 {
+		return base
+	}
+	var toolNames []string
+	for _, t := range e.composioTools {
+		toolNames = append(toolNames, t.Name)
+	}
+	return base + fmt.Sprintf("\n\nYou also have access to external service tools via Composio: %s. Use these tools when the user asks about those services.", strings.Join(toolNames, ", "))
+}
 
 func (e *EnhancedAgent) Tools() []minimax.Tool {
 	native := e.Inner.Tools()

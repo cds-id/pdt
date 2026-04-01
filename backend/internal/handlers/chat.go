@@ -138,11 +138,15 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 	}
 
 	// Wrap with Composio tools if user has it configured
+	var externalToolHint string
 	if h.ComposioClient != nil {
-		agents = composio.WrapAgents(h.DB, h.Encryptor, h.ComposioClient, userID, agents)
+		result := composio.WrapAgents(h.DB, h.Encryptor, h.ComposioClient, userID, agents)
+		agents = result.Agents
+		externalToolHint = result.ExternalToolHint
 	}
 
 	orchestrator := agent.NewOrchestrator(h.MiniMaxClient, agents...)
+	orchestrator.ExternalToolHint = externalToolHint
 
 	for {
 		_, raw, err := conn.ReadMessage()
