@@ -65,3 +65,82 @@ func TestCorrelator_HappyPath(t *testing.T) {
 		t.Fatalf("expected single orphan WA group with 3 messages: %+v", ds.OrphanWA)
 	}
 }
+
+func TestCorrelator_ExplicitAndSemanticDedupe(t *testing.T) {
+	r := mkRange()
+	fake := &fakeWeaviate{
+		jira: []JiraCard{{CardKey: "PROJ-1", Title: "X", Content: "x content", Status: "Done", UpdatedAt: r.Start}},
+		commits: []Commit{{SHA: "aaa", Message: "PROJ-1: impl", CommittedAt: r.Start.Add(time.Hour)}},
+		semanticCommits: map[string][]CommitHit{
+			"x content": {{Commit: Commit{SHA: "aaa", Message: "PROJ-1: impl"}, Distance: 0.1}},
+		},
+	}
+	ds, err := NewCorrelator(fake).Build(context.Background(), 1, nil, r, 7)
+	if err != nil { t.Fatal(err) }
+	if len(ds.Topics[0].Commits) != 1 {
+		t.Fatalf("explicit + semantic should dedupe: %+v", ds.Topics[0].Commits)
+	}
+}
+
+func TestCorrelator_StalenessBoundary(t *testing.T) {
+	r := mkRange()
+	base := r.End
+	card := JiraCard{CardKey: "S-1", Title: "T", Status: "In Progress", UpdatedAt: base.Add(-7 * 24 * time.Hour)}
+	fake := &fakeWeaviate{jira: []JiraCard{card}}
+	c := NewCorrelator(fake)
+	c.Now = func() time.Time { return base }
+	ds, _ := c.Build(context.Background(), 1, nil, r, 7)
+	if !ds.Topics[0].Stale {
+		t.Fatalf("expected stale at exactly threshold days")
+	}
+
+	card.UpdatedAt = base.Add(-6*24*time.Hour - time.Hour)
+	fake.jira = []JiraCard{card}
+	ds, _ = c.Build(context.Background(), 1, nil, r, 7)
+	if ds.Topics[0].Stale {
+		t.Fatalf("expected not stale at threshold-1 days")
+	}
+}
+
+func TestCorrelator_Truncation(t *testing.T) {
+	r := mkRange()
+	var jira []JiraCard
+	for i := 0; i < MaxAnchors+5; i++ {
+		jira = append(jira, JiraCard{CardKey: "T-1", Title: "x", UpdatedAt: r.Start})
+	}
+	ds, err := NewCorrelator(&fakeWeaviate{jira: jira}).Build(context.Background(), 1, nil, r, 7)
+	if err != nil { t.Fatal(err) }
+	if len(ds.Topics) != MaxAnchors {
+		t.Fatalf("expected %d topics, got %d", MaxAnchors, len(ds.Topics))
+	}
+	if !ds.Metrics.Truncated {
+		t.Fatalf("expected Truncated=true")
+	}
+}
+
+func TestCorrelator_EmptyRange(t *testing.T) {
+	r := mkRange()
+	ds, err := NewCorrelator(&fakeWeaviate{}).Build(context.Background(), 1, nil, r, 7)
+	if err != nil { t.Fatal(err) }
+	if ds.Metrics.LinkagePctCommits != 0 || ds.Metrics.LinkagePctCards != 0 {
+		t.Fatalf("expected zero pcts on empty, got %+v", ds.Metrics)
+	}
+	if len(ds.DailyBuckets) != 30 {
+		t.Fatalf("expected 30 daily buckets (Apr 1..30), got %d", len(ds.DailyBuckets))
+	}
+}
+
+func TestCorrelator_OrphanWANoiseFloor(t *testing.T) {
+	r := mkRange()
+	base := r.Start
+	fake := &fakeWeaviate{
+		wa: []WAMessage{
+			{MessageID: "w1", SenderName: "alice", Content: "hi", Timestamp: base},
+			{MessageID: "w2", SenderName: "alice", Content: "hi again", Timestamp: base.Add(time.Minute)},
+		},
+	}
+	ds, _ := NewCorrelator(fake).Build(context.Background(), 1, nil, r, 7)
+	if len(ds.OrphanWA) != 0 {
+		t.Fatalf("2-message group should be filtered as noise: %+v", ds.OrphanWA)
+	}
+}
