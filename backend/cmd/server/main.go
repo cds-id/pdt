@@ -291,10 +291,11 @@ func main() {
 				}
 			}
 
+			execLLM := agent.NewMinimaxExecutiveLLM(miniMaxClient, miniMaxClient.Model)
 			execHandler := &handlers.ExecutiveReportHandler{
 				DB:         db,
 				Correlator: executive.NewCorrelator(executive.NewWeaviateAdapter(db, weaviateClient)),
-				Agent:      &agent.ExecutiveReportAgent{LLM: nil}, // LLM wired in Task 13
+				Agent:      &agent.ExecutiveReportAgent{LLM: execLLM},
 			}
 			executiveGroup := protected.Group("/reports/executive")
 			{
