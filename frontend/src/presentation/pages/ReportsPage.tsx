@@ -26,6 +26,7 @@ import {
   DataCard,
   EmptyState
 } from '@/presentation/components/common'
+import { ExecutiveReportTab } from '@/presentation/components/executive'
 
 export function ReportsPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
@@ -37,7 +38,7 @@ export function ReportsPage() {
   const reports = reportsData || []
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'reports' | 'templates' | 'monthly'>('reports')
+  const [activeTab, setActiveTab] = useState<'reports' | 'templates' | 'monthly' | 'executive'>('reports')
 
   // Monthly report state
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
@@ -159,9 +160,21 @@ export function ReportsPage() {
           <FileCode className="mr-2 size-4" />
           Monthly
         </Button>
+        <Button
+          variant={activeTab === 'executive' ? 'pdt' : 'pdtOutline'}
+          size="sm"
+          onClick={() => setActiveTab('executive')}
+        >
+          <FileCode className="mr-2 size-4" />
+          Executive
+        </Button>
       </div>
 
-      {activeTab === 'reports' ? (
+      {activeTab === 'executive' ? (
+        <>
+          <ExecutiveReportTab />
+        </>
+      ) : activeTab === 'reports' ? (
         <>
           {/* Generate Report */}
           <DataCard title="Generate Report">

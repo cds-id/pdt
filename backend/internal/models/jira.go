@@ -50,6 +50,7 @@ type JiraCard struct {
 	SprintID    *uint     `gorm:"index" json:"sprint_id"`
 	DetailsJSON string    `gorm:"type:longtext" json:"details_json,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 	User        User      `gorm:"foreignKey:UserID" json:"-"`
 	Workspace   *JiraWorkspaceConfig `gorm:"foreignKey:WorkspaceID" json:"-"`
 	Sprint      *Sprint   `gorm:"foreignKey:SprintID" json:"-"`

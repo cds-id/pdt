@@ -50,9 +50,14 @@ func Migrate(db *gorm.DB) error {
 		&models.AgentScheduleRunStep{},
 		&models.ComposioConfig{},
 		&models.ComposioConnection{},
+		&models.ExecutiveReport{},
 	); err != nil {
 		return err
 	}
+
+	// Backfill updated_at for jira_cards rows that were created before the
+	// column was added (those will have updated_at = zero/NULL after AutoMigrate).
+	db.Exec("UPDATE jira_cards SET updated_at = created_at WHERE updated_at IS NULL OR updated_at = '0001-01-01 00:00:00'")
 
 	// Migrate existing single-workspace users to JiraWorkspaceConfig
 	migrateJiraWorkspaces(db)

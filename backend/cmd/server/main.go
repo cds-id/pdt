@@ -18,6 +18,7 @@ import (
 	"github.com/cds-id/pdt/backend/internal/middleware"
 	agentScheduler "github.com/cds-id/pdt/backend/internal/scheduler"
 	"github.com/cds-id/pdt/backend/internal/scheduler/eventbus"
+	"github.com/cds-id/pdt/backend/internal/services/executive"
 	"github.com/cds-id/pdt/backend/internal/services/report"
 	"github.com/cds-id/pdt/backend/internal/services/storage"
 	tgService "github.com/cds-id/pdt/backend/internal/services/telegram"
@@ -288,6 +289,20 @@ func main() {
 					templates.DELETE("/:id", reportHandler.DeleteTemplate)
 					templates.POST("/preview", reportHandler.PreviewTemplate)
 				}
+			}
+
+			execLLM := agent.NewMinimaxExecutiveLLM(miniMaxClient, miniMaxClient.Model)
+			execHandler := &handlers.ExecutiveReportHandler{
+				DB:         db,
+				Correlator: executive.NewCorrelator(executive.NewWeaviateAdapter(db, weaviateClient)),
+				Agent:      &agent.ExecutiveReportAgent{LLM: execLLM},
+			}
+			executiveGroup := protected.Group("/reports/executive")
+			{
+				executiveGroup.POST("/generate", execHandler.Generate)
+				executiveGroup.GET("", execHandler.List)
+				executiveGroup.GET("/:id", execHandler.Get)
+				executiveGroup.DELETE("/:id", execHandler.Delete)
 			}
 
 			protected.GET("/ai/usage", aiUsageHandler.GetUsageSummary)
