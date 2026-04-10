@@ -2,6 +2,7 @@ package executive
 
 import (
 	"context"
+	"log/slog"
 	"regexp"
 	"strings"
 	"sync"
@@ -45,12 +46,12 @@ func (c *Correlator) Build(ctx context.Context, userID uint, workspaceID *uint, 
 		return nil
 	})
 	g.Go(func() error {
-		list, err := c.Client.ListCommits(gctx, userID, r.Start, r.End)
+		list, err := c.Client.ListCommits(gctx, userID, workspaceID, r.Start, r.End)
 		rawCommits = list
 		return err
 	})
 	g.Go(func() error {
-		list, err := c.Client.ListWAMessages(gctx, userID, r.Start, r.End)
+		list, err := c.Client.ListWAMessages(gctx, userID, workspaceID, r.Start, r.End)
 		rawWA = list
 		return err
 	})
@@ -58,7 +59,7 @@ func (c *Correlator) Build(ctx context.Context, userID uint, workspaceID *uint, 
 		return nil, err
 	}
 
-	topics := c.buildTopics(ctx, userID, anchors, rawCommits, r, staleDays)
+	topics := c.buildTopics(ctx, userID, workspaceID, anchors, rawCommits, r, staleDays)
 
 	orphanCommits := subtractCommits(rawCommits, topicCommitSet(topics))
 	orphanWAMsgs := subtractWA(rawWA, topicWASet(topics))
@@ -78,7 +79,7 @@ func (c *Correlator) Build(ctx context.Context, userID uint, workspaceID *uint, 
 	return ds, nil
 }
 
-func (c *Correlator) buildTopics(ctx context.Context, userID uint, anchors []JiraCard, rawCommits []Commit, r DateRange, staleDays int) []Topic {
+func (c *Correlator) buildTopics(ctx context.Context, userID uint, workspaceID *uint, anchors []JiraCard, rawCommits []Commit, r DateRange, staleDays int) []Topic {
 	sem := make(chan struct{}, PerAnchorWorkers)
 	var mu sync.Mutex
 	topics := make([]Topic, len(anchors))
@@ -92,8 +93,8 @@ func (c *Correlator) buildTopics(ctx context.Context, userID uint, anchors []Jir
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			commits := matchCommitsForCard(ctx, c.Client, userID, card, rawCommits, r)
-			wa := matchWAForCard(ctx, c.Client, userID, card, r)
+			commits := matchCommitsForCard(ctx, c.Client, userID, workspaceID, card, rawCommits, r)
+			wa := matchWAForCard(ctx, c.Client, userID, workspaceID, card, r)
 
 			daysIdle := int(c.Now().Sub(card.UpdatedAt).Hours() / 24)
 			stale := strings.EqualFold(card.Status, "In Progress") && len(commits) == 0 && daysIdle >= staleDays
@@ -115,7 +116,7 @@ func (c *Correlator) buildTopics(ctx context.Context, userID uint, anchors []Jir
 
 var cardKeyRe = regexp.MustCompile(`[A-Z][A-Z0-9]+-\d+`)
 
-func matchCommitsForCard(ctx context.Context, client WeaviateClient, userID uint, card JiraCard, rawCommits []Commit, r DateRange) []Commit {
+func matchCommitsForCard(ctx context.Context, client WeaviateClient, userID uint, workspaceID *uint, card JiraCard, rawCommits []Commit, r DateRange) []Commit {
 	found := map[string]Commit{}
 	for _, c := range rawCommits {
 		for _, key := range cardKeyRe.FindAllString(c.Message, -1) {
@@ -124,8 +125,10 @@ func matchCommitsForCard(ctx context.Context, client WeaviateClient, userID uint
 			}
 		}
 	}
-	hits, err := client.SemanticCommits(ctx, userID, card.Content, r.Start, r.End, SemanticCommitLimit)
-	if err == nil {
+	hits, err := client.SemanticCommits(ctx, userID, workspaceID, card.Content, r.Start, r.End, SemanticCommitLimit)
+	if err != nil {
+		slog.WarnContext(ctx, "semantic commit match failed", "card_key", card.CardKey, "error", err)
+	} else {
 		for _, h := range hits {
 			if h.Distance > CommitDistanceMax {
 				continue
@@ -142,9 +145,10 @@ func matchCommitsForCard(ctx context.Context, client WeaviateClient, userID uint
 	return out
 }
 
-func matchWAForCard(ctx context.Context, client WeaviateClient, userID uint, card JiraCard, r DateRange) []WAMessage {
-	hits, err := client.SemanticWA(ctx, userID, card.Content, r.Start, r.End, SemanticWALimit)
+func matchWAForCard(ctx context.Context, client WeaviateClient, userID uint, workspaceID *uint, card JiraCard, r DateRange) []WAMessage {
+	hits, err := client.SemanticWA(ctx, userID, workspaceID, card.Content, r.Start, r.End, SemanticWALimit)
 	if err != nil {
+		slog.WarnContext(ctx, "semantic WA match failed", "card_key", card.CardKey, "error", err)
 		return nil
 	}
 	var out []WAMessage

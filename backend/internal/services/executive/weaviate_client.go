@@ -13,17 +13,17 @@ type WeaviateClient interface {
 	ListJiraCards(ctx context.Context, userID uint, workspaceID *uint, start, end time.Time, limit int) ([]JiraCard, error)
 
 	// ListCommits returns commits for a user in [start, end]. Empty query.
-	ListCommits(ctx context.Context, userID uint, start, end time.Time) ([]Commit, error)
+	ListCommits(ctx context.Context, userID uint, workspaceID *uint, start, end time.Time) ([]Commit, error)
 
 	// ListWAMessages returns WA messages for a user in [start, end]. Empty query.
-	ListWAMessages(ctx context.Context, userID uint, start, end time.Time) ([]WAMessage, error)
+	ListWAMessages(ctx context.Context, userID uint, workspaceID *uint, start, end time.Time) ([]WAMessage, error)
 
 	// SemanticCommits runs a near-text query on CommitEmbedding filtered by user + date.
 	// Returns results sorted by distance ascending. The float is the distance.
-	SemanticCommits(ctx context.Context, userID uint, query string, start, end time.Time, limit int) ([]CommitHit, error)
+	SemanticCommits(ctx context.Context, userID uint, workspaceID *uint, query string, start, end time.Time, limit int) ([]CommitHit, error)
 
 	// SemanticWA runs a near-text query on WaMessageEmbedding filtered by user + date.
-	SemanticWA(ctx context.Context, userID uint, query string, start, end time.Time, limit int) ([]WAHit, error)
+	SemanticWA(ctx context.Context, userID uint, workspaceID *uint, query string, start, end time.Time, limit int) ([]WAHit, error)
 }
 
 type CommitHit struct {

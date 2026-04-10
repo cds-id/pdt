@@ -8,12 +8,13 @@ type DateRange struct {
 }
 
 type JiraCard struct {
-	CardKey   string    `json:"card_key"`
-	Title     string    `json:"title"`
-	Status    string    `json:"status"`
-	Assignee  string    `json:"assignee"`
-	Content   string    `json:"content"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CardKey     string    `json:"card_key"`
+	Title       string    `json:"title"`
+	Status      string    `json:"status"`
+	Assignee    string    `json:"assignee"`
+	Content     string    `json:"content"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	WorkspaceID *uint     `json:"workspace_id,omitempty"`
 }
 
 type Commit struct {

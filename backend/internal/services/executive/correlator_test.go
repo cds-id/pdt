@@ -144,3 +144,22 @@ func TestCorrelator_OrphanWANoiseFloor(t *testing.T) {
 		t.Fatalf("2-message group should be filtered as noise: %+v", ds.OrphanWA)
 	}
 }
+
+func TestCorrelator_WorkspaceScoping(t *testing.T) {
+	r := mkRange()
+	ws3 := uint(3)
+	ws5 := uint(5)
+	fake := &fakeWeaviate{
+		jira: []JiraCard{
+			{CardKey: "A-1", Title: "in 3", WorkspaceID: &ws3, UpdatedAt: r.Start},
+			{CardKey: "B-1", Title: "in 5", WorkspaceID: &ws5, UpdatedAt: r.Start},
+		},
+	}
+	ds, err := NewCorrelator(fake).Build(context.Background(), 1, &ws3, r, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ds.Topics) != 1 || ds.Topics[0].Anchor.CardKey != "A-1" {
+		t.Fatalf("expected only A-1 (ws=3), got %+v", ds.Topics)
+	}
+}
