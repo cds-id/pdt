@@ -5,55 +5,49 @@ import (
 	"fmt"
 	"time"
 
+	"gorm.io/gorm"
+
+	"github.com/cds-id/pdt/backend/internal/models"
 	weaviatesvc "github.com/cds-id/pdt/backend/internal/services/weaviate"
 )
 
 // weaviateAdapter adapts the production weaviate.Client to the executive.WeaviateClient
-// interface. All field-name mapping and query building lives here so the correlator
-// stays SDK-agnostic.
+// interface. Jira cards are sourced from Postgres (date-filterable); commit and WA
+// queries use the Weaviate client.
 type weaviateAdapter struct {
-	c *weaviatesvc.Client
+	db *gorm.DB
+	c  *weaviatesvc.Client
 }
 
-// NewWeaviateAdapter wraps a *weaviate.Client as an executive.WeaviateClient.
-func NewWeaviateAdapter(c *weaviatesvc.Client) WeaviateClient {
-	return &weaviateAdapter{c: c}
+// NewWeaviateAdapter returns a WeaviateClient backed by both Postgres (for Jira cards)
+// and Weaviate (for commits and WA messages).
+func NewWeaviateAdapter(db *gorm.DB, wv *weaviatesvc.Client) WeaviateClient {
+	return &weaviateAdapter{db: db, c: wv}
 }
 
-// ListJiraCards returns Jira cards for a user/workspace.
-//
-// Design note: JiraCardEmbedding has NO date field in its schema, so date-range
-// filtering is not possible at the Weaviate level. This method fetches all cards
-// for the user/workspace and returns them as-is; UpdatedAt is left as zero time.
-// The correlator's stale-card logic reads card.UpdatedAt — callers that need
-// accurate staleness should enrich cards from Postgres after receiving this list.
-//
-// workspace_id IS stored and filtered in Weaviate, so workspace isolation is correct.
+// ListJiraCards returns Jira cards from Postgres filtered by userID, optional
+// workspaceID, and the [start, end] updated_at window, ordered most-recent-first.
 func (a *weaviateAdapter) ListJiraCards(ctx context.Context, userID uint, workspaceID *uint, start, end time.Time, limit int) ([]JiraCard, error) {
-	var wsID *int
+	var rows []models.JiraCard
+	q := a.db.WithContext(ctx).
+		Where("user_id = ? AND updated_at >= ? AND updated_at <= ?", userID, start, end)
 	if workspaceID != nil {
-		v := int(*workspaceID)
-		wsID = &v
+		q = q.Where("workspace_id = ?", *workspaceID)
 	}
-
-	results, err := a.c.ListJira(ctx, int(userID), wsID, limit)
-	if err != nil {
+	if err := q.Order("updated_at DESC").Limit(limit).Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("ListJiraCards: %w", err)
 	}
 
-	out := make([]JiraCard, 0, len(results))
-	for _, r := range results {
-		var wsPtr *uint
-		if workspaceID != nil {
-			wsPtr = workspaceID
-		}
+	out := make([]JiraCard, 0, len(rows))
+	for _, r := range rows {
+		wsPtr := r.WorkspaceID
 		out = append(out, JiraCard{
-			CardKey:     r.CardKey,
-			Title:       r.CardKey, // title not stored separately; card_key is the ticket ID
+			CardKey:     r.Key,
+			Title:       r.Summary,
 			Status:      r.Status,
 			Assignee:    r.Assignee,
-			Content:     r.Content,
-			UpdatedAt:   time.Time{}, // no date field in JiraCardEmbedding schema
+			Content:     r.Summary, // Summary used as semantic query seed
+			UpdatedAt:   r.UpdatedAt,
 			WorkspaceID: wsPtr,
 		})
 	}
