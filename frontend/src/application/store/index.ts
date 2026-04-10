@@ -1,6 +1,7 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit'
 import { persistStore, persistReducer } from 'redux-persist'
 import { api } from '@/infrastructure/services/api'
+import { executiveReportApi } from '@/infrastructure/services/executiveReport.service'
 import authReducer from '@/infrastructure/slices/auth/auth.slice'
 import userReducer from '@/infrastructure/slices/user/user.slice'
 import persistConfig from './persistConfig'
@@ -8,7 +9,8 @@ import persistConfig from './persistConfig'
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
-  [api.reducerPath]: api.reducer
+  [api.reducerPath]: api.reducer,
+  [executiveReportApi.reducerPath]: executiveReportApi.reducer
 })
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)
@@ -24,7 +26,7 @@ export const store = configureStore({
           'persist/REGISTER'
         ]
       }
-    }).concat(api.middleware)
+    }).concat(api.middleware, executiveReportApi.middleware)
 })
 
 export const persistor = persistStore(store)
