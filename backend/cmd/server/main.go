@@ -73,11 +73,13 @@ func main() {
 	}
 
 	// WhatsApp manager
+	waHub := waService.NewHub()
 	var waManager *waService.Manager
 	waManager, err = waService.NewManager(ctx, db, r2Client, embeddingWorker, cfg.WhatsmeowDBPath, cfg.MistralAPIKey)
 	if err != nil {
 		log.Printf("WhatsApp manager init failed: %v", err)
 	} else {
+		waManager.Hub = waHub
 		waManager.Start(ctx)
 		sender := waService.NewSenderWorker(db, waManager)
 		sender.Start(ctx)
@@ -135,6 +137,8 @@ func main() {
 	waHandler := &handlers.WhatsAppHandler{
 		DB:      db,
 		Manager: waManager,
+		Hub:     waHub,
+		R2:      r2Client,
 	}
 
 	// Telegram bot (optional)
@@ -347,6 +351,17 @@ func main() {
 					waListeners.DELETE("/:id", waHandler.DeleteListener)
 					waListeners.GET("/:id/messages", waHandler.ListMessages)
 				}
+
+				// Inbox (WhatsApp Web–style)
+				waNumbers.GET("/:id/chats", waHandler.ListChats)
+				waNumbers.POST("/:id/send", waHandler.SendInbox)
+				waChats := wa.Group("/chats")
+				{
+					waChats.GET("/:listenerId/messages", waHandler.GetChatMessages)
+					waChats.POST("/:listenerId/read", waHandler.MarkChatRead)
+				}
+				wa.POST("/media/upload", waHandler.UploadMedia)
+				wa.GET("/ws", waHandler.HandleInboxSocket)
 
 				wa.GET("/messages/search", waHandler.SearchMessages)
 

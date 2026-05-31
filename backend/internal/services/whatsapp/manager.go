@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +35,7 @@ type Manager struct {
 	R2              *storage.R2Client
 	EmbeddingWorker *wvClient.EmbeddingWorker
 	VisionClient    *mistral.VisionClient
+	Hub             *Hub
 	clients         map[uint]*whatsmeow.Client
 	mu              sync.RWMutex
 	container       *sqlstore.Container
@@ -142,6 +145,7 @@ func (m *Manager) connectNumber(ctx context.Context, numberID uint) {
 
 	client := whatsmeow.NewClient(device, waLog.Noop)
 	handler := NewMessageHandler(m.DB, m.R2, m.EmbeddingWorker, m.VisionClient, numberID)
+	handler.SetHub(m.Hub)
 	handler.SetClient(client)
 	client.AddEventHandler(handler.HandleEvent)
 
@@ -284,7 +288,16 @@ func (m *Manager) SendMessage(ctx context.Context, numberID uint, jid string, te
 	return m.SendMediaMessage(ctx, numberID, jid, text, "")
 }
 
+// SendMediaMessage sends text and, if mediaURL is set, an attachment. The media
+// type is auto-detected from the URL's Content-Type. Used by the outbox worker
+// and as the low-level primitive for inbox sends.
 func (m *Manager) SendMediaMessage(ctx context.Context, numberID uint, jid string, text string, mediaURL string) (string, error) {
+	return m.SendTyped(ctx, numberID, jid, text, mediaURL, "")
+}
+
+// SendTyped sends a message with an optional attachment of an explicit type
+// ("image"|"video"|"audio"|"document"|"sticker"). Empty mediaType auto-detects.
+func (m *Manager) SendTyped(ctx context.Context, numberID uint, jid string, text string, mediaURL string, mediaType string) (string, error) {
 	client, ok := m.GetClient(numberID)
 	if !ok {
 		return "", fmt.Errorf("number %d not connected", numberID)
@@ -295,9 +308,8 @@ func (m *Manager) SendMediaMessage(ctx context.Context, numberID uint, jid strin
 		return "", err
 	}
 
-	// If mediaURL is provided, send as image message
 	if mediaURL != "" {
-		return m.sendImageMessage(ctx, client, targetJID, text, mediaURL)
+		return m.sendMediaMessage(ctx, client, targetJID, text, mediaURL, mediaType)
 	}
 
 	resp, err := client.SendMessage(ctx, targetJID, &waE2E.Message{
@@ -309,41 +321,79 @@ func (m *Manager) SendMediaMessage(ctx context.Context, numberID uint, jid strin
 	return resp.ID, nil
 }
 
-func (m *Manager) sendImageMessage(ctx context.Context, client *whatsmeow.Client, targetJID types.JID, caption string, imageURL string) (string, error) {
-	// Download the image from the URL
-	httpResp, err := http.Get(imageURL)
+// sendMediaMessage downloads media from a URL, uploads it to WhatsApp, and sends
+// the appropriate typed message.
+func (m *Manager) sendMediaMessage(ctx context.Context, client *whatsmeow.Client, targetJID types.JID, caption, mediaURL, mediaType string) (string, error) {
+	httpResp, err := http.Get(mediaURL)
 	if err != nil {
-		return "", fmt.Errorf("download image: %w", err)
+		return "", fmt.Errorf("download media: %w", err)
 	}
 	defer httpResp.Body.Close()
 
-	imageData, err := io.ReadAll(httpResp.Body)
+	data, err := io.ReadAll(httpResp.Body)
 	if err != nil {
-		return "", fmt.Errorf("read image data: %w", err)
+		return "", fmt.Errorf("read media data: %w", err)
 	}
 
 	mimeType := httpResp.Header.Get("Content-Type")
 	if mimeType == "" {
-		mimeType = "image/jpeg"
+		mimeType = "application/octet-stream"
+	}
+	if mediaType == "" {
+		mediaType = mediaTypeFromMime(mimeType)
 	}
 
-	// Upload to WhatsApp servers
-	uploaded, err := client.Upload(ctx, imageData, whatsmeow.MediaImage)
-	if err != nil {
-		return "", fmt.Errorf("upload image to whatsapp: %w", err)
-	}
+	fileName := path.Base(mediaURL)
+	fileLen := uint64(len(data))
 
-	msg := &waE2E.Message{
-		ImageMessage: &waE2E.ImageMessage{
-			Caption:       &caption,
-			Mimetype:      &mimeType,
-			URL:           &uploaded.URL,
-			DirectPath:    &uploaded.DirectPath,
-			MediaKey:      uploaded.MediaKey,
-			FileEncSHA256: uploaded.FileEncSHA256,
-			FileSHA256:    uploaded.FileSHA256,
-			FileLength:    &uploaded.FileLength,
-		},
+	var msg *waE2E.Message
+	switch mediaType {
+	case "image":
+		up, err := client.Upload(ctx, data, whatsmeow.MediaImage)
+		if err != nil {
+			return "", fmt.Errorf("upload image: %w", err)
+		}
+		msg = &waE2E.Message{ImageMessage: &waE2E.ImageMessage{
+			Caption: &caption, Mimetype: &mimeType, URL: &up.URL, DirectPath: &up.DirectPath,
+			MediaKey: up.MediaKey, FileEncSHA256: up.FileEncSHA256, FileSHA256: up.FileSHA256, FileLength: &up.FileLength,
+		}}
+	case "video":
+		up, err := client.Upload(ctx, data, whatsmeow.MediaVideo)
+		if err != nil {
+			return "", fmt.Errorf("upload video: %w", err)
+		}
+		msg = &waE2E.Message{VideoMessage: &waE2E.VideoMessage{
+			Caption: &caption, Mimetype: &mimeType, URL: &up.URL, DirectPath: &up.DirectPath,
+			MediaKey: up.MediaKey, FileEncSHA256: up.FileEncSHA256, FileSHA256: up.FileSHA256, FileLength: &up.FileLength,
+		}}
+	case "audio":
+		up, err := client.Upload(ctx, data, whatsmeow.MediaAudio)
+		if err != nil {
+			return "", fmt.Errorf("upload audio: %w", err)
+		}
+		ptt := true
+		msg = &waE2E.Message{AudioMessage: &waE2E.AudioMessage{
+			Mimetype: &mimeType, URL: &up.URL, DirectPath: &up.DirectPath, PTT: &ptt,
+			MediaKey: up.MediaKey, FileEncSHA256: up.FileEncSHA256, FileSHA256: up.FileSHA256, FileLength: &up.FileLength,
+		}}
+	case "sticker":
+		up, err := client.Upload(ctx, data, whatsmeow.MediaImage)
+		if err != nil {
+			return "", fmt.Errorf("upload sticker: %w", err)
+		}
+		msg = &waE2E.Message{StickerMessage: &waE2E.StickerMessage{
+			Mimetype: &mimeType, URL: &up.URL, DirectPath: &up.DirectPath,
+			MediaKey: up.MediaKey, FileEncSHA256: up.FileEncSHA256, FileSHA256: up.FileSHA256, FileLength: &up.FileLength,
+		}}
+	default: // document
+		up, err := client.Upload(ctx, data, whatsmeow.MediaDocument)
+		if err != nil {
+			return "", fmt.Errorf("upload document: %w", err)
+		}
+		msg = &waE2E.Message{DocumentMessage: &waE2E.DocumentMessage{
+			Caption: &caption, Mimetype: &mimeType, FileName: &fileName, URL: &up.URL, DirectPath: &up.DirectPath,
+			MediaKey: up.MediaKey, FileEncSHA256: up.FileEncSHA256, FileSHA256: up.FileSHA256, FileLength: &fileLen,
+		}}
 	}
 
 	resp, err := client.SendMessage(ctx, targetJID, msg)
@@ -351,4 +401,82 @@ func (m *Manager) sendImageMessage(ctx context.Context, client *whatsmeow.Client
 		return "", err
 	}
 	return resp.ID, nil
+}
+
+// SendInboxMessage sends a live inbox message (bypassing outbox approval),
+// persists it as an outgoing WaMessage, updates conversation metadata, and
+// broadcasts it to realtime clients. Returns the saved message.
+func (m *Manager) SendInboxMessage(ctx context.Context, numberID uint, chatJID, text, mediaURL, mediaType string) (*models.WaMessage, error) {
+	waMsgID, err := m.SendTyped(ctx, numberID, chatJID, text, mediaURL, mediaType)
+	if err != nil {
+		return nil, err
+	}
+
+	handler := NewMessageHandler(m.DB, m.R2, m.EmbeddingWorker, m.VisionClient, numberID)
+	listener, err := handler.findOrCreateListener(chatJID, "")
+	if err != nil {
+		return nil, fmt.Errorf("resolve conversation: %w", err)
+	}
+
+	msgType := "text"
+	content := text
+	if mediaURL != "" {
+		if mediaType != "" {
+			msgType = mediaType
+		} else {
+			msgType = "document"
+		}
+		if content == "" {
+			content = "[" + msgType + "]"
+		}
+	}
+
+	now := time.Now()
+	msg := &models.WaMessage{
+		WaListenerID: listener.ID,
+		MessageID:    waMsgID,
+		SenderJID:    "",
+		SenderName:   "You",
+		Content:      content,
+		MessageType:  msgType,
+		HasMedia:     mediaURL != "",
+		FromMe:       true,
+		ChatJID:      chatJID,
+		Status:       "sent",
+		Timestamp:    now,
+	}
+	if err := m.DB.Create(msg).Error; err != nil {
+		return nil, fmt.Errorf("persist message: %w", err)
+	}
+
+	// Attach a media record pointing at the already-hosted R2 URL.
+	if mediaURL != "" {
+		media := models.WaMedia{
+			WaMessageID: msg.ID,
+			FileName:    path.Base(mediaURL),
+			MimeType:    mediaType,
+			FileURL:     mediaURL,
+		}
+		m.DB.Create(&media)
+		msg.Media = []models.WaMedia{media}
+	}
+
+	handler.SetHub(m.Hub)
+	handler.touchListener(listener.ID, content, now, true)
+	handler.broadcast("message", msg)
+	return msg, nil
+}
+
+// mediaTypeFromMime maps a MIME type to a WhatsApp media category.
+func mediaTypeFromMime(mime string) string {
+	switch {
+	case strings.HasPrefix(mime, "image/"):
+		return "image"
+	case strings.HasPrefix(mime, "video/"):
+		return "video"
+	case strings.HasPrefix(mime, "audio/"):
+		return "audio"
+	default:
+		return "document"
+	}
 }

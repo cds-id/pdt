@@ -27,7 +27,7 @@ export interface GenerateArgs {
 const GENERATE_URL =
   API_CONSTANTS.BASE_URL +
   API_CONSTANTS.API_PREFIX +
-  '/protected/reports/executive/generate'
+  '/reports/executive/generate'
 
 export function useGenerateExecutiveReport() {
   const dispatch = useAppDispatch()

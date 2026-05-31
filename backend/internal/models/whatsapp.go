@@ -16,15 +16,21 @@ type WaNumber struct {
 }
 
 type WaListener struct {
-	ID         uint      `gorm:"primarykey" json:"id"`
-	WaNumberID uint      `gorm:"index;not null" json:"wa_number_id"`
-	JID        string    `gorm:"column:jid;type:varchar(100);not null" json:"jid"`
-	Name       string    `gorm:"type:varchar(200);not null" json:"name"`
-	Type       string    `gorm:"type:varchar(20);not null" json:"type"`
-	IsActive   bool      `gorm:"default:true" json:"is_active"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	WaNumber   WaNumber  `gorm:"foreignKey:WaNumberID" json:"-"`
+	ID                 uint       `gorm:"primarykey" json:"id"`
+	WaNumberID         uint       `gorm:"index;not null" json:"wa_number_id"`
+	JID                string     `gorm:"column:jid;type:varchar(100);not null" json:"jid"`
+	Name               string     `gorm:"type:varchar(200);not null" json:"name"`
+	Type               string     `gorm:"type:varchar(20);not null" json:"type"`
+	IsActive           bool       `gorm:"default:true" json:"is_active"`
+	// Source distinguishes explicit monitor rows ("monitor") from auto-created
+	// inbox conversations ("inbox").
+	Source             string     `gorm:"type:varchar(20);default:monitor;index" json:"source"`
+	LastMessageAt      *time.Time `gorm:"index" json:"last_message_at,omitempty"`
+	LastMessagePreview string     `gorm:"type:varchar(300)" json:"last_message_preview"`
+	UnreadCount        int        `gorm:"default:0" json:"unread_count"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+	WaNumber           WaNumber   `gorm:"foreignKey:WaNumberID" json:"-"`
 }
 
 type WaMessage struct {
@@ -36,9 +42,14 @@ type WaMessage struct {
 	Content      string     `gorm:"type:longtext" json:"content"`
 	MessageType  string     `gorm:"type:varchar(20);default:text" json:"message_type"`
 	HasMedia     bool       `gorm:"default:false" json:"has_media"`
+	FromMe       bool       `gorm:"column:from_me;default:false" json:"from_me"`
+	ChatJID      string     `gorm:"column:chat_jid;type:varchar(100);index" json:"chat_jid"`
+	// Status tracks outgoing message delivery: sent | delivered | read.
+	Status       string     `gorm:"type:varchar(20)" json:"status,omitempty"`
 	Timestamp    time.Time  `gorm:"index;not null" json:"timestamp"`
 	CreatedAt    time.Time  `json:"created_at"`
 	WaListener   WaListener `gorm:"foreignKey:WaListenerID" json:"-"`
+	Media        []WaMedia  `gorm:"foreignKey:WaMessageID" json:"media,omitempty"`
 }
 
 type WaMedia struct {

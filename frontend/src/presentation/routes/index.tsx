@@ -17,6 +17,7 @@ import { AssistantPage } from '../pages/AssistantPage'
 import { OutboxPage } from '../pages/OutboxPage'
 import { AIUsagePage } from '../pages/AIUsagePage'
 import { SchedulesPage } from '../pages/SchedulesPage'
+import { WhatsAppInboxPage } from '../pages/WhatsAppInboxPage'
 
 export const router = createBrowserRouter([
   {
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard/reports', element: <ReportsPage /> },
       { path: 'dashboard/settings', element: <SettingsPage /> },
       { path: 'dashboard/outbox', element: <OutboxPage /> },
+      { path: 'dashboard/whatsapp', element: <WhatsAppInboxPage /> },
       { path: 'dashboard/ai-usage', element: <AIUsagePage /> },
       { path: 'dashboard/schedules', element: <SchedulesPage /> }
     ]
