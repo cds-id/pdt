@@ -106,6 +106,13 @@ export const API_CONSTANTS = {
     OUTBOX: '/wa/outbox',
     OUTBOX_ITEM: (id: number) => `/wa/outbox/${id}`,
     PAIR: (numberId: number) => `/wa/pair/${numberId}`,
+    // Inbox (WhatsApp Web–style)
+    CHATS: (numberId: number) => `/wa/numbers/${numberId}/chats`,
+    CHAT_MESSAGES: (listenerId: number) => `/wa/chats/${listenerId}/messages`,
+    CHAT_READ: (listenerId: number) => `/wa/chats/${listenerId}/read`,
+    SEND: (numberId: number) => `/wa/numbers/${numberId}/send`,
+    MEDIA_UPLOAD: '/wa/media/upload',
+    WS: '/wa/ws',
   },
 
   // Composio Endpoints

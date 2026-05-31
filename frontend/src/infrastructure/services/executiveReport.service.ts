@@ -119,15 +119,15 @@ export const executiveReportApi = createApi({
   tagTypes: ['ExecutiveReport'],
   endpoints: (b) => ({
     listExecutiveReports: b.query<ExecutiveReportListItem[], void>({
-      query: () => '/protected/reports/executive',
+      query: () => '/reports/executive',
       providesTags: ['ExecutiveReport'],
     }),
     getExecutiveReport: b.query<ExecutiveReport, number>({
-      query: (id) => `/protected/reports/executive/${id}`,
+      query: (id) => `/reports/executive/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'ExecutiveReport', id }],
     }),
     deleteExecutiveReport: b.mutation<void, number>({
-      query: (id) => ({ url: `/protected/reports/executive/${id}`, method: 'DELETE' }),
+      query: (id) => ({ url: `/reports/executive/${id}`, method: 'DELETE' }),
       invalidatesTags: ['ExecutiveReport'],
     }),
   }),

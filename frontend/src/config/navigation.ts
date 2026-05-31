@@ -45,6 +45,7 @@ export const dashboardNavigation: NavGroup[] = [
   {
     title: 'WhatsApp',
     items: [
+      { title: 'Inbox', href: '/dashboard/whatsapp', icon: MessageSquare },
       { title: 'Outbox', href: '/dashboard/outbox', icon: Send }
     ]
   },

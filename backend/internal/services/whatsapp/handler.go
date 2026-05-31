@@ -31,18 +31,39 @@ type MessageHandler struct {
 	EmbeddingWorker *wvClient.EmbeddingWorker
 	VisionClient    *mistral.VisionClient
 	NumberID        uint
+	Hub             *Hub
+	userID          uint
 	client          mediaDownloader
 	waClient        *whatsmeow.Client
 }
 
 func NewMessageHandler(db *gorm.DB, r2 *storage.R2Client, ew *wvClient.EmbeddingWorker, vc *mistral.VisionClient, numberID uint) *MessageHandler {
-	return &MessageHandler{
+	h := &MessageHandler{
 		DB:              db,
 		R2:              r2,
 		EmbeddingWorker: ew,
 		VisionClient:    vc,
 		NumberID:        numberID,
 	}
+	// Resolve owning user once for realtime broadcast targeting.
+	var num models.WaNumber
+	if db != nil {
+		if err := db.Select("user_id").First(&num, numberID).Error; err == nil {
+			h.userID = num.UserID
+		}
+	}
+	return h
+}
+
+// SetHub injects the realtime broadcast hub.
+func (h *MessageHandler) SetHub(hub *Hub) { h.Hub = hub }
+
+// broadcast sends an event to the owning user's inbox clients, if a hub is set.
+func (h *MessageHandler) broadcast(evtType string, payload interface{}) {
+	if h.Hub == nil || h.userID == 0 {
+		return
+	}
+	h.Hub.Broadcast(h.userID, HubEvent{Type: evtType, Payload: payload})
 }
 
 // HandleEvent is registered with whatsmeow's AddEventHandler.
@@ -74,36 +95,86 @@ func (h *MessageHandler) HandleEvent(evt interface{}) {
 func (h *MessageHandler) handleReceipt(evt *events.Receipt) {
 	now := time.Now()
 	for _, msgID := range evt.MessageIDs {
+		var status string
 		switch evt.Type {
 		case events.ReceiptTypeDelivered:
+			status = "delivered"
 			h.DB.Model(&models.WaOutbox{}).
 				Where("wa_message_id = ?", msgID).
 				Update("delivered_at", now)
-			log.Printf("[wa-handler] message %s delivered", msgID)
-		case events.ReceiptTypeRead:
+		case events.ReceiptTypeRead, events.ReceiptTypeReadSelf:
+			status = "read"
 			h.DB.Model(&models.WaOutbox{}).
 				Where("wa_message_id = ?", msgID).
 				Update("read_at", now)
-			log.Printf("[wa-handler] message %s read", msgID)
+		default:
+			continue
 		}
+		// Update our own outgoing inbox message status + notify clients.
+		h.DB.Model(&models.WaMessage{}).
+			Where("message_id = ? AND from_me = ?", msgID, true).
+			Update("status", status)
+		h.broadcast("receipt", map[string]interface{}{"message_id": msgID, "status": status})
+		log.Printf("[wa-handler] message %s %s", msgID, status)
 	}
 }
 
-func (h *MessageHandler) handleMessage(evt *events.Message) {
-	// Ignore outgoing messages
-	if evt.Info.IsFromMe {
-		return
+// findOrCreateListener returns the conversation row for a chat JID, creating an
+// inbox-sourced listener if none exists.
+func (h *MessageHandler) findOrCreateListener(chatJID string, displayName string) (models.WaListener, error) {
+	var listener models.WaListener
+	err := h.DB.Where("wa_number_id = ? AND jid = ?", h.NumberID, chatJID).First(&listener).Error
+	if err == nil {
+		return listener, nil
+	}
+	if err != gorm.ErrRecordNotFound {
+		return listener, err
 	}
 
+	lisType := "personal"
+	if strings.HasSuffix(chatJID, "@g.us") {
+		lisType = "group"
+	}
+	name := displayName
+	if name == "" {
+		name = chatJIDDisplay(chatJID)
+	}
+	listener = models.WaListener{
+		WaNumberID: h.NumberID,
+		JID:        chatJID,
+		Name:       name,
+		Type:       lisType,
+		IsActive:   true,
+		Source:     "inbox",
+	}
+	if err := h.DB.Create(&listener).Error; err != nil {
+		// Race: another goroutine created it — re-fetch.
+		if e := h.DB.Where("wa_number_id = ? AND jid = ?", h.NumberID, chatJID).First(&listener).Error; e == nil {
+			return listener, nil
+		}
+		return listener, err
+	}
+	return listener, nil
+}
+
+// chatJIDDisplay derives a human label from a JID (the user part).
+func chatJIDDisplay(jid string) string {
+	if i := strings.IndexByte(jid, '@'); i > 0 {
+		return jid[:i]
+	}
+	return jid
+}
+
+func (h *MessageHandler) handleMessage(evt *events.Message) {
 	senderJID := evt.Info.Sender.String()
 	chatJID := evt.Info.Chat.String()
+	fromMe := evt.Info.IsFromMe
 
-	// Find an active listener matching either the sender or the chat JID
-	var listener models.WaListener
-	err := h.DB.Where("wa_number_id = ? AND is_active = ? AND jid IN (?, ?)", h.NumberID, true, senderJID, chatJID).
-		First(&listener).Error
+	// Inbox is chat-scoped: the conversation key is always the chat JID.
+	// Auto-create a listener (conversation) on first sight.
+	listener, err := h.findOrCreateListener(chatJID, evt.Info.PushName)
 	if err != nil {
-		// No active listener for this contact/group — ignore
+		log.Printf("[wa-handler] find/create listener for %s error: %v", chatJID, err)
 		return
 	}
 
@@ -117,14 +188,21 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 		text = "[" + msgType + "]"
 	}
 
+	senderName := evt.Info.PushName
+	if fromMe {
+		senderName = "You"
+	}
+
 	msg := models.WaMessage{
 		WaListenerID: listener.ID,
 		MessageID:    string(evt.Info.ID),
 		SenderJID:    senderJID,
-		SenderName:   evt.Info.PushName,
+		SenderName:   senderName,
 		Content:      text,
 		MessageType:  msgType,
 		HasMedia:     hasMedia,
+		FromMe:       fromMe,
+		ChatJID:      chatJID,
 		Timestamp:    evt.Info.Timestamp,
 	}
 
@@ -137,21 +215,49 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 		return
 	}
 
-	// Enqueue embedding only for messages with actual text content
-	if rawText != "" {
+	// Update conversation metadata (preview, time, unread for inbound).
+	h.touchListener(listener.ID, text, evt.Info.Timestamp, fromMe)
+
+	// Enqueue embedding only for messages with actual text content.
+	if rawText != "" && h.EmbeddingWorker != nil {
 		h.EmbeddingWorker.Enqueue(wvClient.EmbedRequest{
 			MessageID:  msg.ID,
 			ListenerID: listener.ID,
 			UserID:     0, // populated by the worker via DB join
 			Content:    text,
-			SenderName: evt.Info.PushName,
+			SenderName: senderName,
 			Timestamp:  evt.Info.Timestamp,
 		})
 	}
 
+	// Realtime push of the new message to inbox clients.
+	h.broadcast("message", msg)
+
 	// Async media download
 	if hasMedia && h.R2 != nil {
 		go h.downloadAndStoreMedia(evt, msg.ID)
+	}
+}
+
+// touchListener refreshes conversation ordering metadata and unread count.
+func (h *MessageHandler) touchListener(listenerID uint, preview string, ts time.Time, fromMe bool) {
+	if len(preview) > 300 {
+		preview = preview[:300]
+	}
+	updates := map[string]interface{}{
+		"last_message_at":      ts,
+		"last_message_preview": preview,
+	}
+	if !fromMe {
+		updates["unread_count"] = gorm.Expr("unread_count + 1")
+	}
+	if err := h.DB.Model(&models.WaListener{}).Where("id = ?", listenerID).Updates(updates).Error; err != nil {
+		log.Printf("[wa-handler] touch listener %d error: %v", listenerID, err)
+		return
+	}
+	var listener models.WaListener
+	if err := h.DB.First(&listener, listenerID).Error; err == nil {
+		h.broadcast("chat_update", listener)
 	}
 }
 
@@ -192,6 +298,12 @@ func (h *MessageHandler) downloadAndStoreMedia(evt *events.Message, msgID uint) 
 	if err := h.DB.Create(&media).Error; err != nil {
 		log.Printf("[wa-handler] save media record error: %v", err)
 		return
+	}
+
+	// Notify clients the media is now available (re-send message with media attached).
+	var withMedia models.WaMessage
+	if err := h.DB.Preload("Media").First(&withMedia, msgID).Error; err == nil {
+		h.broadcast("message", withMedia)
 	}
 
 	// Use Mistral vision to describe images and update message content

@@ -5,7 +5,10 @@ import {
   IWaListener,
   IWaMessage,
   IWaOutbox,
-  IWaMessagePage
+  IWaMessagePage,
+  IWaChat,
+  IWaChatMessagePage,
+  IWaUploadResult
 } from '@/domain/whatsapp/interfaces/whatsapp.interface'
 
 export const whatsappApi = api.injectEndpoints({
@@ -144,6 +147,56 @@ export const whatsappApi = api.injectEndpoints({
         method: 'DELETE'
       }),
       invalidatesTags: [{ type: 'WhatsApp' as const, id: 'OUTBOX' }]
+    }),
+
+    // ── Inbox (WhatsApp Web–style) ──────────────────────────────────────────
+    listChats: builder.query<IWaChat[], number>({
+      query: (numberId) => API_CONSTANTS.WA.CHATS(numberId),
+      providesTags: (_r, _e, numberId) => [
+        { type: 'WhatsApp' as const, id: `CHATS_${numberId}` }
+      ]
+    }),
+    getChatMessages: builder.query<
+      IWaChatMessagePage,
+      { listenerId: number; page?: number; pageSize?: number }
+    >({
+      query: ({ listenerId, page = 1, pageSize = 50 }) =>
+        `${API_CONSTANTS.WA.CHAT_MESSAGES(listenerId)}?page=${page}&page_size=${pageSize}`,
+      providesTags: (_r, _e, { listenerId }) => [
+        { type: 'WhatsApp' as const, id: `CHATMSG_${listenerId}` }
+      ]
+    }),
+    markChatRead: builder.mutation<void, { listenerId: number; numberId: number }>({
+      query: ({ listenerId }) => ({
+        url: API_CONSTANTS.WA.CHAT_READ(listenerId),
+        method: 'POST'
+      }),
+      invalidatesTags: (_r, _e, { numberId }) => [
+        { type: 'WhatsApp' as const, id: `CHATS_${numberId}` }
+      ]
+    }),
+    sendChatMessage: builder.mutation<
+      IWaMessage,
+      {
+        numberId: number
+        chat_jid: string
+        text?: string
+        media_url?: string
+        media_type?: string
+      }
+    >({
+      query: ({ numberId, ...body }) => ({
+        url: API_CONSTANTS.WA.SEND(numberId),
+        method: 'POST',
+        body
+      })
+    }),
+    uploadWaMedia: builder.mutation<IWaUploadResult, FormData>({
+      query: (formData) => ({
+        url: API_CONSTANTS.WA.MEDIA_UPLOAD,
+        method: 'POST',
+        body: formData
+      })
     })
   })
 })
@@ -164,5 +217,10 @@ export const {
   useSearchMessagesQuery,
   useListOutboxQuery,
   useUpdateOutboxMutation,
-  useDeleteOutboxMutation
+  useDeleteOutboxMutation,
+  useListChatsQuery,
+  useGetChatMessagesQuery,
+  useMarkChatReadMutation,
+  useSendChatMessageMutation,
+  useUploadWaMediaMutation
 } = whatsappApi
